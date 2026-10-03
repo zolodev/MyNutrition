@@ -1,0 +1,7 @@
+# Alla filer i projektet är UTF-8, så att å, ä och ö visas rätt i alla editorer.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true

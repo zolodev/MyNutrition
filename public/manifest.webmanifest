@@ -1,7 +1,7 @@
 {
   "name": "Fettförbränningsveckan",
   "short_name": "Fettförbränning",
-  "description": "Personlig veckoplan för viktnedgång: kalorimål, styrkeprogram, säsongsrecept från Norrland, fasta 16:8 och logg.",
+  "description": "Personlig veckoplan för viktnedgång: kalorimål, styrkeprogram, säsongsrecept, fasta 16:8 och logg.",
   "lang": "sv",
   "id": "./",
   "start_url": "./",

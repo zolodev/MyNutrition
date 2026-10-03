@@ -7,7 +7,7 @@
 //   {namn} i titel eller instruktion visar säsongsråvarans korta namn.
 // Ordningen i objektet påverkar vilka rätter som slumpas fram; ändra den inte utan anledning.
 
-/** Säsonger i Norrland. */
+/** Säsonger i Sverige. */
 export const SEASONS = {
   vinter: { n: "Vinter", months: "nov–feb" },
   var: { n: "Vår", months: "mar–maj" },
@@ -88,7 +88,7 @@ export const RECIPES = {
         how: "Fräs lök, curry och vitlök. Tillsätt kycklingbitar, mjölk och en skvätt buljong, sjud 10 min. Rör ner kvargen precis innan servering. Rör ner grönsakerna sista 5 min. Servera med ris." },
   D16: { t: "Sejgratäng med {blad}", g: "d", items: [["sej", 175], ["@blad", 100], ["kvarg", 75], ["ost", 10], ["@potatis", 250], ["olja", 5]],
         how: "Lägg strimlade blad och sej i en form. Rör kvarg med dill, citron och salt och bred över, strö på osten. Baka i 200 °C i 20 min. Servera med kokt potatis." },
-  // Säsongsrätter från Norrland
+  // Säsongsrätter (vilt, svamp, bär och rotfrukter)
   S1: { t: "Renskav med potatismos och lingon", g: "d", se: ["vinter", "var"], items: [["renskav", 150], ["potatis", 250], ["mjolk", 75], ["lingon", 50], ["rotfrukter", 100], ["lok", 30], ["olja", 5]],
         how: "Fräs löken, lägg i renskavet och låt det tina i pannan. Häll i en skvätt mjölk och låt puttra 5 min. Mosa potatisen med resten av mjölken. Servera med lingon och kokta rotfrukter." },
   S8: { t: "Älgskav med svamp och rotfruktsmos", g: "d", se: ["vinter", "var", "host"], items: [["algskav", 175], ["svamp", 75], ["lok", 30], ["rotfrukter", 250], ["potatis", 100], ["lingon", 40], ["kvarg", 50], ["olja", 5]],

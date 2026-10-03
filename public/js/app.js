@@ -2,22 +2,25 @@
 
 import { $, $$, num, radioValue, setRadio, load, save, remove, todayStr, dayToDate, dateToDay, svDate, weekIndexOf, confirmDialog, toast, checkDecimal, formatClockInput, isClockText, DAYS_SHORT } from "./util.js";
 import { computeTargets, kgPerWeek, recommendedGoal } from "./nutrition.js";
-import { loadPreferences, exclusions, saveExclusions, setExclusions, myFoods, addMyFood, removeMyFood, cleanMyFood } from "./preferences.js";
+import { loadPreferences, exclusions, saveExclusions, setExclusions, myFoods, addMyFood, removeMyFood, cleanMyFood, cleanWord } from "./preferences.js";
 import { buildWeek, invalidateMenu, initSeed, planRandomness, setPlanRandomness } from "./menu.js";
 import { encodePlan, decodePlan, prettyCode, randomSeed } from "./plancode.js";
 import { SEASONS } from "./data/recipes.js";
 import { parseTrainingDays, buildProgram, SWAP_TEXT } from "./training.js";
-import { loadLog, entryFor, upsertEntry, removeEntry, cleanEntry, isIsoDate, parseTestTime, formatTestTime, setMealTimes } from "./log.js";
+import { loadLog, entries, entryFor, upsertEntry, removeEntry, cleanEntry, isIsoDate, parseWorkoutTime, formatWorkoutInput, formatHms, cleanCardio, CARDIO, intensityMinutes, setMealTimes } from "./log.js";
 import { renderTargets, renderGoalAdvice } from "./views/profile.js";
 import { renderToday, renderFasting } from "./views/today.js";
 import { renderFastingToday, renderFastingNow, todaysFasting } from "./views/fasting-view.js";
+import { formatClock, parseClock } from "./fasting.js";
+import { WINDOW } from "./day.js";
 import { weekLabel, renderWeekGrid, renderCheatTable, renderRecipes, renderShopping, updateShoppingProgress } from "./views/food.js";
 import { renderProgram } from "./views/training-view.js";
-import { renderLog } from "./views/log-view.js";
+import { renderLog, cardioRow } from "./views/log-view.js";
+import { renderReport } from "./views/report.js";
 import { renderSettings, renderIngredientPicker, recipeItemRow, readRecipeItems, updateRecipeSum } from "./views/settings.js";
 import { loadMyRecipes, myRecipes, addMyRecipe, removeMyRecipe, cleanRecipe } from "./myrecipes.js";
 import { exportText, readBackup, describe, restore, hasStoredData, eraseAll } from "./backup.js";
-import { setUsing } from "./supplements.js";
+import { setUsing, cleanMySupp, addMySupp, removeMySupp, mySupps } from "./supplements.js";
 import { openWizard } from "./wizard.js";
 import { unlockStorage, keys as storageKeys } from "./storage.js";
 import "./pwa.js";
@@ -200,7 +203,21 @@ function update() {
   renderSettings(state.week);
   renderPlanCode(profile);
   showGoalAdvice();
+  renderReport({
+    period: $("rp-period").value, profile, targets,
+    labels: {
+      activity: $("act").selectedOptions[0]?.textContent || "",
+      equipment: { gym: "gym", db: "hantlar", bw: "kroppsvikt" }[profile.equipment],
+      days: profile.days.days.map((d) => DAYS_SHORT[d].toLowerCase()).join(", "),
+      breakfast: $("bfast").selectedOptions[0]?.textContent || "",
+    },
+  });
 }
+
+// ---------- Rapport ----------
+
+$("rp-period").addEventListener("change", update);
+$("rp-print").addEventListener("click", () => window.print());
 
 function showWeek(week) {
   state.week = week;
@@ -240,7 +257,7 @@ function runWizard(then) {
   const onStep = (key) => key === "goal" && (suggestGoal(), showGoalAdvice());
   openWizard({ allergens: exclusions.allergens, onStep }, ({ allergens }) => {
     acceptTerms();
-    setExclusions({ allergens, foods: [...exclusions.foods] });
+    setExclusions({ allergens, foods: [...exclusions.foods], words: [...exclusions.words] });
     saveExclusions();
     invalidateMenu();
     saveProfile();
@@ -251,21 +268,33 @@ function runWizard(then) {
 // ---------- Fastan i dag ----------
 
 const clockNow = () => new Date().toTimeString().slice(0, 5);
+/** När ätfönstret stänger: 8 h efter första måltiden, t.ex. "07:30" → "15:30". */
+const windowClose = (first) => formatClock(parseClock(first) + WINDOW);
 $("fastan").addEventListener("click", (ev) => {
   const field = ev.target.dataset.now;
   if (!field) return;
   $(field).value = clockNow();
-  saveMealTimes();
+  saveMealTimes(field);
 });
-for (const id of ["fs-first", "fs-last"]) $(id).addEventListener("change", saveMealTimes);
+for (const id of ["fs-first", "fs-last"]) $(id).addEventListener("change", () => saveMealTimes(id));
 $("fs-reset").addEventListener("click", () => {
   setMealTimes(todayStr(), { firstMeal: "", lastMeal: "" });
   update();
 });
-function saveMealTimes() {
+/**
+ * Spara dagens måltidstider. När första måltiden fylls i räknas sista måltiden ut som 8 h senare (när ätfönstret
+ * stänger), om den är tom eller fortfarande är den uträknade tiden. En tid användaren själv har skrivit behålls.
+ */
+function saveMealTimes(changed) {
   const invalid = [$("fs-first"), $("fs-last")].find((el) => el.value && !isClockText(el.value));
   if (invalid) return invalid.reportValidity();
-  setMealTimes(todayStr(), { firstMeal: $("fs-first").value, lastMeal: $("fs-last").value });
+  const first = $("fs-first").value;
+  if (changed === "fs-first" && first) {
+    const before = entryFor(todayStr());
+    const wasCalculated = !$("fs-last").value || (before?.firstMeal && before.lastMeal === windowClose(before.firstMeal));
+    if (wasCalculated) $("fs-last").value = windowClose(first);
+  }
+  setMealTimes(todayStr(), { firstMeal: first, lastMeal: $("fs-last").value });
   update();
 }
 // Läget "du fastar / ätfönstret är öppet" uppdateras varje minut
@@ -366,6 +395,21 @@ $("anpassa").addEventListener("change", (ev) => {
   preferencesChanged();
 });
 $("ex-search").addEventListener("input", renderIngredientPicker);
+// Egna ord att välja bort, t.ex. "lax"
+$("ex-word-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const word = cleanWord($("ex-word").value);
+  if (word.length < 2) return;
+  exclusions.words.add(word);
+  $("ex-word").value = "";
+  preferencesChanged();
+});
+$("ex-words").addEventListener("click", (ev) => {
+  const word = ev.target.closest("[data-word-del]")?.dataset.wordDel;
+  if (!word) return;
+  exclusions.words.delete(word);
+  preferencesChanged();
+});
 $("mf").addEventListener("submit", (ev) => {
   ev.preventDefault();
   const kcal = num($("mf-k").value);
@@ -436,6 +480,24 @@ $("mr-list").addEventListener("click", async (ev) => {
   invalidateMenu();
   update();
 });
+// Egna tillskott
+$("ms-when").addEventListener("change", () => ($("ms-at-field").hidden = $("ms-when").value !== "clock"));
+$("ms-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const supp = cleanMySupp({ n: $("ms-name").value, dose: $("ms-dose").value, when: $("ms-when").value, at: $("ms-at").value, kcal: $("ms-kcal").checked });
+  if (!supp) return ($("ms-msg").textContent = $("ms-when").value === "clock" ? "Fyll i namn och klockslag (HH:MM)." : "Fyll i ett namn.");
+  addMySupp(supp);
+  $("ms-form").reset();
+  $("ms-at-field").hidden = true;
+  $("ms-msg").textContent = `${supp.n} är tillagt och visas på Idag.`;
+  update();
+});
+$("ms-list").addEventListener("click", async (ev) => {
+  const id = ev.target.closest("[data-msdel]")?.dataset.msdel;
+  if (!id || !(await confirmDialog(`Är du säker på att du vill ta bort ${mySupps.find((m) => m.id === id)?.n || "tillskottet"}?`))) return;
+  removeMySupp(id);
+  update();
+});
 $("supps").addEventListener("change", () => {
   setUsing($$("[data-supp]:checked").map((el) => el.dataset.supp));
   update();
@@ -456,12 +518,78 @@ function fillLogForm(date) {
   $("l-date").value = date;
   $("l-weight").value = e.weight ?? "";
   $("l-waist").value = e.waist ?? "";
-  $("l-test").value = e.test != null ? formatTestTime(e.test) : "";
+  $("l-cardio").innerHTML = e.cardio?.length ? e.cardio.map((c) => cardioRow(c)).join("") : cardioRow({}, lastUnit());
+  $("l-im-mod").value = e.imMod ?? "";
+  $("l-im-vig").value = e.imVig ?? "";
+  showIntensityTotal();
   $("l-note").value = e.note || "";
   for (const el of $$('input[name="l-mood"]')) el.checked = +el.value === e.mood;
   const notTrained = !!entryFor(date) && e.perf == null && e.trained === false;
   for (const el of $$('input[name="l-perf"]')) el.checked = el.value === "none" ? notTrained : +el.value === e.perf;
 }
+
+/**
+ * Läs konditionsraderna. Tomma rader hoppas över; en halvt ifylld rad ger ett felmeddelande.
+ * Ger { list } eller { error }.
+ */
+function readCardio() {
+  const list = [];
+  for (const row of $$("#l-cardio .cardio-row")) {
+    const a = row.querySelector("[data-c-a]").value;
+    const distText = row.querySelector("[data-c-dist]").value.trim(), timeText = row.querySelector("[data-c-time]").value.trim();
+    if (!distText && !timeText) continue;
+    const unit = row.querySelector("[data-c-unit]").value;
+    const dist = num(distText);
+    const pass = cleanCardio({ a, km: dist != null && unit === "m" ? dist / 1000 : dist, u: unit, s: parseWorkoutTime(timeText),
+      hrMax: num(row.querySelector("[data-c-hrmax]").value) });
+    if (!pass) return { error: `Fyll i både distans och tid (min:sek) för ${CARDIO[a].n.toLowerCase()}, t.ex. 1,14 km eller 1122 m och 8:57.` };
+    list.push(pass);
+  }
+  return { list };
+}
+
+/** Visa intensitetsminuterna för dagen medan man skriver: måttliga + 2 × höga. */
+function showIntensityTotal() {
+  const total = intensityMinutes({ imMod: num($("l-im-mod").value), imVig: num($("l-im-vig").value) });
+  $("l-im-total").textContent = total != null
+    ? `= ${total} intensitetsminuter (måttliga + 2 × höga). WHO rekommenderar minst 150 i veckan.`
+    : "Totalen räknas som måttliga + 2 × höga, som på Garmin och liknande klockor. WHO rekommenderar minst 150 minuter i veckan.";
+}
+for (const id of ["l-im-mod", "l-im-vig"]) $(id).addEventListener("input", showIntensityTotal);
+
+/** Enheten för en ny rad: samma som raden ovanför, annars den som användes senast i loggen. */
+const lastUnit = () =>
+  [...$$("#l-cardio [data-c-unit]")].pop()?.value ||
+  entries.flatMap((e) => e.cardio).pop()?.u || "km";
+
+$("l-cardio-add").addEventListener("click", () => $("l-cardio").insertAdjacentHTML("beforeend", cardioRow({}, lastUnit())));
+// Tid: kolonerna sätts medan man skriver siffror (857 → 8:57, 10530 → 1:05:30)
+$("l-cardio").addEventListener("input", (ev) => {
+  if (!ev.target.matches("[data-c-time]")) return;
+  const formatted = formatWorkoutInput(ev.target.value);
+  if (formatted !== ev.target.value) ev.target.value = formatted;
+  ev.target.setCustomValidity("");
+});
+// När fältet lämnas skrivs tiden ut som hh:mm:ss: 8:57 betyder 8 min 57 s, alltså 00:08:57
+$("l-cardio").addEventListener("change", (ev) => {
+  if (!ev.target.matches("[data-c-time]") || !ev.target.value.trim()) return;
+  const seconds = parseWorkoutTime(ev.target.value);
+  if (seconds != null) ev.target.value = formatHms(seconds);
+  ev.target.setCustomValidity(seconds != null ? "" : "Skriv tiden som hh:mm:ss eller mm:ss, t.ex. 00:08:57 eller 8:57");
+});
+// Byt enhet: rimliga gränser och exempel för km eller meter
+$("l-cardio").addEventListener("change", (ev) => {
+  if (!ev.target.matches("[data-c-unit]")) return;
+  const input = ev.target.closest(".input-unit").querySelector("[data-c-dist]");
+  const m = ev.target.value === "m";
+  Object.assign(input, { min: m ? "10" : "0.01", max: m ? "500000" : "500", placeholder: m ? "t.ex. 1122" : "t.ex. 1,14" });
+  checkDecimal(input);
+});
+$("l-cardio").addEventListener("click", (ev) => {
+  if (!ev.target.matches("[data-c-remove]")) return;
+  ev.target.closest(".cardio-row").remove();
+  if (!$("l-cardio").children.length) $("l-cardio").insertAdjacentHTML("beforeend", cardioRow({}, lastUnit()));
+});
 
 $("l-date").value = todayStr();
 $("l-date").addEventListener("input", (ev) => {
@@ -477,17 +605,16 @@ $("logf").addEventListener("submit", (ev) => {
   ev.preventDefault();
   const date = $("l-date").value.trim();
   if (!isIsoDate(date)) return logMessage("Skriv datumet som ÅÅÅÅ-MM-DD, t.ex. " + todayStr() + ".");
-  const testText = $("l-test").value.trim();
-  const test = parseTestTime(testText);
-  if (testText && test == null) return logMessage("Skriv testtiden som minuter:sekunder, t.ex. 18:45.");
+  const cardio = readCardio();
+  if (cardio.error) return logMessage(cardio.error);
   const perf = radioValue("l-perf");
   const existing = entryFor(date);
   const entry = cleanEntry({
     firstMeal: existing?.firstMeal, lastMeal: existing?.lastMeal,
     date, weight: num($("l-weight").value), waist: num($("l-waist").value), mood: radioValue("l-mood") ? +radioValue("l-mood") : null,
-    perf: perf && perf !== "none" ? +perf : null, trained: perf ? perf !== "none" : false, test, note: $("l-note").value.trim(),
+    perf: perf && perf !== "none" ? +perf : null, trained: perf ? perf !== "none" : false, cardio: cardio.list, test: existing?.test, imMod: num($("l-im-mod").value), imVig: num($("l-im-vig").value), note: $("l-note").value.trim(),
   });
-  if (entry.weight == null && entry.mood == null && entry.perf == null && entry.test == null && entry.waist == null && !entry.note) return logMessage("Fyll i minst ett värde.");
+  if (entry.weight == null && entry.mood == null && entry.perf == null && !entry.cardio.length && intensityMinutes(entry) == null && entry.test == null && entry.waist == null && !entry.note) return logMessage("Fyll i minst ett värde.");
   upsertEntry(entry);
   update();
   logMessage(`Sparat för ${entry.date} (${svDate(entry.date, { weekday: "long" })}).`);
@@ -511,6 +638,8 @@ $("l-table").addEventListener("click", async (ev) => {
 // så att alla delar av appen läser in de nya uppgifterna från början.
 
 const IMPORTED_KEY = "ffv-imported"; // sessionStorage: visa ett kvitto efter omladdningen
+
+const backupMessage = (text) => ($("backup-msg").textContent = text);
 
 async function importBackup(text, say) {
   const backup = readBackup(text);
@@ -552,9 +681,9 @@ $("l-export").addEventListener("click", () => {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-    logMessage(`Allt är exporterat till ${filename}.`);
+    backupMessage(`Allt är exporterat till ${filename}.`);
   } catch {
-    logMessage("Kunde inte spara filen här. Använd Kopiera allt i stället.");
+    backupMessage("Kunde inte spara filen här. Använd Kopiera allt i stället.");
   }
 });
 $("l-copy").addEventListener("click", async () => {
@@ -562,22 +691,22 @@ $("l-copy").addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(text);
     $("l-copytext").hidden = true;
-    logMessage("Allt är kopierat. Klistra in texten under Importera på den andra enheten.");
+    backupMessage("Allt är kopierat. Klistra in texten under Inställningar → Säkerhetskopia och flytt på den andra enheten.");
   } catch {
     // T.ex. när webbläsaren nekar urklipp: visa texten så att den kan markeras och kopieras för hand
     Object.assign($("l-copytext"), { value: text, hidden: false });
     $("l-copytext").select();
-    logMessage("Kopieringen nekades. Texten visas nedan: markera allt och kopiera.");
+    backupMessage("Kopieringen nekades. Texten visas nedan: markera allt och kopiera.");
   }
 });
-$("l-import").addEventListener("change", (ev) => importFile(ev.target, logMessage));
-$("l-paste-go").addEventListener("click", () => importBackup($("l-paste").value, logMessage));
+$("l-import").addEventListener("change", (ev) => importFile(ev.target, backupMessage));
+$("l-paste-go").addEventListener("click", () => importBackup($("l-paste").value, backupMessage));
 
 // Radera all data (Inställningar): drar också tillbaka godkännandet av villkoren
 $("erase-all").addEventListener("click", async () => {
   const sure = await confirmDialog(
     "Är du säker på att du vill radera all data och dra tillbaka ditt godkännande?",
-    "Allt som är sparat i den här webbläsaren raderas: profil, logg, plankod, allergier, egna livsmedel och recept och ditt godkännande av villkoren. Det går inte att ångra. Exportera först under Logg om du vill behålla något.",
+    "Allt som är sparat i den här webbläsaren raderas: profil, logg, plankod, allergier, egna livsmedel och recept och ditt godkännande av villkoren. Det går inte att ångra. Exportera först under Inställningar → Säkerhetskopia och flytt om du vill behålla något.",
   );
   if (!sure) return;
   try {
@@ -602,7 +731,7 @@ $("wz-paste-go").addEventListener("click", () => importBackup($("wz-paste-text")
 // ---------- Flikar ----------
 // Varje flik är en vy (#idag, #mat, ...). En länk till en sektion eller ett recept öppnar fliken den ligger i.
 
-const VIEWS = ["idag", "mat", "traning", "logg", "profil", "installningar", "om"];
+const VIEWS = ["idag", "mat", "traning", "logg", "profil", "installningar", "om", "rapport"];
 const markCurrent = (el, on) => (on ? el.setAttribute("aria-current", "page") : el.removeAttribute("aria-current"));
 
 function route() {
@@ -612,7 +741,7 @@ function route() {
 
   if (view === "idag" && state.week !== TODAY_WEEK) showWeek(TODAY_WEEK);
   for (const el of $$("[data-view]")) el.hidden = el.dataset.view !== view;
-  for (const el of $$("[data-tab]")) markCurrent(el, el.dataset.tab === view);
+  for (const el of $$("[data-tab]")) markCurrent(el, el.dataset.tab === (view === "rapport" ? "logg" : view));
 
   if (view === "mat") {
     state.subview = target?.closest("[data-subview]")?.dataset.subview || state.subview;
@@ -641,6 +770,7 @@ function currentStep() {
   const view = $$("[data-view]").find((el) => !el.hidden)?.dataset.view;
   if (view === "mat") return SWIPE_ORDER.indexOf(state.subview);
   if (view === "installningar" || view === "om") return SWIPE_ORDER.indexOf("profil");
+  if (view === "rapport") return SWIPE_ORDER.indexOf("logg");
   return SWIPE_ORDER.indexOf(view);
 }
 
@@ -685,6 +815,7 @@ loadPreferences();
 loadMyRecipes();
 syncBreakfastOptions();
 loadLog();
+$("l-cardio").innerHTML = cardioRow({}, lastUnit());
 syncDayButtons();
 
 /**

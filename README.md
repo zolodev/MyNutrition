@@ -4,7 +4,7 @@ En personlig veckoplan för viktnedgång som fungerar som installerbar webbapp (
 
 - **Kalorimål och makron** räknade med Harris-Benedict eller Katch-McArdle (enligt ExRx), med lågt fett och högt protein.
 - **Träningsprogram** med övningar från ExRx övningskatalog: helkropp, överkropp och ben (3 dagar) eller över/under (4 dagar), med varierad och intensiv bålträning.
-- **Säsongsrecept för Norrland**: färska svenska grönsaker, ren- och älgskav, vit fisk (lax som alternativ). Menyn roterar varje vecka utan upprepning.
+- **Säsongsrecept**: färska svenska grönsaker efter årstid, ren- och älgskav, vit fisk (lax som alternativ). Menyn roterar varje vecka utan upprepning.
 - **Periodisk fasta 16:8** med frukost och en eftermiddagsmåltid, lördagsgodis och en fri måltid.
 - **Logg och statistik**: målvikt, vikt, midja, mående, prestation och testtid, med viktkurva, takt och prognos. Export och import av allt, som fil eller som text att klistra in.
 - **Allergier och bortval**: kryssa i allergener och enskilda livsmedel; recepten byter ut, stryker eller tar bort det som inte passar.
@@ -76,8 +76,10 @@ Appen använder JavaScript-moduler, så den måste köras från en webbserver (i
 
 ```bash
 cd /mnt/nvme/MyNutrition
-python3 -m http.server 8000 -d public
+npm start                      # eller: python3 scripts/serve.py 8000 public
 ```
+
+`scripts/serve.py` är som `python3 -m http.server`, men säger åt webbläsaren att alltid kontrollera om en fil har ändrats (`Cache-Control: no-cache`) och anger UTF-8 för textfiler. Med den vanliga `http.server` kan webbläsaren återanvända en gammal kopia av en JavaScript-fil efter en ändring, och då blandas gamla och nya filer ("doesn't provide an export named …").
 
 Öppna http://localhost:8000.
 
@@ -125,7 +127,7 @@ Lagringen hör till webbadressen. `gym.jonzzon.nu`, en `*.workers.dev`-adress oc
 **iPhone:** En app som lagts på hemskärmen har egen lagring, skild från Safari. Uppgifter som fyllts i i Safari följer inte med; fyll i profilen i appen, eller flytta dem med **Kopiera allt** i Safari och klistra in texten i guidens första steg i appen. Safari kan radera data för webbplatser som inte besökts på 7 dagar, men det gäller inte appar på hemskärmen.
 
 - Inställningar, allergival, egna livsmedel, avbockningar, logg och omslumpade veckor sparas i webbläsarens IndexedDB (localStorage som reserv) på varje enhet.
-- **Exportera allt** (fil) och **Kopiera allt** (text) tar med allt sparat: profil, logg, plankod och frön, allergier och bortval, egna livsmedel och recept, tillskott och avbockningar (`public/js/backup.js`). Bara det som gäller enheten (svep-tipset, avböjd installation) stannar kvar.
+- Under **Inställningar → Säkerhetskopia och flytt**: **Exportera allt** (fil) och **Kopiera allt** (text) tar med allt sparat: profil, logg, plankod och frön, allergier och bortval, egna livsmedel och recept, tillskott och avbockningar (`public/js/backup.js`). Bara det som gäller enheten (svep-tipset, avböjd installation) stannar kvar.
 - **Import** av fil eller inklistrad text ersätter allt som är sparat på enheten, efter en varning om det redan finns data. Sidan laddas sedan om. Äldre exporter (version 1) läses också. Guiden erbjuder import som första steg.
 - **Radera all data** under Inställningar raderar allt appen har sparat, även godkännandet av villkoren, efter en bekräftelse. Appen börjar sedan om med villkoren.
 

@@ -42,8 +42,10 @@ export const FOOD = {
   blomkal:  { n: "Blomkål", k: 25, p: 2, c: 3, f: 0.3, s: "blomkål" },
   sallad:   { n: "Sallad, svensk", k: 15, p: 1.3, c: 2, f: 0.2, s: "sallad" },
   gronkal:  { n: "Grönkål", k: 50, p: 3, c: 6, f: 0.8, s: "grönkål" },
-  ananas:   { n: "Ananas, färsk eller fryst (för magen)", k: 50, p: 0.5, c: 12, f: 0.1 },
-  mango:    { n: "Mango, färsk eller fryst (för magen)", k: 60, p: 0.8, c: 14, f: 0.4 },
+  ananas:   { n: "Ananas, färsk eller fryst", k: 50, p: 0.5, c: 12, f: 0.1, s: "ananas" },
+  mango:    { n: "Mango, färsk eller fryst", k: 60, p: 0.8, c: 14, f: 0.4, s: "mango" },
+  papaya:   { n: "Papaya, färsk", k: 43, p: 0.5, c: 11, f: 0.3, s: "papaya" },
+  kiwi:     { n: "Kiwi", k: 61, p: 1.1, c: 15, f: 0.5, s: "kiwi" },
   kalrot:   { n: "Kålrot, riven eller i stavar", k: 35, p: 1, c: 7, f: 0.2, s: "kålrot" },
   jordgubbar: { n: "Jordgubbar, svenska", k: 32, p: 0.7, c: 6, f: 0.3, s: "jordgubbar" },
   blabarF:  { n: "Blåbär, färska", k: 50, p: 0.7, c: 10, f: 0.5, s: "blåbär" },
@@ -89,7 +91,7 @@ const byCategory = {
   fisk: "sej torsk lax rakor",
   mejeri: "kvarg keso mjolk filmjolk ost agg aggvita sojayoghurt havredryck",
   gron: "potatis farskpotatis rotfrukter vitkal kalmix blomkal broccoli sallad spenat gronkal kalrot morot tomat gurka paprika lok svamp radisor sommargron hostgron",
-  frukt: "blabar blabarF jordgubbar lingon apple ananas mango",
+  frukt: "blabar blabarF jordgubbar lingon apple ananas mango papaya kiwi",
   skafferi: "havre havreGF ris pasta bulgur knacke knackeGF tortilla tortillaMajs tunnbrod brunabonor gulaartor linser olja popcorn choklad",
 };
 for (const [cat, ids] of Object.entries(byCategory)) for (const id of ids.split(" ")) CATEGORY_OF[id] = cat;
@@ -106,8 +108,15 @@ const CARB = new Set(["havre", "ris", "pasta", "bulgur", "potatis", "farskpotati
 const FAT = new Set(["olja", "ost"]);
 export const scaleGroupOf = (id) => (PROTEIN.has(id) ? "p" : CARB.has(id) ? "c" : FAT.has(id) ? "f" : "o");
 
-/** Livsmedel som ger gaser; måltider med dem får ananas eller mango (se menu.js). */
+/** Livsmedel som ger gaser eller svavel (ägg, kål, baljväxter); måltider med dem får en frukt ur DIGESTIVE_FRUITS (se menu.js). */
 export const GASSY = new Set(["agg", "aggvita", "vitkal", "kalmix", "gronkal", "blomkal", "hostgron", "broccoli", "sommargron", "brunabonor", "gulaartor", "linser"]);
+
+/**
+ * Frukter med enzymer som hjälper till att bryta ner maten: bromelain (ananas) och papain (papaya) bryter ner
+ * protein, aktinidin (kiwi) likaså, och mango innehåller amylas. Färska eller frysta, inte konserverade (värmen
+ * förstör enzymerna). De varieras mellan rätterna och veckorna.
+ */
+export const DIGESTIVE_FRUITS = ["ananas", "papaya", "kiwi", "mango"];
 
 /**
  * Allergener, en per rad så att man kan välja flera var för sig.
@@ -187,5 +196,5 @@ export const SUBSTITUTES = {
   sallad: ["spenat", "vitkal"], spenat: ["sallad"], kalrot: ["morot", "rotfrukter"], morot: ["kalrot", "rotfrukter"], rotfrukter: ["morot", "potatis"],
   tomat: ["gurka", "morot"], gurka: ["morot"], paprika: ["morot"], hostgron: ["blomkal", "broccoli"], sommargron: ["broccoli"],
   blabar: ["lingon", "jordgubbar"], blabarF: ["blabar"], jordgubbar: ["blabarF", "blabar"], lingon: ["blabar"], apple: ["blabar"],
-  ananas: ["mango"], mango: ["ananas"],
+  ananas: ["mango"], mango: ["ananas"], papaya: ["ananas"], kiwi: ["mango"],
 };

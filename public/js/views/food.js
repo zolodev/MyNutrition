@@ -117,7 +117,7 @@ export function renderRecipes(week, targets, breakfast, weekTitle) {
     `Veckans recept ger i snitt <b class="num">${perDay(sum.k)} kcal</b>, <b class="num">${perDay(sum.p)} g protein</b>, <b class="num">${perDay(sum.c)} g kolhydrater</b> och <b class="num">${perDay(sum.f)} g fett</b> per dag. Av kolhydraterna kommer ca ${fmt(produceCarbs)} g från grönsaker, bär och frukt.` +
     (sum.c / 7 > targets.carbs + 15 ? ` Det är över kolhydratmålet på ${targets.carbs} g: vill du ner dit, hoppa över potatisen, riset eller pastan i eftermiddagsmåltiden ett par dagar i veckan och ta mer grönsaker.` : "");
   $("scale-note").innerHTML =
-    `${SEASONS[season].n} i Norrland (${SEASONS[season].months}): bara färska grönsaker som odlas i Sverige och helst nära dig, inga frysta grönsaker eller konserverade tomater. Tomat, gurka och paprika bara på sommaren (juni–augusti); resten av året blir det kålrot, morötter, rotfrukter, kål och lingon i stället. ` +
+    `${SEASONS[season].n} (${SEASONS[season].months}): bara färska grönsaker som odlas i Sverige och helst nära dig, inga frysta grönsaker eller konserverade tomater. Tomat, gurka och paprika bara på sommaren (juni–augusti); resten av året blir det kålrot, morötter, rotfrukter, kål och lingon i stället. ` +
     `Två måltider om dagen, så portionerna är större än vanligt. Proteinkällorna är skalade med <b class="num">${fmt(factors.p, 2)}</b>, kolhydratkällorna (gryn, ris, pasta, potatis, bröd, baljväxter) med <b class="num">${fmt(factors.c, 2)}</b> och fettkällorna (olja, ost) med <b class="num">${fmt(factors.f, 2)}</b>, så att veckan landar nära ${fmt(targets.target)} kcal och ${fmt(targets.protein)} g protein per dag. Grönsaker, bär och frukt ligger kvar på fulla mängder för mättnadens skull.`;
 }
 

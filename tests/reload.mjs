@@ -28,7 +28,7 @@ if (!Object.keys(stored).length) {
   $("wz-accept").checked = true; $("wz-accept").dispatchEvent(new win.Event("change")); next();
   win.document.querySelector('input[name="sex"][value="k"]').checked = true;
   Object.assign($("age"), { value: "35" }); $("weight").value = "70"; $("height").value = "168";
-  next(); $("goal").value = "64"; next(); next(); // BMI 24,8: ingen föreslagen målvikt, så den fylls i här
+  next(); $("goal").value = "64"; next(); next(); next(); // BMI 24,8: ingen föreslagen målvikt, så den fylls i här
   win.document.querySelector('[data-wz-allergen="sesam"]').checked = true;
   check("Inget sparat före Klar", win.localStorage.length === 0);
   next();

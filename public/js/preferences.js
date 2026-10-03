@@ -8,7 +8,9 @@ const MY_FOODS_KEY = "ffv-myfoods";
 const EXCLUSIONS_VERSION = 2; // 2 = en allergen per val
 
 /** Bortvalda allergener och livsmedel. Inget är bortvalt från början; varje användare väljer själv. */
-export const exclusions = { allergens: new Set(), foods: new Set() };
+export const exclusions = { allergens: new Set(), foods: new Set(), words: new Set() };
+/** Egna ord att välja bort (t.ex. "lax"): små bokstäver, 2–40 tecken. */
+export const cleanWord = (w) => (typeof w === "string" ? w.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 40) : "");
 
 /** Egna livsmedel: { id, n, k, p, c, f, cat, allergens, replaces, always } */
 export let myFoods = [];
@@ -33,12 +35,14 @@ export function migrateExclusions(saved) {
   return { allergens: [...allergens], foods };
 }
 
-export function setExclusions({ allergens = [], foods = [] }) {
+export function setExclusions({ allergens = [], foods = [], words = [] }) {
   exclusions.allergens = new Set(allergens.filter((a) => allergenById(a)));
   exclusions.foods = new Set(foods.filter((f) => typeof f === "string"));
+  exclusions.words = new Set(words.map(cleanWord).filter((w) => w.length >= 2));
 }
 
-export const saveExclusions = () => save(EXCLUSIONS_KEY, { v: EXCLUSIONS_VERSION, allergens: [...exclusions.allergens], foods: [...exclusions.foods] });
+export const saveExclusions = () =>
+  save(EXCLUSIONS_KEY, { v: EXCLUSIONS_VERSION, allergens: [...exclusions.allergens], foods: [...exclusions.foods], words: [...exclusions.words] });
 
 export function addMyFood(food) {
   myFoods.push(food);
@@ -90,9 +94,10 @@ export function isExcluded(foodId) {
     if (allergen.foods.includes(foodId)) return true;
     if (mine && (mine.allergens.includes(id) || allergen.words.some((w) => name.includes(w)))) return true;
   }
-  if (mine) {
-    for (const product of EXTRA_PRODUCTS) if (exclusions.foods.has(product.id) && name.includes(product.word)) return true;
-  }
+  // Bortvalda produkter (t.ex. kiwi) stoppar både appens livsmedel och egna livsmedel med samma namn
+  const anyName = name || (FOOD[foodId] ? " " + FOOD[foodId].n.toLowerCase() + " " : "");
+  for (const product of EXTRA_PRODUCTS) if (exclusions.foods.has(product.id) && anyName.includes(product.word)) return true;
+  for (const word of exclusions.words) if (anyName.includes(word)) return true; // egna ord, t.ex. "lax"
   return false;
 }
 

@@ -1,7 +1,7 @@
 // Service worker för Fettförbränningsveckan: gör appen installerbar och användbar offline.
 // Höj VERSION när filerna ändras, så hämtas de nya och den gamla cachen rensas.
 // Lägger du till en fil i js/ eller css/ ska den också in i CORE, annars fungerar den inte offline.
-const VERSION = "ffv-v43";
+const VERSION = "ffv-v63";
 const CORE = [
   "./",
   "./index.html",
@@ -33,6 +33,7 @@ const CORE = [
   "./js/views/food.js",
   "./js/views/log-view.js",
   "./js/views/profile.js",
+  "./js/views/report.js",
   "./js/views/settings.js",
   "./js/views/timeline.js",
   "./js/views/today.js",
@@ -76,10 +77,12 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
 
   // Sidor och egna filer: nätet först, så att alla filer kommer från samma version efter en uppdatering.
-  // Cachen används bara när nätet inte svarar (offline). Fel från servern, t.ex. 404, skickas vidare som de är.
+  // "no-cache" gör att webbläsarens egen cache alltid frågar servern om filen har ändrats (304 om inte), så att en
+  // gammal kopia av en modul aldrig blandas med nya filer. Cachen här används bara när nätet inte svarar (offline).
+  // Fel från servern, t.ex. 404, skickas vidare som de är.
   if (url.origin === location.origin) {
     event.respondWith(
-      fetch(req)
+      fetch(req.mode === "navigate" ? req : new Request(req, { cache: "no-cache" }))
         .then((res) => remember(req, res))
         .catch(() => caches.match(req).then((hit) => hit || (req.mode === "navigate" ? caches.match("./index.html") : null)).then((hit) => hit || Response.error()))
     );

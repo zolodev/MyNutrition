@@ -38,7 +38,10 @@ export function renderFastingToday(planned) {
   if (document.activeElement !== $("fs-first")) $("fs-first").value = today.firstMeal || "";
   if (document.activeElement !== $("fs-last")) $("fs-last").value = today.lastMeal || "";
   $("fs-first-hint").textContent = today.firstMeal ? "Loggad" : `Tomt = enligt planen (${formatClock(planned)})`;
-  $("fs-last-hint").textContent = today.lastMeal ? "Loggad" : `Tomt = 8 h efter första måltiden (${formatClock(day.start + 8)})`;
+  const calculated = today.firstMeal && today.lastMeal === formatClock(parseClock(today.firstMeal) + 8);
+  $("fs-last-hint").textContent = calculated
+    ? "Uträknad: 8 h efter första måltiden. Ändra om du slutade äta en annan tid."
+    : today.lastMeal ? "Loggad" : `Tomt = 8 h efter första måltiden (${formatClock(day.start + 8)})`;
   $("fs-reset").hidden = !today.firstMeal && !today.lastMeal;
 
   const items = [

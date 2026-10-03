@@ -66,7 +66,7 @@ if (scenario === "skriv-över") {
   fire($("l-paste-go"), "click"); await tick();
   check("Varnar för att befintliga uppgifter skrivs över", $("confirm").hasAttribute("open") && text("confirm-text").includes("skriva över") && text("confirm-detail").includes("profil"));
   fire($("confirm").querySelector('[data-answer="no"]'), "click"); await tick();
-  check("Nej ändrar inget", JSON.parse(win.localStorage.getItem("ffv")).weight === "110" && text("l-msg").startsWith("Importen avbröts") && !reloaded);
+  check("Nej ändrar inget", JSON.parse(win.localStorage.getItem("ffv")).weight === "110" && text("backup-msg").startsWith("Importen avbröts") && !reloaded);
   fire($("l-paste-go"), "click"); await tick();
   fire($("confirm").querySelector('[data-answer="yes"]'), "click"); await tick();
   const rest = withoutDevice(stored());

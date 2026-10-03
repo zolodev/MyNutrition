@@ -53,10 +53,13 @@ export function fastingDay({ planned, first, last, yesterdayLast }) {
 /** Fastetimmar mellan sista måltiden en dag och första måltiden nästa dag. */
 export const fastingHours = (lastMeal, nextFirstMeal) => nextFirstMeal + 24 - lastMeal;
 
-/** Läge just nu: "eating" inne i ätfönstret, annars "fasting" med hur länge och hur mycket som är kvar. */
+/**
+ * Läge just nu: "eating" inne i ätfönstret, annars "fasting" med hur länge och hur mycket som är kvar.
+ * Före dagens första måltid räknas fastan från gårdagens sista måltid (klockslag i går). Är den inte loggad
+ * antas ätfönstret i går ha stängt vid samma tid som i dag (första måltiden + 8 h).
+ */
 export function fastingNow(day, now, yesterdayLast) {
   if (now >= day.start && now < day.windowEnd) return { state: "eating", left: day.windowEnd - now };
-  const since = now >= day.windowEnd ? day.windowEnd : (yesterdayLast ?? day.start + WINDOW - 24);
-  const elapsed = now >= day.windowEnd ? now - day.windowEnd : now + 24 - since;
+  const elapsed = now >= day.windowEnd ? now - day.windowEnd : now + 24 - (yesterdayLast ?? day.start + WINDOW);
   return { state: "fasting", elapsed, left: Math.max(0, FAST_HOURS - elapsed) };
 }

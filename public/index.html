@@ -264,7 +264,7 @@
               <span class="eyebrow">Översikt</span>
               <h2>Veckan dag för dag</h2>
               <p>Två måltider om dagen: frukost och en eftermiddagsmåltid med efterrätt. Menyn roterar varje vecka och
-                följer säsongen i Norrland, och två veckor i följd delar aldrig rätt. Samma vecka visar alltid samma
+                följer säsongen, och två veckor i följd delar aldrig rätt. Samma vecka visar alltid samma
                 meny, så du kan planera och handla i förväg. Vill du ha nya rätter och nya övningar slumpar du om planen
                 under <a href="#installningar">Inställningar</a>.</p>
             </div>
@@ -340,15 +340,17 @@
             <div class="sec-head">
               <span class="eyebrow">Mage och lukt</span>
               <h2>Mindre gaser från ägg och kål</h2>
-              <p>Måltider med ägg, kål eller baljväxter har fått 100 g ananas (frukost) eller mango (eftermiddag). Det
-                är det enda undantaget från säsongsregeln, och frukten äts inne i måltiden så att fastan inte bryts.</p>
+              <p>Måltider med ägg, kål eller baljväxter har fått 100 g frukt med enzymer: ananas, papaya, kiwi eller mango.
+                Frukten växlar mellan rätterna och veckorna, och en frukt du har valt bort hoppas över. Det är det enda
+                undantaget från säsongsregeln, och frukten äts inne i måltiden så att fastan inte bryts.</p>
             </div>
             <div class="rules">
               <div class="rule">
-                <h3>Ananas och mango</h3>
-                <p>Färsk eller fryst ananas innehåller enzymet bromelain som bryter ner protein. Konserverad ananas är
-                  värmebehandlad och enzymet fungerar inte. Mango ger mest fibrer och smak. Att frukterna minskar lukt
-                  är dåligt studerat, så se det som ett försök.</p>
+                <h3>Frukt med enzymer</h3>
+                <p>Ananas (bromelain), papaya (papain) och kiwi (aktinidin) har enzymer som bryter ner protein, och mango
+                  har amylas som bryter ner kolhydrater. Ät dem färska eller frysta: i konserver har värmen förstört
+                  enzymerna. Att de hjälper matsmältningen är väl känt; att de minskar lukt från ägg eller kål är dåligt
+                  studerat, så se det som ett försök.</p>
               </div>
               <div class="rule">
                 <h3>Enzymtillskott</h3>
@@ -475,6 +477,7 @@
             <h2>Följ din utveckling</h2>
             <p>Logga vikt, mående och prestation, helst samma tid varje morgon. En post per dag; sparar du samma datum
               igen skrivs den över.</p>
+            <p><a class="btn" href="#rapport">Visa rapport</a> en sammanställning att skriva ut eller spara som PDF.</p>
           </div>
           <div class="log-grid">
             <form class="card form" id="logf" autocomplete="off" novalidate>
@@ -493,8 +496,20 @@
                 <div class="field"><label for="l-waist">Midja (cm) <small>valfritt</small></label><input type="text"
                     inputmode="decimal" data-decimal id="l-waist" min="40" max="200"></div>
               </div>
-              <div class="field"><label for="l-test">Testtid (mm:ss) <small>valfritt</small></label><input type="text"
-                  id="l-test" inputmode="numeric" placeholder="t.ex. 18:45"></div>
+              <div class="field">
+                <span class="label">Kondition <small>valfritt</small></span>
+                <div class="cardio-rows" id="l-cardio"></div>
+                <button type="button" class="btn small" id="l-cardio-add">+ Lägg till aktivitet</button>
+                <small id="l-cardio-hint">Ett pass per rad: aktivitet, distans i km eller meter och tid som hh:mm:ss eller mm:ss, t.ex. löpning 1,14 km eller 1122 m på 08:57. Skriver du bara siffror sätts kolonerna in åt dig. Maxpuls är valfri. Tempot jämförs per aktivitet: min/km, min/500 m för rodd och km/h för cykling.</small>
+              </div>
+              <div class="field">
+                <span class="label">Intensitetsminuter <small>valfritt, från klockan</small></span>
+                <div class="row2">
+                  <div class="field"><label for="l-im-mod">Måttliga (min)</label><input type="text" inputmode="numeric" data-decimal id="l-im-mod" min="0" max="1440" placeholder="t.ex. 47"></div>
+                  <div class="field"><label for="l-im-vig">Höga (min)</label><input type="text" inputmode="numeric" data-decimal id="l-im-vig" min="0" max="1440" placeholder="t.ex. 50"></div>
+                </div>
+                <small id="l-im-total">Totalen räknas som måttliga + 2 × höga, som på Garmin och liknande klockor. WHO rekommenderar minst 150 minuter i veckan.</small>
+              </div>
               <div class="field">
                 <span class="label">Hur mår du?</span>
                 <div class="seg" role="radiogroup" aria-label="Hur mår du?">
@@ -513,8 +528,6 @@
                   <label><input type="radio" name="l-perf" value="-1"><span>Sämre</span></label>
                   <label><input type="radio" name="l-perf" value="none"><span>Tränade inte</span></label>
                 </div>
-                <small>Testtiden är samma test varje gång, t.ex. 3 km rask promenad eller jogg. Lägre tid betyder
-                  snabbare.</small>
               </div>
               <div class="field"><label for="l-note">Anteckning <small>valfritt</small></label><input type="text"
                   id="l-note" maxlength="200" placeholder="t.ex. sov dåligt, fri måltid i går"></div>
@@ -522,26 +535,7 @@
                 <button type="submit" class="btn primary">Spara logg</button>
                 <span class="status" id="l-msg" role="status"></span>
               </div>
-              <div class="backup">
-                <span class="label">Säkerhetskopia och flytt mellan enheter</span>
-                <p class="hint">Exporten innehåller allt: profil, logg, plankod, allergier, egna livsmedel och recept.
-                  En import ersätter det som är sparat på enheten.</p>
-                <div class="actions">
-                  <button type="button" class="btn" id="l-export">Exportera allt</button>
-                  <button type="button" class="btn" id="l-copy">Kopiera allt</button>
-                  <label class="btn" for="l-import">Importera fil</label>
-                  <input type="file" id="l-import" accept="application/json,.json,text/plain" hidden>
-                </div>
-                <textarea class="backup-text" id="l-copytext" rows="6" readonly hidden
-                  aria-label="Exporten som text"></textarea>
-                <details class="backup-paste">
-                  <summary>Importera genom att klistra in text</summary>
-                  <textarea class="backup-text" id="l-paste" rows="6" placeholder="Klistra in hela exporten här"
-                    spellcheck="false" autocomplete="off" aria-label="Exporten att importera"></textarea>
-                  <button type="button" class="btn primary" id="l-paste-go">Importera texten</button>
-                </details>
-                <p class="hint">Loggen sparas bara i den här webbläsaren. Exportera då och då som säkerhetskopia.</p>
-              </div>
+              <p class="hint">Loggen sparas bara i den här webbläsaren. <a href="#backup">Exportera och importera</a> finns under Inställningar.</p>
             </form>
             <div class="log-stats">
               <div class="tiles three" id="l-tiles"></div>
@@ -586,6 +580,40 @@
       </div>
 
       <!-- ============ Profil ============ -->
+    <!-- ============ Rapport ============ -->
+    <div class="view" data-view="rapport" hidden>
+      <section id="rapport">
+        <div class="sec-head">
+          <span class="eyebrow">Rapport</span>
+          <h2>Sammanställning av din logg</h2>
+          <p>Allt du har loggat i en överskådlig sammanställning: vikt, midja, mående, kondition, intensitetsminuter och fasta. Skriv ut den eller spara den som PDF och diskutera den med en personlig tränare, dietist eller läkare.</p>
+        </div>
+        <div class="report-bar no-print">
+          <label for="rp-period">Period</label>
+          <select id="rp-period">
+            <option value="all" selected>Hela perioden</option>
+            <option value="84">Senaste 12 veckorna</option>
+            <option value="28">Senaste 4 veckorna</option>
+          </select>
+          <button type="button" class="btn primary" id="rp-print">Skriv ut eller spara som PDF</button>
+          <a class="btn" href="#logg">Tillbaka till loggen</a>
+        </div>
+        <p class="report-period" id="rp-period-text"></p>
+        <div class="tiles three" id="rp-tiles"></div>
+        <h3>Vikt</h3>
+        <div class="card chart"><svg id="rp-chart" viewBox="0 0 640 240" role="img" aria-label="Viktkurva för perioden"></svg></div>
+        <h3>Vecka för vecka</h3>
+        <div class="scroll-x"><table class="data" id="rp-weeks"></table></div>
+        <h3>Kondition</h3>
+        <div class="scroll-x"><table class="data" id="rp-cardio"></table></div>
+        <h3>Profil och plan</h3>
+        <dl class="report-profile card" id="rp-profile"></dl>
+        <h3>Alla loggade dagar</h3>
+        <div class="scroll-x"><table class="data" id="rp-days"></table></div>
+        <p class="note" id="rp-foot"></p>
+      </section>
+    </div>
+
       <div class="view" data-view="profil" hidden>
         <section id="profil">
           <div class="sec-head">
@@ -813,7 +841,41 @@
 
       <!-- ============ Inställningar ============ -->
       <div class="view" data-view="installningar" hidden>
-        <section id="plankod">
+        <section id="backup">
+        <div class="sec-head">
+          <span class="eyebrow">Dina uppgifter</span>
+          <h2>Säkerhetskopia och flytt</h2>
+          <p>Exporten innehåller allt: profil, logg, plankod, allergier, egna livsmedel och recept och inköpslistan. Spara den som fil, eller kopiera den som text och klistra in den på en annan enhet. En import ersätter det som är sparat på enheten.</p>
+        </div>
+        <div class="card backup">
+          <div class="actions">
+                  <button type="button" class="btn" id="l-export">Exportera allt</button>
+                  <button type="button" class="btn" id="l-copy">Kopiera allt</button>
+                  <label class="btn" for="l-import">Importera fil</label>
+                  <input type="file" id="l-import" accept="application/json,.json,text/plain" hidden>
+                </div>
+                <textarea class="backup-text" id="l-copytext" rows="6" readonly hidden
+                  aria-label="Exporten som text"></textarea>
+                <details class="backup-paste">
+                  <summary>Importera genom att klistra in text</summary>
+                  <textarea class="backup-text" id="l-paste" rows="6" placeholder="Klistra in hela exporten här"
+                    spellcheck="false" autocomplete="off" aria-label="Exporten att importera"></textarea>
+                  <button type="button" class="btn primary" id="l-paste-go">Importera texten</button>
+                </details>
+          <span class="status" id="backup-msg" role="status"></span>
+        </div>
+      </section>
+
+      <section id="installera">
+        <div class="sec-head">
+          <span class="eyebrow">Appen</span>
+          <h2>Installera appen</h2>
+          <p id="install-status">Installera appen lokalt, så öppnas den som en egen app från skrivbordet, aktivitetsfältet eller hemskärmen och fungerar offline.</p>
+        </div>
+        <button type="button" class="btn primary" id="install-settings">Installera appen lokalt</button>
+      </section>
+
+      <section id="plankod">
           <div class="sec-head">
             <span class="eyebrow">Dela planen</span>
             <h2>Plankod</h2>
@@ -876,6 +938,15 @@
           <input type="search" id="ex-search" class="search" placeholder="Sök ingrediens, t.ex. bönor eller tonfisk"
             aria-label="Sök ingrediens att ta bort">
           <div class="ex-foods" id="ex-foods"></div>
+
+          <h3>Annat jag inte äter</h3>
+          <p class="note">Saknas något i listan? Skriv det här, t.ex. lax, koriander eller svamp. Allt med ordet i namnet
+            väljs bort, även dina egna livsmedel. Vid varje ord ser du vilka livsmedel det träffar.</p>
+          <form class="input-row" id="ex-word-form" autocomplete="off">
+            <input type="text" id="ex-word" maxlength="40" placeholder="t.ex. lax" aria-label="Livsmedel att välja bort">
+            <button type="submit" class="btn">Lägg till</button>
+          </form>
+          <div class="chips" id="ex-words"></div>
 
           <h3>Mina livsmedel</h3>
           <p class="note">Lägg till ett eget livsmedel med näringsvärden per 100 g (står på förpackningen). Välj om det
@@ -945,10 +1016,24 @@
           <div class="sec-head">
             <span class="eyebrow">Kosttillskott</span>
             <h2>Tillskott jag använder</h2>
-            <p>Kryssa i det du använder, så får du tips om när du ska ta det på Idag, utifrån fastan och dagens pass.
+            <p>Kryssa i det du använder, eller lägg till egna tillskott som BCAA, så får du tips om när du ska ta det på Idag, utifrån fastan och dagens pass.
             </p>
           </div>
           <div class="chips" id="supps"></div>
+          <form class="card form" id="ms-form" autocomplete="off">
+            <span class="label">Eget tillskott, t.ex. BCAA</span>
+            <div class="row2">
+              <div class="field"><label for="ms-name">Namn</label><input type="text" id="ms-name" maxlength="40" placeholder="t.ex. BCAA"></div>
+              <div class="field"><label for="ms-dose">Dos <small>valfritt</small></label><input type="text" id="ms-dose" maxlength="40" placeholder="t.ex. 5 g"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label for="ms-when">När</label><select id="ms-when"></select></div>
+              <div class="field" id="ms-at-field" hidden><label for="ms-at">Klockslag</label><input type="text" id="ms-at" inputmode="numeric" maxlength="5" placeholder="HH:MM" pattern="([01]\d|2[0-3]):[0-5]\d" autocomplete="off" data-clock></div>
+            </div>
+            <label class="terms-accept"><input type="checkbox" id="ms-kcal"><span>Innehåller kalorier eller aminosyror (t.ex. BCAA eller protein), så det ska tas inom ätfönstret</span></label>
+            <div class="actions"><button type="submit" class="btn primary">Lägg till tillskott</button><span class="status" id="ms-msg" role="status"></span></div>
+          </form>
+          <div id="ms-list"></div>
         </section>
 
         <section id="radera">
@@ -957,7 +1042,7 @@
             <h2>Radera all data</h2>
             <p>Raderar allt som appen har sparat i den här webbläsaren: profil, logg, plankod, allergier, egna livsmedel
               och recept, inställningar och ditt godkännande av villkoren. Därmed drar du också tillbaka ditt
-              godkännande. Appen börjar sedan om med villkoren. Exportera först under <a href="#logg">Logg</a> om du
+              godkännande. Appen börjar sedan om med villkoren. Exportera först under <a href="#backup">Säkerhetskopia och flytt</a> om du
               vill behålla något.</p>
           </div>
           <button type="button" class="btn danger" id="erase-all">Radera all data och dra tillbaka godkännandet</button>
@@ -1001,7 +1086,7 @@
               <h3>Dina uppgifter</h3>
               <p>Allt sparas bara i webbläsaren på den här enheten (IndexedDB, eller localStorage om IndexedDB inte
                 finns). Inget skickas till någon server. Du flyttar och säkerhetskopierar själv med <a
-                  href="#logg">Exportera allt</a>.</p>
+                  href="#backup">Exportera allt</a>.</p>
             </div>
             <div class="rule">
               <h3>Öppen källkod</h3>
@@ -1069,11 +1154,10 @@
     </main>
 
     <aside class="install-banner" id="install-banner" aria-label="Installera appen" hidden>
-      <p><b>Installera appen</b><span id="install-text">Lägg Fettförbränning på hemskärmen så öppnas den som en egen app
-          och fungerar offline.</span></p>
+      <p><b>Vill du installera appen lokalt?</b><span id="install-text">Då öppnas Fettförbränning som en egen app och fungerar offline. Du kan också installera senare under Inställningar.</span></p>
       <div class="actions">
-        <button type="button" class="btn small primary" id="install-accept">Installera</button>
-        <button type="button" class="btn small" id="install-decline">Inte nu</button>
+        <button type="button" class="btn small primary" id="install-accept">Ja, installera</button>
+        <button type="button" class="btn small" id="install-decline">Nej, visa inte igen</button>
       </div>
     </aside>
 
@@ -1112,6 +1196,14 @@
           <div class="chips" id="wz-allergens"></div>
           <small>Kryssa i det du inte tål, så byts eller stryks det i recepten. Enskilda ingredienser väljer du bort
             under Inställningar.</small>
+        </div>
+        <div class="card wizard-yours" data-step="6">
+          <ul class="yours-list">
+            <li><b>Lägg in det du äter.</b> Egna recept och egna livsmedel lägger du till under Inställningar, där du också väljer bort det du inte äter. Då passar veckomenyn och inköpslistan dig.</li>
+            <li><b>Logga så mycket du kan.</b> Vikt och midja, mående, konditionspass med distans, tid och puls, intensitetsminuter och när du äter. Ju mer du loggar, desto tydligare ser du dina framsteg.</li>
+            <li><b>Följ upp med rapporten.</b> Under Logg → Rapport får du en sammanställning av allt du har loggat. Skriv ut den eller spara den som PDF och diskutera den med en personlig tränare, dietist eller läkare.</li>
+            <li><b>Spara en kopia.</b> Exportera allt då och då under Inställningar → Säkerhetskopia och flytt.</li>
+          </ul>
         </div>
         <p class="status bad" id="wz-msg" role="alert"></p>
         <div class="actions wizard-nav">

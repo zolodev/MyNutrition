@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Personlig veckoplan för viktnedgång som installerbar webbapp (PWA).",
   "scripts": {
-    "start": "python3 -m http.server 8000 -d public",
+    "start": "python3 scripts/serve.py 8000 public",
     "test": "node tests/run.mjs"
   },
   "devDependencies": {

@@ -13,6 +13,7 @@ const STEPS = [
   { key: "goal", title: "Ditt mål", intro: "Målvikten och takten avgör hur stort kaloriunderskottet blir." },
   { key: "training", title: "Träning", intro: "Utrustningen och dagarna styr träningsprogrammet." },
   { key: "food", title: "Mat", intro: "Frukosten och tiderna styr veckans meny och fastan. Recepten anpassas efter det du inte tål." },
+  { key: "yours", title: "Make it yours", intro: "Gör appen till din, så får du ut det mesta av den." },
 ];
 const REQUIRED = ["age", "weight", "height", "goal"];
 
@@ -50,7 +51,7 @@ export function openWizard({ allergens = new Set(), termsOnly = false, onStep = 
     $("wz-intro").textContent = steps[step].intro;
     $("wz-msg").textContent = "";
     $("wz-back").hidden = step === 0;
-    $("wz-next").textContent = termsOnly ? "Godkänn och fortsätt" : step === steps.length - 1 ? "Klar" : "Nästa";
+    $("wz-next").textContent = termsOnly ? "Godkänn och fortsätt" : step === steps.length - 1 ? "Kom igång" : "Nästa";
     syncNext();
     $("wizard").scrollTop = 0;
     onStep(steps[step].key);

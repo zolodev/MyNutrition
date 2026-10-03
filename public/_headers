@@ -1,0 +1,10 @@
+# Cloudflare: skicka teckenkodningen för alla textfiler, så att å, ä och ö visas rätt
+# även när en fil öppnas direkt i webbläsaren (t.ex. /js/data/foods.js).
+/*.html
+  Content-Type: text/html; charset=utf-8
+/*.js
+  Content-Type: text/javascript; charset=utf-8
+/*.css
+  Content-Type: text/css; charset=utf-8
+/*.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8

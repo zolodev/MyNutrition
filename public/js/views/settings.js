@@ -6,7 +6,7 @@ import { RECIPES, SEASONAL, SEASONS } from "../data/recipes.js";
 import { exclusions, myFoods, isExcluded } from "../preferences.js";
 import { adaptRecipe, allDinnersIn, seasonOf, inSeason, fillSeasonalNames } from "../menu.js";
 import { myRecipes, RECIPE_TYPES } from "../myrecipes.js";
-import { SUPPLEMENTS, using } from "../supplements.js";
+import { SUPPLEMENTS, using, mySupps, SUPP_WHEN } from "../supplements.js";
 import { macros } from "../nutrition.js";
 
 const checkbox = (attr, id, label, checked) =>
@@ -27,10 +27,15 @@ export function renderSettings(week) {
   renderSummary(seasonOf(week));
   $("ex-allergens").innerHTML = ALLERGENS.map((a) => checkbox("data-allergen", a.id, a.n, exclusions.allergens.has(a.id))).join("");
   renderIngredientPicker();
+  renderExcludedWords();
   renderMyFoodForm();
   renderMyFoods();
   renderMyRecipes();
   $("supps").innerHTML = SUPPLEMENTS.map(([id, name]) => checkbox("data-supp", id, name, using.has(id)).replace("chip-check", "chip-check positive")).join("");
+  if (!$("ms-when").options.length) $("ms-when").innerHTML = Object.entries(SUPP_WHEN).map(([id, label]) => `<option value="${id}">${label}</option>`).join("");
+  $("ms-list").innerHTML = mySupps.map((m) =>
+    `<div class="row my-food"><span class="main"><b>${esc(m.n)}</b><small>${[m.dose && esc(m.dose), m.when === "clock" ? `kl. ${m.at}` : SUPP_WHEN[m.when].toLowerCase(), m.kcal && "innehåller kalorier"].filter(Boolean).join(" · ")}</small></span>` +
+    `<button type="button" class="linkbtn" data-msdel="${m.id}">Ta bort</button></div>`).join("");
 }
 
 // ---------- Mina recept ----------
@@ -66,6 +71,16 @@ function renderMyRecipes() {
     return `<div class="row my-food"><span class="main"><b>${esc(r.t)}</b><small>${typeName[r.g]} · ${fmt(m.k)} kcal · ${fmt(m.p)} g protein per portion</small>` +
       `<small>${r.items.map(([f, g]) => `${esc(FOOD[f]?.n || f)} ${fmt(g)} g`).join(", ")}</small></span>` +
       `<button type="button" class="linkbtn" data-mrdel="${r.id}">Ta bort</button></div>`;
+  }).join("");
+}
+
+/** Egna ord att välja bort, med vilka livsmedel varje ord träffar. */
+function renderExcludedWords() {
+  const names = [...Object.values(FOOD).filter((f) => !f.mine).map((f) => f.n), ...myFoods.map((m) => m.n)];
+  $("ex-words").innerHTML = [...exclusions.words].map((w) => {
+    const hits = names.filter((n) => n.toLowerCase().includes(w));
+    return `<span class="chip-check word-chip"><span><b>${esc(w)}</b> <small>${hits.length ? esc(hits.slice(0, 4).join(", ")) + (hits.length > 4 ? ` och ${hits.length - 4} till` : "") : "träffar inget livsmedel än"}</small></span>` +
+      `<button type="button" class="linkbtn" data-word-del="${esc(w)}" aria-label="Ta bort ${esc(w)}">Ta bort</button></span>`;
   }).join("");
 }
 

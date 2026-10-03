@@ -55,7 +55,7 @@ if (process.argv[2] === "ny-användare") {
   check("Ny användare: inget skrivs medan guiden fylls i", !(await databases()).includes("fettforbranning") && memory.size === 0);
   win.document.querySelector('input[name="sex"][value="m"]').checked = true;
   $("age").value = "40"; $("weight").value = "95"; $("height").value = "180";
-  next(); next(); next(); next();
+  next(); next(); next(); next(); next();
   const storage = await import("../public/js/storage.js");
   await storage.flush();
   check("Ny användare: databasen skapas först när guiden är klar", $("wizard").hidden && (await databases()).includes("fettforbranning") && (await idb()).ffv?.weight === "95" && (await idb())["ffv-terms"] && memory.size === 0);

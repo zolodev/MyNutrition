@@ -5,7 +5,7 @@ import { NONE } from "../data/recipes.js";
 import { totals } from "../menu.js";
 import { MEAL_AT, WINDOW, STRENGTH, INTERVALS } from "../day.js";
 import { tile } from "./components.js";
-import { supplementTips, generalNotes, using } from "../supplements.js";
+import { supplementTips, generalNotes, usesSupplements } from "../supplements.js";
 import { formatClock } from "../fasting.js";
 import { recipeRow } from "./food.js";
 import { sessionBlock } from "./training-view.js";
@@ -63,7 +63,7 @@ export function renderToday({ week, targets, program, breakfast, weight }) {
 
   // Dagens tillskott, med klockslag
   const tips = supplementTips({ start: breakfast, kind: training.kind, weight });
-  $("td-supps-box").hidden = !using.size;
+  $("td-supps-box").hidden = !usesSupplements();
   $("td-supps").innerHTML = tips.map((tip) => `<li><b>${formatClock(tip.at)} ${tip.name}</b> ${tip.text}</li>`).join("") +
     generalNotes().map((n) => `<li>${n}</li>`).join("");
 }

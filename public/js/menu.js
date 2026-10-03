@@ -1,8 +1,8 @@
 // Veckomenyn: säsong, anpassning efter allergier, veckorotation, portionsskalning och inköpslista.
 
-import { FOOD, GASSY } from "./data/foods.js";
+import { FOOD, GASSY, DIGESTIVE_FRUITS } from "./data/foods.js";
 import { RECIPES, SEASONAL, NONE } from "./data/recipes.js";
-import { substituteFor, adaptInstructions } from "./preferences.js";
+import { substituteFor, adaptInstructions, isExcluded } from "./preferences.js";
 import { macros, scaleItems, solveScaling } from "./nutrition.js";
 import { DAY_MS, DAYS, mondayOf, seededRandom, shuffle, load, save } from "./util.js";
 
@@ -162,18 +162,29 @@ export function weekPlan(week, breakfastChoice) {
  * Bygg veckans meny: säsongsanpassade och skalade recept, dagssummor och inköpslista.
  * Returnerar { season, plan, recipes, factors, shopping }. `recipes[id]` har t, how, items, m (makron), subs, dropped.
  */
+/** Vilken frukt med enzymer en rätt får en viss vecka: olika för olika rätter och veckor, aldrig en bortvald. */
+function digestiveFruit(recipeId, week) {
+  const start = [...recipeId].reduce((h, c) => h + c.charCodeAt(0), 0) + week;
+  for (let i = 0; i < DIGESTIVE_FRUITS.length; i++) {
+    const fruit = DIGESTIVE_FRUITS[(start + i) % DIGESTIVE_FRUITS.length];
+    if (!isExcluded(fruit)) return fruit;
+  }
+  return null;
+}
+
 export function buildWeek(week, targets, breakfastChoice) {
   const season = seasonOf(week);
   const plan = weekPlan(week, breakfastChoice);
 
-  // Säsongsanpassa och anpassa efter bortval. Måltider med gasbildande livsmedel får ananas (frukost) eller mango.
+  // Säsongsanpassa och anpassa efter bortval. Måltider med ägg, kål eller baljväxter får 100 g frukt med enzymer;
+  // frukten växlar mellan rätterna och veckorna, och bortvalda frukter hoppas över.
   const base = {};
   for (const id of Object.keys(RECIPES)) {
     const recipe = RECIPES[id];
     const adapted = adaptRecipe(id, season);
     const items = adapted.ok ? adapted.items.slice() : [];
     if ((recipe.g === "b" || recipe.g === "d") && items.some(([f]) => GASSY.has(f))) {
-      const fruit = substituteFor(recipe.g === "b" ? "ananas" : "mango");
+      const fruit = digestiveFruit(id, week);
       if (fruit) items.push([fruit, 100]);
     }
     base[id] = {
