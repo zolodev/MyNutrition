@@ -39,6 +39,9 @@ export function openWizard({ allergens = new Set(), termsOnly = false, onStep = 
   }
 
   let step = 0;
+  // På villkorssteget går det inte vidare förrän villkoren är godkända
+  const syncNext = () => ($("wz-next").disabled = steps[step].key === "terms" && !$("wz-accept").checked);
+  $("wz-accept").onchange = syncNext;
   const show = () => {
     for (const el of $$("#wizard [data-step]")) el.hidden = Number(el.dataset.step) !== step + 1;
     $("wz-body").hidden = steps[step].key === "terms"; // profilformuläret har inga fält i villkorssteget
@@ -48,6 +51,7 @@ export function openWizard({ allergens = new Set(), termsOnly = false, onStep = 
     $("wz-msg").textContent = "";
     $("wz-back").hidden = step === 0;
     $("wz-next").textContent = termsOnly ? "Godkänn och fortsätt" : step === steps.length - 1 ? "Klar" : "Nästa";
+    syncNext();
     $("wizard").scrollTop = 0;
     onStep(steps[step].key);
   };
@@ -81,7 +85,8 @@ export function openWizard({ allergens = new Set(), termsOnly = false, onStep = 
       for (const el of [...REQUIRED.map($), sex[0]]) el.required = false;
       home.parent.insertBefore(form, home.next);
     }
-    $("wz-back").onclick = $("wz-next").onclick = null;
+    $("wz-back").onclick = $("wz-next").onclick = $("wz-accept").onchange = null;
+    $("wz-next").disabled = false;
     onDone({ allergens: $$("[data-wz-allergen]:checked").map((el) => el.dataset.wzAllergen) });
   };
 

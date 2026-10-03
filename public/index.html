@@ -675,8 +675,11 @@
       <h2 id="wz-title"></h2>
       <p class="wizard-intro" id="wz-intro"></p>
       <div class="card wizard-terms" data-step="1">
-        <div class="terms" id="wz-terms"></div>
-        <label class="terms-accept"><input type="checkbox" id="wz-accept" required><span>Jag har läst och förstår villkoren, och att appen ger rekommendationer baserade på ExRx, inte medicinsk rådgivning.</span></label>
+        <p class="hint">Läs igenom villkoren. Godkännandet finns längst ner i rutan.</p>
+        <div class="terms-scroll" tabindex="0" aria-label="Villkor">
+          <div class="terms" id="wz-terms"></div>
+          <label class="terms-accept"><input type="checkbox" id="wz-accept" required><span>Jag har läst och förstår villkoren, och att appen ger rekommendationer baserade på ExRx, inte medicinsk rådgivning.</span></label>
+        </div>
       </div>
       <div class="card wizard-import" data-step="2">
         <p><b>Har du redan använt appen?</b> Importera en export från en annan enhet eller webbläsare, så hoppar du över guiden.</p>

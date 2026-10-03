@@ -25,7 +25,7 @@ if (!Object.keys(stored).length) {
   // Första start: guiden visas och inget sparas förrän den är klar; sedan finns profil och ett eget frö
   check("Guiden visas och localStorage är tom", !$("wizard").hidden && win.localStorage.length === 0);
   const next = () => $("wz-next").dispatchEvent(new win.Event("click"));
-  $("wz-accept").checked = true; next();
+  $("wz-accept").checked = true; $("wz-accept").dispatchEvent(new win.Event("change")); next();
   win.document.querySelector('input[name="sex"][value="k"]').checked = true;
   Object.assign($("age"), { value: "35" }); $("weight").value = "70"; $("height").value = "168";
   next(); $("goal").value = "64"; next(); next(); // BMI 24,8: ingen föreslagen målvikt, så den fylls i här
@@ -43,7 +43,9 @@ if (!Object.keys(stored).length) {
 // Befintlig profil utan godkända villkor: bara villkoren visas, profilen ligger kvar på sin plats
 if (!("ffv-terms" in stored)) {
   check("Utan godkända villkor visas villkoren först", !$("wizard").hidden && $("wz-progress").textContent === "Villkor" && $("f").closest("[data-view]").dataset.view === "profil");
+  check("Villkorssteget: Nästa är inaktiverad tills villkoren är godkända", $("wz-next").disabled);
   $("wz-accept").checked = true;
+  $("wz-accept").dispatchEvent(new win.Event("change"));
   $("wz-next").dispatchEvent(new win.Event("click"));
   check("Godkännandet sparas och appen startar", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv-terms")).version === TERMS_VERSION);
 }
