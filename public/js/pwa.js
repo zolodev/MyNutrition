@@ -7,9 +7,6 @@ import { $, load, save } from "./util.js";
 if ("serviceWorker" in navigator && window.self === window.top && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
-// Be om beständig lagring, så att webbläsaren inte rensar profilen och loggen när utrymmet blir trångt.
-// Installerade appar (även på iPhone) får det oftast direkt; i en vanlig flik avgör webbläsaren.
-navigator.storage?.persist?.().catch(() => {});
 // Förslaget att installera visas en gång per besök tills användaren installerar eller väljer "Inte nu" (sparas i ffv-install-declined).
 // Chrome och Edge ger ett beforeinstallprompt-event; Safari på iPhone/iPad saknar det, där visas istället hur man lägger till appen.
 const INSTALL_DECLINED_KEY = "ffv-install-declined";

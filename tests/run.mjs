@@ -466,8 +466,8 @@ const importScenario = (scenario) => {
 for (const scenario of ["guide", "skriv-över", "äldre", "radera"]) importScenario(scenario);
 
 console.log("\n# Lagring: IndexedDB med localStorage som reserv");
-{
-  const r = spawnSync(process.execPath, [new URL("./storage.mjs", import.meta.url).pathname], { stdio: "inherit" });
+for (const mode of [[], ["ny-användare"]]) {
+  const r = spawnSync(process.execPath, [new URL("./storage.mjs", import.meta.url).pathname, ...mode], { stdio: "inherit" });
   if (r.status !== 0) process.exitCode = 1;
 }
 

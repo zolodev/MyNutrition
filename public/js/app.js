@@ -19,6 +19,7 @@ import { loadMyRecipes, myRecipes, addMyRecipe, removeMyRecipe, cleanRecipe } fr
 import { exportText, readBackup, describe, restore, hasStoredData, eraseAll } from "./backup.js";
 import { setUsing } from "./supplements.js";
 import { openWizard } from "./wizard.js";
+import { unlockStorage } from "./storage.js";
 import "./pwa.js";
 
 // ---------- Tillstånd ----------
@@ -103,7 +104,11 @@ function showGoalAdvice() {
 const TERMS_KEY = "ffv-terms";
 const TERMS_VERSION = 4; // 4: uppgifterna sparas i IndexedDB (localStorage som reserv)
 const termsAccepted = () => load(TERMS_KEY, null)?.version === TERMS_VERSION;
-const acceptTerms = () => save(TERMS_KEY, { version: TERMS_VERSION, accepted: new Date().toISOString() });
+/** Godkänn villkoren: först nu får appen skriva till lagringen (se storage.js). */
+function acceptTerms() {
+  save(TERMS_KEY, { version: TERMS_VERSION, accepted: new Date().toISOString() });
+  return unlockStorage();
+}
 
 function syncDayButtons() {
   const chosen = new Set(String($("tdays-val").value).split(","));
@@ -653,6 +658,8 @@ syncDayButtons();
  * innan fröet fanns behåller frö 0, så att menyerna inte ändras.
  */
 function start(newUser = false) {
+  // Be om beständig lagring, så att webbläsaren inte rensar profilen och loggen när utrymmet blir trångt
+  navigator.storage?.persist?.().catch(() => {});
   initSeed(newUser && !Object.keys(load("ffv-salt", {}) || {}).length, randomSeed);
   syncDayButtons();
   update();
@@ -672,7 +679,10 @@ const savedProfile = load(PROFILE_KEY, null);
 if (savedProfile) {
   applyProfile(savedProfile);
   showSaved("Dina sparade uppgifter är inlästa");
-  if (termsAccepted()) start();
+  if (termsAccepted()) {
+    unlockStorage();
+    start();
+  }
   // Har en profil men har inte godkänt (nuvarande) villkor: visa bara villkoren först
   else openWizard({ termsOnly: true }, () => {
     acceptTerms();

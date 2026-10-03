@@ -4,7 +4,11 @@
 // i minnet en gång vid start (main.js väntar på det innan appen laddas). Sedan läses allt från minnet, och varje
 // save/remove skrivs till IndexedDB i bakgrunden, i samma ordning som de görs. flush() väntar tills allt är skrivet.
 //
-// Data som finns i localStorage (från äldre versioner) flyttas till IndexedDB vid start och tas bort ur
+// Inget skrivs innan användaren har godkänt villkoren: lagringen är låst tills app.js anropar unlockStorage().
+// Fram till dess öppnas IndexedDB bara om databasen redan finns, och då bara för att läsa; databasen skapas vid
+// första skrivningen. Ändringar medan lagringen är låst finns bara i minnet och skrivs när den låses upp.
+//
+// Data i localStorage (från äldre versioner) flyttas till IndexedDB när lagringen låses upp och tas bort ur
 // localStorage först när den är skriven. Bara appens nycklar ("ffv" och "ffv-…") rörs.
 // Utan initStorage() (t.ex. i enhetstester) går load/save direkt mot localStorage.
 
@@ -15,7 +19,10 @@ const isAppKey = (k) => k === "ffv" || k.startsWith("ffv-");
 const copy = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 
 let cache = null; // Map nyckel → värde när initStorage() är klar
-let db = null; // öppen IndexedDB, eller null när localStorage används
+let useIdb = false; // IndexedDB går att använda (annars localStorage)
+let db = null; // öppen databas; null tills den finns
+let locked = true; // inga skrivningar innan villkoren är godkända
+const unsaved = new Set(); // nycklar som ändrats medan lagringen var låst
 let pending = Promise.resolve();
 /** "IndexedDB" eller "localStorage", för att kunna visa var uppgifterna ligger. */
 export let backend = "localStorage";
@@ -64,56 +71,108 @@ const committed = (tx) => new Promise((resolve, reject) => {
   tx.onerror = tx.onabort = () => reject(tx.error);
 });
 
-function openDb() {
+/**
+ * Öppna databasen. Med `create: false` skapas den inte om den saknas (uppgraderingen avbryts, så webbläsaren
+ * tar bort den tomma databasen igen) och svaret blir null.
+ */
+function openDb({ create }) {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    let missing = false;
+    req.onupgradeneeded = (ev) => {
+      if (!create && ev.oldVersion === 0) {
+        missing = true;
+        req.transaction.abort();
+        return;
+      }
+      req.result.createObjectStore(STORE);
+    };
     req.onsuccess = () => {
       const opened = req.result;
       opened.onversionchange = () => opened.close(); // släpp databasen om den ska raderas eller uppgraderas
       resolve(opened);
     };
-    req.onerror = () => reject(req.error);
+    req.onerror = (ev) => {
+      ev.preventDefault?.();
+      missing ? resolve(null) : reject(req.error);
+    };
     req.onblocked = () => reject(new Error("IndexedDB är blockerad"));
   });
 }
 
-/** Skriv till IndexedDB i bakgrunden. Misslyckas det sparas värdet i localStorage i stället. */
+/** Skriv till IndexedDB i bakgrunden; databasen skapas vid första skrivningen. */
 function write(change) {
-  const tx = db.transaction(STORE, "readwrite");
-  change(tx.objectStore(STORE));
-  const result = committed(tx);
-  pending = pending.then(() => result).catch(() => {});
+  const result = pending.then(async () => {
+    db ??= await openDb({ create: true });
+    const tx = db.transaction(STORE, "readwrite");
+    change(tx.objectStore(STORE));
+    return committed(tx);
+  });
+  pending = result.catch(() => {});
   return result;
+}
+
+/** Skriv en nyckel till lagringen (IndexedDB eller localStorage). Ger false om det inte gick direkt. */
+function persist(key) {
+  const v = cache.get(key);
+  if (!useIdb) {
+    if (v === undefined) return lsRemove(key), true;
+    return lsSet(key, v);
+  }
+  write((s) => (v === undefined ? s.delete(key) : s.put(v, key))).catch(() => v !== undefined && lsSet(key, v));
+  return true;
 }
 
 // ---------- Start ----------
 
-/** Läs in allt sparat. Använder IndexedDB om det går, annars localStorage. */
+/** Läs in allt sparat, utan att skriva något. Använder IndexedDB om det går, annars localStorage. */
 export async function initStorage() {
   cache = new Map();
   try {
     if (typeof indexedDB === "undefined" || !indexedDB) throw new Error("IndexedDB saknas");
-    db = await openDb();
-    const store = db.transaction(STORE, "readonly").objectStore(STORE);
-    const [keys, values] = await Promise.all([done(store.getAllKeys()), done(store.getAll())]);
-    keys.forEach((k, i) => cache.set(k, values[i]));
+    db = await openDb({ create: false });
+    useIdb = true;
     backend = "IndexedDB";
-
-    // Flytta det som ligger i localStorage; det som redan finns i IndexedDB gäller
-    const legacy = lsKeys();
-    const moved = legacy.filter((k) => !cache.has(k)).map((k) => [k, lsGet(k)]).filter(([, v]) => v !== undefined);
-    for (const [k, v] of moved) cache.set(k, v);
-    if (moved.length) await write((s) => moved.forEach(([k, v]) => s.put(v, k)));
-    for (const k of legacy) lsRemove(k);
+    if (db) {
+      const store = db.transaction(STORE, "readonly").objectStore(STORE);
+      const [keys, values] = await Promise.all([done(store.getAllKeys()), done(store.getAll())]);
+      keys.forEach((k, i) => cache.set(k, values[i]));
+    }
   } catch {
     db = null;
+    useIdb = false;
     backend = "localStorage";
-    cache = new Map(lsKeys().map((k) => [k, lsGet(k)]).filter(([, v]) => v !== undefined));
+  }
+  // Det som ligger i localStorage läses in men flyttas först när lagringen låses upp; IndexedDB gäller vid dubbletter
+  for (const k of lsKeys()) if (!cache.has(k)) {
+    const v = lsGet(k);
+    if (v !== undefined) cache.set(k, v);
   }
 }
 
-/** Vänta tills alla skrivningar till IndexedDB är klara, t.ex. innan sidan laddas om. */
+/**
+ * Tillåt skrivningar (när villkoren är godkända). Skriver det som ändrats medan lagringen var låst och flyttar
+ * data från localStorage till IndexedDB. Ger ett löfte som är klart när allt är skrivet.
+ */
+export function unlockStorage() {
+  if (!cache || !locked) return flush();
+  locked = false;
+  if (!useIdb) {
+    for (const k of unsaved) persist(k);
+    unsaved.clear();
+    return flush();
+  }
+  const legacy = lsKeys();
+  const keys = [...new Set([...unsaved, ...legacy])];
+  unsaved.clear();
+  if (!keys.length) return flush();
+  const entries = keys.map((k) => [k, cache.get(k)]);
+  write((s) => entries.forEach(([k, v]) => (v === undefined ? s.delete(k) : s.put(v, k))))
+    .then(() => legacy.forEach(lsRemove), () => {});
+  return flush();
+}
+
+/** Vänta tills alla skrivningar är klara, t.ex. innan sidan laddas om. */
 export const flush = () => pending;
 
 // ---------- Läsa och skriva ----------
@@ -128,23 +187,32 @@ export function save(key, value) {
   const v = copy(value);
   if (!cache) return lsSet(key, v);
   cache.set(key, v);
-  if (!db) return lsSet(key, v);
-  write((s) => s.put(v, key)).catch(() => lsSet(key, v));
-  return true;
+  if (locked) return unsaved.add(key), true;
+  return persist(key);
 }
 
 export function remove(key) {
-  if (cache) cache.delete(key);
-  if (db) write((s) => s.delete(key)).catch(() => {});
+  if (!cache) return lsRemove(key);
+  cache.delete(key);
+  if (locked) return unsaved.add(key);
+  persist(key);
   lsRemove(key);
 }
 
 /** Alla appens sparade nycklar. */
 export const keys = () => (cache ? [...cache.keys()] : lsKeys());
 
-/** Radera allt appen har sparat, i både IndexedDB och localStorage. */
-export function clearAll() {
-  for (const k of keys()) remove(k);
+/** Radera allt appen har sparat: hela databasen och appens nycklar i localStorage. */
+export async function clearAll() {
+  await pending;
+  cache?.clear();
+  unsaved.clear();
   for (const k of lsKeys()) lsRemove(k);
-  return flush();
+  if (!useIdb) return;
+  db?.close();
+  db = null;
+  await new Promise((resolve) => {
+    const req = indexedDB.deleteDatabase(DB_NAME);
+    req.onsuccess = req.onerror = req.onblocked = () => resolve();
+  });
 }

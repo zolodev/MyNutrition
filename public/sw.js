@@ -1,7 +1,7 @@
 // Service worker för Fettförbränningsveckan: gör appen installerbar och användbar offline.
 // Höj VERSION när filerna ändras, så hämtas de nya och den gamla cachen rensas.
 // Lägger du till en fil i js/ eller css/ ska den också in i CORE, annars fungerar den inte offline.
-const VERSION = "ffv-v31";
+const VERSION = "ffv-v32";
 const CORE = [
   "./",
   "./index.html",
@@ -44,8 +44,13 @@ const CORE = [
   "./icons/maskable-512.png"
 ];
 
+// Varje fil cachas för sig, så att en fil som saknas inte stoppar hela uppdateringen
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(VERSION)
+      .then((c) => Promise.allSettled(CORE.map((url) => c.add(url))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -56,30 +61,35 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+/** Spara ett lyckat svar i cachen (för offline). */
+const remember = (req, res) => {
+  if (res.ok || res.type === "opaque") {
+    const copy = res.clone();
+    caches.open(VERSION).then((c) => c.put(req, copy));
+  }
+  return res;
+};
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
-  // Sidor: nätet först (så du får senaste versionen), cachen om du är offline
-  if (req.mode === "navigate") {
+  // Sidor och egna filer: nätet först, så att alla filer kommer från samma version efter en uppdatering.
+  // Cachen används bara när nätet inte svarar (offline). Fel från servern, t.ex. 404, skickas vidare som de är.
+  if (url.origin === location.origin) {
     event.respondWith(
       fetch(req)
-        .then((res) => { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); return res; })
-        .catch(() => caches.match(req).then((hit) => hit || caches.match("./index.html")))
+        .then((res) => remember(req, res))
+        .catch(() => caches.match(req).then((hit) => hit || (req.mode === "navigate" ? caches.match("./index.html") : null)).then((hit) => hit || Response.error()))
     );
     return;
   }
 
-  // Typsnitt från Google och egna filer: cachen först, uppdatera i bakgrunden
-  if (url.origin === location.origin || url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com") {
+  // Typsnitt från Google ändras inte: cachen först
+  if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com") {
     event.respondWith(
-      caches.match(req).then((hit) => {
-        const net = fetch(req)
-          .then((res) => { if (res && (res.ok || res.type === "opaque")) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); } return res; })
-          .catch(() => hit);
-        return hit || net;
-      })
+      caches.match(req).then((hit) => hit || fetch(req).then((res) => remember(req, res)))
     );
   }
 });
