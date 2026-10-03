@@ -1,7 +1,7 @@
 // Profil: dagliga mål, prognos och uträkningen.
 
 import { $, fmt } from "../util.js";
-import { kgPerWeek, goalForecast, bmiOf, weightAtBmi, recommendedGoal, BMI } from "../nutrition.js";
+import { kgPerWeek, goalForecast, bmiOf, weightAtBmi, recommendedGoal, BMI, TARGET_BMI } from "../nutrition.js";
 import { tile } from "./components.js";
 
 export const svMonthYear = (date) => date.toLocaleDateString("sv-SE", { day: "numeric", month: "short", year: "numeric" });
@@ -38,8 +38,8 @@ export function renderGoalAdvice({ weight, height, goal, targets }) {
   const recommended = recommendedGoal(weight, height);
   const parts = [`Ditt BMI är <b class="num">${fmt(bmi, 1)}</b> (${fmt(weight, 1)} kg, ${fmt(height)} cm), vilket räknas som ${bmiClass(bmi)}. Normalvikt är BMI 18,5–24,9.`];
   if (recommended != null) {
-    parts.push(`<b>Rekommenderad målvikt: ${fmt(recommended, 1)} kg</b>, vikten vid BMI 24,9, alltså precis under gränsen för övervikt: ` +
-      `<code>24,9 × ${fmt(height / 100, 2)}² = ${fmt(weightAtBmi(BMI.normalMax, height), 1)} kg</code>, avrundat nedåt till halvt kilo.` +
+    parts.push(`<b>Rekommenderad målvikt: ${fmt(recommended, 1)} kg</b>, vikten vid BMI ${fmt(TARGET_BMI, 1)}, mitt i normalviktsintervallet (mittemellan 18,5 och 24,9): ` +
+      `<code>${fmt(TARGET_BMI, 1)} × ${fmt(height / 100, 2)}² = ${fmt(weightAtBmi(TARGET_BMI, height), 1)} kg</code>, avrundat till närmaste halva kilo.` +
       (goal === recommended ? " Den är ifylld som förslag; du kan ändra den." : ""));
   } else {
     parts.push("Appen föreslår ingen målvikt när BMI är 25 eller lägre; välj själv.");

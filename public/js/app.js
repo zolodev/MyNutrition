@@ -85,7 +85,7 @@ function saveProfile() {
 
 let suggestedGoal = null; // senaste förslaget, så att det följer med om vikten ändras men aldrig skriver över ett eget val
 
-/** Fyll i målvikten vid BMI 24,9 som förslag när BMI är över 25 och användaren inte har valt en egen. */
+/** Fyll i målvikten vid BMI 21,7 (mitt i normalvikt) som förslag när BMI är över 25 och användaren inte har valt en egen. */
 function suggestGoal() {
   const recommended = recommendedGoal(num($("weight").value), num($("height").value));
   const current = num($("goal").value);

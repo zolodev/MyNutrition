@@ -59,7 +59,8 @@ unit("Fel antal gymdagar behåller senaste giltiga val", parseTrainingDays("1,3"
 // BMI och föreslagen målvikt (ExRx/WHO: normalvikt 18,5–24,9)
 const nutrition = await import("../public/js/nutrition.js");
 unit("BMI räknas som vikt / längd²", Math.abs(nutrition.bmiOf(95, 180) - 29.32) < 0.01);
-unit("Över BMI 25: målvikt vid BMI 24,9, avrundad nedåt till halvt kilo", nutrition.recommendedGoal(95, 180) === 80.5 && nutrition.bmiOf(80.5, 180) <= 24.9 && nutrition.recommendedGoal(110, 165) === 67.5);
+unit("Mål-BMI är mitt i normalvikt: (18,5 + 24,9) / 2 = 21,7", Math.abs(nutrition.TARGET_BMI - 21.7) < 1e-9);
+unit("Över BMI 25: målvikt vid BMI 21,7, avrundad till halvt kilo", nutrition.recommendedGoal(95, 180) === 70.5 && nutrition.recommendedGoal(110, 165) === 59 && Math.abs(nutrition.bmiOf(70.5, 180) - 21.7) < 0.1);
 unit("BMI 25 eller lägre: ingen föreslagen målvikt", nutrition.recommendedGoal(70, 180) === null && nutrition.recommendedGoal(81, 180) === null);
 const forecastTargets = computeTargets({ sex: "m", age: 40, weight: 95, height: 180, bodyFat: NaN, activity: 1.375, rate: 1 });
 const forecast = nutrition.goalForecast(forecastTargets, 85);
@@ -188,8 +189,8 @@ win.document.querySelector('input[name="sex"][value="m"]').checked = true;
 $("age").value = "40"; $("weight").value = "95"; $("height").value = "180";
 next();
 check("Steg 3: målet", text("wz-progress") === "Steg 3 av 5" && !$("goal").closest("[data-step]").hidden && $("age").closest("[data-step]").hidden);
-check("BMI över 25: målvikten fylls i vid BMI 24,9 (80,5 kg för 180 cm)", $("goal").value === "80,5");
-check("Rutan visar BMI, uträkningen och att det är ett förslag", !$("goal-info").hidden && text("goal-info").includes("Ditt BMI är 29,3") && text("goal-info").includes("Rekommenderad målvikt: 80,5 kg") && text("goal-info").includes("24,9 × 1,80²") && text("goal-info").includes("ifylld som förslag"));
+check("BMI över 25: målvikten fylls i vid BMI 21,7, mitt i normalvikt (70,5 kg för 180 cm)", $("goal").value === "70,5");
+check("Rutan visar BMI, uträkningen och att det är ett förslag", !$("goal-info").hidden && text("goal-info").includes("Ditt BMI är 29,3") && text("goal-info").includes("Rekommenderad målvikt: 70,5 kg") && text("goal-info").includes("mitt i normalviktsintervallet") && text("goal-info").includes("21,7 × 1,80² = 70,3 kg") && text("goal-info").includes("ifylld som förslag"));
 check("Rutan visar en prognos med appens kalorimål", /Prognos: med appens kalorimål, [\d\s ]+ kcal per dag .* om ungefär \d+ veckor/.test(text("goal-info")));
 check("Rutan säger att det är en rekommendation baserad på ExRx", text("goal-info").includes("rekommendation baserad på ExRx") && text("goal-info").includes("inte medicinsk rådgivning") && $("goal-info").querySelector('a[href="https://exrx.net/Calculators/BMI"]'));
 typeIn("goal", "85");

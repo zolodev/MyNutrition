@@ -79,13 +79,15 @@ export const kgPerWeek = (deficit) => (deficit * 7) / KCAL_PER_KG_FAT;
 // Gränser enligt ExRx BMI-kalkylator (WHO 1997): under 18,5 undervikt, 18,5–24,9 normalvikt, 25–29,9 övervikt.
 
 export const BMI = { under: 18.5, normalMax: 24.9, over: 25 };
+/** Målet: mitt i normalviktsintervallet, (18,5 + 24,9) / 2 = 21,7. Ger marginal åt båda hållen. */
+export const TARGET_BMI = (BMI.under + BMI.normalMax) / 2;
 export const bmiOf = (weight, heightCm) => weight / (heightCm / 100) ** 2;
 export const weightAtBmi = (bmi, heightCm) => bmi * (heightCm / 100) ** 2;
 
-/** Föreslagen målvikt när BMI är över 25: vikten vid BMI 24,9, avrundad nedåt till halvt kilo. Annars null. */
+/** Föreslagen målvikt när BMI är över 25: vikten vid BMI 21,7 (mitt i normalvikt), avrundad till halvt kilo. Annars null. */
 export function recommendedGoal(weight, heightCm) {
   if (!(weight > 0 && heightCm > 0) || bmiOf(weight, heightCm) <= BMI.over) return null;
-  return Math.floor(weightAtBmi(BMI.normalMax, heightCm) * 2) / 2;
+  return Math.round(weightAtBmi(TARGET_BMI, heightCm) * 2) / 2;
 }
 
 /** Hur lång tid till målvikten med appens kalorimål: { weeks, date } eller null om målet inte är lägre än vikten. */
