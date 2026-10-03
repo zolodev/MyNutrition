@@ -21,49 +21,50 @@ Allt körs i webbläsaren. Inga uppgifter skickas till någon server.
 ## Filer
 
 ```
-index.html              Sidans HTML: flikarna Idag, Mat, Träning, Logg, Profil och Inställningar
-guide.html              Förklaringar till alla val och beräkningar
-css/app.css             Stilmall (färger, komponenter, vyer)
-js/app.js               Styrning: läser profilen, ritar om, kopplar knappar och formulär, flikar, PWA
-js/util.js              Hjälpfunktioner: DOM, talformat, lagring, datum, slump som går att upprepa
-js/nutrition.js         Energibehov, makromål och skalning av portioner
-js/preferences.js       Allergier, bortvalda ingredienser och egna livsmedel
-js/menu.js              Säsong, anpassning efter allergier, veckorotation, skalade recept, inköpslista
-js/plancode.js          Plankoden som gör planen delbar (frö, omslumpade veckor, träningsupplägg)
-js/day.js               Dagens tider (måltider, träning) räknat från frukost
-js/fasting.js           Fastan: ätfönster, nästa måltid och läget just nu från verkliga måltidstider
-js/myrecipes.js         Egna recept
-js/supplements.js       Tips om PWO, vassle och kreatin
-js/training.js          Träningsprogram och vilka dagar passen läggs
-js/log.js               Loggposter, statistik och synk till claude-kontot
-js/data/foods.js        Livsmedel, butiksavdelningar, allergener och ersättare
-js/data/recipes.js      Recept och säsongsråvaror
-js/data/exercises.js    Övningar från ExRx
-js/views/*.js           En fil per vy som ritar HTML (today, food, training-view, log-view, profile, settings)
-tests/run.mjs           Tester: beräkningarna och hela appen i en simulerad webbläsare
-manifest.webmanifest    App-manifest (namn, ikoner, färger)
-sw.js                   Service worker för offline och installation
-icons/                  Appikoner
-.claude/skills/exrx/    Claude Code-skill som hämtar fakta från exrx.net
+public/index.html            Sidans HTML: flikarna Idag, Mat, Träning, Logg, Profil och Inställningar
+public/guide.html            Förklaringar till alla val och beräkningar
+public/css/app.css           Stilmall (färger, komponenter, vyer)
+public/js/app.js             Styrning: läser profilen, ritar om, kopplar knappar och formulär, flikar, PWA
+public/js/util.js            Hjälpfunktioner: DOM, talformat, lagring, datum, slump som går att upprepa
+public/js/nutrition.js       Energibehov, makromål och skalning av portioner
+public/js/preferences.js     Allergier, bortvalda ingredienser och egna livsmedel
+public/js/menu.js            Säsong, anpassning efter allergier, veckorotation, skalade recept, inköpslista
+public/js/plancode.js        Plankoden som gör planen delbar (frö, omslumpade veckor, träningsupplägg)
+public/js/day.js             Dagens tider (måltider, träning) räknat från frukost
+public/js/fasting.js         Fastan: ätfönster, nästa måltid och läget just nu från verkliga måltidstider
+public/js/myrecipes.js       Egna recept
+public/js/supplements.js     Tips om PWO, vassle och kreatin
+public/js/training.js        Träningsprogram och vilka dagar passen läggs
+public/js/log.js             Loggposter, statistik och synk till claude-kontot
+public/js/data/foods.js      Livsmedel, butiksavdelningar, allergener och ersättare
+public/js/data/recipes.js    Recept och säsongsråvaror
+public/js/data/exercises.js  Övningar från ExRx
+public/js/views/*.js         En fil per vy som ritar HTML (today, food, training-view, log-view, profile, settings)
+tests/run.mjs                Tester: beräkningarna och hela appen i en simulerad webbläsare
+public/manifest.webmanifest  App-manifest (namn, ikoner, färger)
+public/sw.js                 Service worker för offline och installation
+public/icons/                Appikoner
+.claude/skills/exrx/         Claude Code-skill som hämtar fakta från exrx.net
+wrangler.jsonc               Cloudflare-konfiguration: publicerar public/ som statisk sida
 ```
 
-Beräkningarna (`nutrition.js`, `menu.js`, `training.js`, `log.js`) läser aldrig från sidan, så de går att testa och ändra utan att röra vyerna. Vyerna i `js/views/` tar färdiga data och ritar HTML. `app.js` binder ihop dem.
+Beräkningarna (`nutrition.js`, `menu.js`, `training.js`, `log.js`) läser aldrig från sidan, så de går att testa och ändra utan att röra vyerna. Vyerna i `public/js/views/` tar färdiga data och ritar HTML. `app.js` binder ihop dem.
 
 ### Vanliga ändringar
 
-- **Nytt recept:** lägg till det i `js/data/recipes.js`. Ingredienser som ska följa säsongen skrivs som `@plats` (se `SEASONAL`).
-- **Nytt livsmedel:** lägg till det i `FOOD` i `js/data/foods.js` och i rätt butiksavdelning i samma fil.
-- **Ny övning:** lägg till den i `js/data/exercises.js` och använd den i `buildSessions` i `js/training.js`.
-- **Ny fil i `js/` eller `css/`:** lägg till den i listan `CORE` i `sw.js`, annars fungerar den inte offline.
-- **Efter varje ändring:** höj `VERSION` i `sw.js` och kör testerna.
+- **Nytt recept:** lägg till det i `public/js/data/recipes.js`. Ingredienser som ska följa säsongen skrivs som `@plats` (se `SEASONAL`).
+- **Nytt livsmedel:** lägg till det i `FOOD` i `public/js/data/foods.js` och i rätt butiksavdelning i samma fil.
+- **Ny övning:** lägg till den i `public/js/data/exercises.js` och använd den i `buildSessions` i `public/js/training.js`.
+- **Ny fil i `public/js/` eller `public/css/`:** lägg till den i listan `CORE` i `public/sw.js`, annars fungerar den inte offline.
+- **Efter varje ändring:** höj `VERSION` i `public/sw.js` och kör testerna.
 
 ## Köra lokalt
 
 Appen använder JavaScript-moduler, så den måste köras från en webbserver (inte genom att öppna filen direkt):
 
 ```bash
-cd /mnt/nvme/nutrition
-python3 -m http.server 8000
+cd /mnt/nvme/MyNutrition
+python3 -m http.server 8000 -d public
 ```
 
 Öppna http://localhost:8000.
@@ -79,27 +80,23 @@ Testerna kontrollerar bland annat kalorimålen, att två veckor i följd aldrig 
 
 ## Installera på mobilen
 
-En PWA måste öppnas från en **https-adress** för att kunna installeras. Enklast är GitHub Pages:
+En PWA måste öppnas från en **https-adress** för att kunna installeras. Sidan publiceras som statisk sida på Cloudflare; `wrangler.jsonc` pekar på katalogen `public/`, så bara den publiceras.
 
-1. Skapa ett repo och pusha katalogen:
-   ```bash
-   git init
-   git add .
-   git commit -m "Fettförbränningsveckan som PWA"
-   git branch -M main
-   git remote add origin git@github.com:<ditt-konto>/<repo>.git
-   git push -u origin main
-   ```
-2. På GitHub: **Settings → Pages → Build and deployment → Deploy from a branch**, välj `main` och `/ (root)`.
-3. Öppna `https://<ditt-konto>.github.io/<repo>/` på mobilen.
-   - **Android (Chrome):** tryck på *Installera appen* på sidan, eller menyn ⋮ → *Installera app*.
-   - **iPhone (Safari):** dela-knappen → *Lägg till på hemskärmen*.
+```bash
+npx wrangler deploy
+```
+
+Eller koppla repot i Cloudflare-panelen (**Workers & Pages → Create → Import a repository**) med deploy-kommandot `npx wrangler deploy` och inget build-kommando.
+
+Öppna adressen du får (till exempel `https://mynutrition.<ditt-konto>.workers.dev/`) på mobilen.
+- **Android (Chrome):** tryck på *Installera appen* på sidan, eller menyn ⋮ → *Installera app*.
+- **iPhone (Safari):** dela-knappen → *Lägg till på hemskärmen*.
 
 Alla sökvägar är relativa, så appen fungerar även i en undermapp som GitHub Pages använder.
 
 ## Uppdatera appen
 
-Höj `VERSION` i `sw.js` (till exempel från `ffv-v7` till `ffv-v8`) när du ändrar filerna. Då hämtar installerade appar de nya filerna och rensar den gamla cachen.
+Höj `VERSION` i `public/sw.js` (till exempel från `ffv-v7` till `ffv-v8`) när du ändrar filerna. Då hämtar installerade appar de nya filerna och rensar den gamla cachen.
 
 ## Data
 

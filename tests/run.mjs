@@ -8,11 +8,11 @@ const todayStr = () => { const d = new Date(); return new Date(d.getTime() - d.g
 // ---------- Del 1: beräkningar ----------
 const memory = {};
 globalThis.localStorage = { getItem: (k) => memory[k] ?? null, setItem: (k, v) => (memory[k] = String(v)), removeItem: (k) => delete memory[k] };
-const { computeTargets } = await import("../js/nutrition.js");
-const prefs = await import("../js/preferences.js");
-const menu = await import("../js/menu.js");
-const { buildProgram, parseTrainingDays } = await import("../js/training.js");
-const { weekIndexOf } = await import("../js/util.js");
+const { computeTargets } = await import("../public/js/nutrition.js");
+const prefs = await import("../public/js/preferences.js");
+const menu = await import("../public/js/menu.js");
+const { buildProgram, parseTrainingDays } = await import("../public/js/training.js");
+const { weekIndexOf } = await import("../public/js/util.js");
 const unit = (label, cond) => { console.log((cond ? "OK   " : "FEL  ") + label); if (!cond) process.exitCode = 1; };
 console.log("# Beräkningar");
 
@@ -56,7 +56,7 @@ unit("Tre dagar i rad varnar för samma muskler två dagar i rad", inARow.clash)
 unit("Fel antal gymdagar behåller senaste giltiga val", parseTrainingDays("1,3", [0, 2, 4]).days.join() === "0,2,4");
 
 // Plankod
-const { encodePlan, decodePlan } = await import("../js/plancode.js");
+const { encodePlan, decodePlan } = await import("../public/js/plancode.js");
 const sample = { seed: 123456789, salts: { 143: 98765 }, equipment: "db", days: [1, 3, 5], breakfast: "F2" };
 const decoded = decodePlan(encodePlan(sample));
 unit("Plankoden går att läsa tillbaka", JSON.stringify(decoded) === JSON.stringify({ ...sample, salts: { 143: 98765 }, swapPeriod: 1 }));
@@ -85,7 +85,7 @@ unit("Annan kod: andra rätter", JSON.stringify(menu.buildWeek(today + 1, man, "
 menu.setPlanRandomness(0, {}); menu.invalidateMenu();
 
 // Fastan
-const fasting = await import("../js/fasting.js");
+const fasting = await import("../public/js/fasting.js");
 const skipped = fasting.fastingDay({ planned: 7, first: 12, last: null, yesterdayLast: 20 });
 unit("Hoppad frukost, första måltid 12:00: fönster 12–20, måltid 19:00, fasta klar 12:00", skipped.windowEnd === 20 && skipped.nextMeal === 19 && fasting.formatClock(skipped.fastEnd) === "12:00");
 unit("Varning: planerad frukost 07:00 i morgon ger bara 11 h", skipped.tonightIfPlanned === 11);
@@ -95,7 +95,7 @@ unit("Läget kl 13: ätfönstret öppet, 7 h kvar", (() => { const n = fasting.f
 unit("Läget kl 06: fastar sedan i går 20:00, 10 h", fasting.fastingNow(skipped, 6, 20).elapsed === 10);
 
 // Tillskott
-const supps = await import("../js/supplements.js");
+const supps = await import("../public/js/supplements.js");
 const gymTips = supps.supplementTips({ start: 7, kind: "str", weight: 95 });
 unit("Gymdag: PWO 10:30, vassle 13:00, kreatin med måltiden 14:00", gymTips.map((t) => `${fasting.formatClock(t.at)} ${t.name}`).join(", ") === "10:30 PWO, 13:00 Vassle, 14:00 Kreatin");
 unit("Gymdag: vassle behövs inte när måltiden kommer strax efter passet", gymTips.find((t) => t.name === "Vassle").text.startsWith("Behövs inte"));
@@ -104,7 +104,7 @@ unit("Sent pass: varning för koffein", lateTips.find((t) => t.name === "PWO").t
 unit("Vilodag: ingen PWO, kreatin med frukosten", (() => { const t = supps.supplementTips({ start: 7, kind: "rest", weight: 95 }); return !t.some((x) => x.name === "PWO") && t.find((x) => x.name === "Kreatin").at === 7; })());
 
 // Egna recept
-const own = await import("../js/myrecipes.js");
+const own = await import("../public/js/myrecipes.js");
 const myBreakfast = own.cleanRecipe({ t: "Min proteinfrukost", g: "b", items: [["kvarg", 200], ["havre", 40], ["blabar", 100]], how: "Blanda." });
 own.addMyRecipe(myBreakfast);
 menu.invalidateMenu();
@@ -134,7 +134,7 @@ prefs.setExclusions({ allergens: ["apelsin", "mandarin", "clementin"], foods: ["
 delete globalThis.localStorage;
 
 // ---------- Del 2: appen i en simulerad webbläsare ----------
-const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8").replace(/<script type="module"[^>]*><\/script>/, "").replace(/<link rel="stylesheet"[^>]*>/g, "");
+const html = fs.readFileSync(new URL("../public/index.html", import.meta.url), "utf8").replace(/<script type="module"[^>]*><\/script>/, "").replace(/<link rel="stylesheet"[^>]*>/g, "");
 const dom = new JSDOM(html, { url: "https://example.org/app/index.html", pretendToBeVisual: true });
 const win = dom.window;
 const errors = [];
@@ -143,7 +143,7 @@ globalThis.window = win; win.scrollTo = () => {}; win.HTMLElement.prototype.scro
 win.addEventListener("error", (e) => errors.push(e.message));
 const $ = (id) => win.document.getElementById(id);
 const text = (id) => $(id).textContent.replace(/\s+/g, " ").trim();
-await import("../js/app.js");
+await import("../public/js/app.js");
 const fire = (el, type) => el.dispatchEvent(new win.Event(type, { bubbles: true }));
 const go = (hash) => { win.location.hash = hash; fire(win, "hashchange"); };
 const visible = () => [...win.document.querySelectorAll("[data-view]")].filter((v) => !v.hidden).map((v) => v.dataset.view).join(",");
