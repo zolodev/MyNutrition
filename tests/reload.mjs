@@ -59,7 +59,16 @@ check("Profilen läses in i formuläret", Object.keys(profile).filter((k) => k !
 check("Profilen ligger kvar i localStorage", after("ffv") === stored.ffv);
 const log = JSON.parse(stored["ffv-log"] || '{"entries":[]}').entries;
 check(`Alla ${log.length} loggposter finns kvar`, JSON.parse(after("ffv-log") || '{"entries":[]}').entries.length === log.length && log.every((e) => after("ffv-log").includes(`"date":"${e.date}"`)));
-const lost = Object.keys(stored).filter((k) => after(k) == null);
+// Avbockningar per vecka (äldre versioner) flyttas till den gemensamma listan: kommande veckor följer med, gamla tas bort
+const weekNow = Math.floor((Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()) - Date.UTC(2024, 0, 1)) / 864e5 / 7);
+const weeklyShop = Object.keys(stored).filter((k) => /^ffv-shop-\d+$/.test(k));
+if (weeklyShop.length) {
+  const expectedShop = weeklyShop.filter((k) => Number(k.slice(9)) >= weekNow).flatMap((k) => JSON.parse(stored[k]));
+  const shop = JSON.parse(after("ffv-shop") || "[]");
+  check("Avbockningar per vecka flyttas till den gemensamma listan", expectedShop.every((f) => shop.includes(f)) && weeklyShop.every((k) => after(k) == null));
+  check("Avbockningar från gamla veckor följer inte med", weeklyShop.filter((k) => Number(k.slice(9)) < weekNow).flatMap((k) => JSON.parse(stored[k])).every((f) => !shop.includes(f) || expectedShop.includes(f)));
+}
+const lost = Object.keys(stored).filter((k) => after(k) == null && !/^ffv-shop-\d+$/.test(k));
 check("Inga sparade nycklar försvinner", lost.length === 0);
 const changed = ["ffv-seed", "ffv-tseed", "ffv-salt", "ffv-excl", "ffv-myfoods", "ffv-myrecipes", "ffv-supps", "ffv-log"].filter((k) => k in stored && after(k) !== stored[k]);
 check("Plan, allergier, egna recept och logg skrivs inte om vid start", changed.length === 0);

@@ -19,7 +19,7 @@ import { loadMyRecipes, myRecipes, addMyRecipe, removeMyRecipe, cleanRecipe } fr
 import { exportText, readBackup, describe, restore, hasStoredData, eraseAll } from "./backup.js";
 import { setUsing } from "./supplements.js";
 import { openWizard } from "./wizard.js";
-import { unlockStorage } from "./storage.js";
+import { unlockStorage, keys as storageKeys } from "./storage.js";
 import "./pwa.js";
 
 // ---------- Tillstånd ----------
@@ -153,7 +153,24 @@ document.addEventListener("click", (ev) => {
 
 // ---------- Rita om allt ----------
 
-const shoppingKey = () => "ffv-shop-" + state.week;
+// Inköpslistan: det man har bockat av ("har hemma") gäller i alla veckor tills man själv bockar ur det.
+const SHOP_KEY = "ffv-shop";
+const boughtFoods = () => new Set(load(SHOP_KEY, []));
+
+/**
+ * Äldre versioner sparade avbockningar per vecka (ffv-shop-<vecka>). Flytta dem till den gemensamma listan:
+ * det som är avbockat för den här och kommande veckor följer med, gamla veckor tas bort.
+ */
+function migrateShopping() {
+  const weekly = storageKeys().filter((k) => /^ffv-shop-\d+$/.test(k));
+  if (!weekly.length) return;
+  const bought = boughtFoods();
+  for (const k of weekly) {
+    if (Number(k.slice("ffv-shop-".length)) >= TODAY_WEEK) for (const food of load(k, [])) bought.add(food);
+    remove(k);
+  }
+  save(SHOP_KEY, [...bought]);
+}
 
 function update() {
   const profile = readProfile();
@@ -173,7 +190,7 @@ function update() {
   renderWeekGrid(week, program.schedule, profile.breakfastHour);
   renderCheatTable(week, targets);
   renderRecipes(week, targets, profile.breakfastHour, label.title);
-  renderShopping(week, label.title, new Set(load(shoppingKey(), [])));
+  renderShopping(week, label.title, boughtFoods());
 
   // Idag följer de verkliga måltidstiderna om de är loggade
   if (state.week === TODAY_WEEK) renderToday({ week, targets, program, breakfast: todaysFasting(profile.breakfastHour).day.start, weight: profile.weight });
@@ -324,15 +341,16 @@ $("wk-today").addEventListener("click", () => showWeek(TODAY_WEEK));
 $("shop").addEventListener("change", (ev) => {
   const food = ev.target.dataset.shop;
   if (!food) return;
-  const checked = new Set(load(shoppingKey(), []));
-  if (ev.target.checked) checked.add(food);
-  else checked.delete(food);
-  save(shoppingKey(), [...checked]);
+  const bought = boughtFoods();
+  if (ev.target.checked) bought.add(food);
+  else bought.delete(food);
+  save(SHOP_KEY, [...bought]);
   ev.target.closest(".shop-item").classList.toggle("done", ev.target.checked);
   updateShoppingProgress();
 });
-$("shop-clear").addEventListener("click", () => {
-  save(shoppingKey(), []);
+$("shop-clear").addEventListener("click", async () => {
+  if (!(await confirmDialog("Är du säker på att du vill avmarkera allt i inköpslistan?", "Avbockningarna gäller alla veckor, så allt du har markerat som köpt eller hemma avmarkeras."))) return;
+  save(SHOP_KEY, []);
   update();
 });
 
@@ -677,6 +695,7 @@ function start(newUser = false) {
   // Be om beständig lagring, så att webbläsaren inte rensar profilen och loggen när utrymmet blir trångt
   navigator.storage?.persist?.().catch(() => {});
   initSeed(newUser && !Object.keys(load("ffv-salt", {}) || {}).length, randomSeed);
+  migrateShopping();
   syncDayButtons();
   update();
   window.addEventListener("hashchange", route);

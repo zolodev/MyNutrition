@@ -151,7 +151,8 @@
 </head>
 
 <body>
-  <!-- Fix firefox warning -->
+  <!-- Fix firefox warning: "Layout was forced before the page was fully loaded" (FOUC). Ett tomt skript direkt efter
+       <body> får Firefox att vänta på stilmallarna. Se https://stackoverflow.com/questions/21147149/flash-of-unstyled-content-fouc-in-firefox-only-is-ff-slow-renderer#57888310 -->
   <script>0</script>
   <div class="loading-screen" role="status" aria-label="Appen laddas">
     <img src="icons/icon-192.png" alt="">
@@ -378,8 +379,9 @@
             <div class="sec-head">
               <span class="eyebrow">Handla</span>
               <h2 id="shop-title">Inköpslista för veckan</h2>
-              <p>Summan av allt du äter under veckan, avrundat och sorterat efter avdelning i butiken. Bocka av när du
-                handlar; bockarna sparas för veckan.</p>
+              <p>Summan av allt du äter under veckan, avrundat och sorterat efter avdelning i butiken. Bocka av det du köper
+                eller redan har hemma. Det du bockar av är avbockat i alla veckor tills du själv bockar ur det, till exempel
+                ett paket havregryn som räcker flera veckor.</p>
             </div>
             <div class="shop-bar"><span class="num" id="shop-progress"></span><button type="button" class="btn"
                 id="shop-clear" hidden>Avmarkera alla</button></div>

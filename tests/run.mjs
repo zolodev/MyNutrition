@@ -431,17 +431,28 @@ check("Varje flik har en rad om rekommendationer och länk till villkoren", !!wi
 go("installningar");
 check("Inställningar länkar till Om appen", !!$("om-appen").querySelector('a[href="#om"]'));
 
-// Inköpslistan: avbockningar sparas per vecka, även när man byter vecka
+// Inköpslistan: det man bockat av gäller i alla veckor tills man själv bockar ur det
 go("inkop");
-const shopBox = win.document.querySelector("[data-shop]");
-const shopFood = shopBox.dataset.shop;
-shopBox.checked = true; fire(shopBox, "change");
-const shopKey = Object.keys(win.localStorage).find((k) => k.startsWith("ffv-shop-") && win.localStorage.getItem(k).includes(shopFood));
-check("Avbockning sparas för veckan", !!shopKey);
+const shopFoods = () => new Set([...win.document.querySelectorAll("[data-shop]")].map((el) => el.dataset.shop));
+const thisWeek = shopFoods();
 fire($("wk-next"), "click");
-check("Nästa vecka har en egen lista", !win.document.querySelector(`[data-shop="${shopFood}"]:checked`));
+const shared = [...shopFoods()].find((f) => thisWeek.has(f));
 fire($("wk-prev"), "click");
-check("Tillbaka till veckan: avbockningen finns kvar", win.document.querySelector(`[data-shop="${shopFood}"]`).checked);
+const shopBox = () => win.document.querySelector(`[data-shop="${shared}"]`);
+shopBox().checked = true; fire(shopBox(), "change");
+check("Avbockning sparas i den gemensamma listan", JSON.parse(win.localStorage.getItem("ffv-shop")).includes(shared) && !Object.keys(win.localStorage).some((k) => /^ffv-shop-\d+$/.test(k)));
+fire($("wk-next"), "click");
+check("Avbockad vara är avbockad även nästa vecka", shopBox().checked && shopBox().closest(".shop-item").classList.contains("done"));
+shopBox().checked = false; fire(shopBox(), "change");
+fire($("wk-prev"), "click");
+check("Bockar man ur den gäller det alla veckor", !shopBox().checked && !JSON.parse(win.localStorage.getItem("ffv-shop")).includes(shared));
+shopBox().checked = true; fire(shopBox(), "change");
+fire($("shop-clear"), "click"); await tick();
+check("Avmarkera alla frågar först, eftersom det gäller alla veckor", $("confirm").hasAttribute("open") && text("confirm-detail").includes("alla veckor"));
+await answer(false);
+check("Nej behåller avbockningarna", shopBox().checked);
+fire($("shop-clear"), "click"); await tick(); await answer(true);
+check("Ja avmarkerar allt", !win.document.querySelector("[data-shop]:checked") && JSON.parse(win.localStorage.getItem("ffv-shop")).length === 0);
 
 // Svenska format: 24-timmarsklocka och datum som ÅÅÅÅ-MM-DD
 check("Inga inbyggda tidsfält (de visar AM/PM i engelska webbläsare)", !win.document.querySelector('input[type="time"], input[type="date"], input[type="datetime-local"]'));
@@ -516,6 +527,9 @@ reload("äldre format", {
   ffv: JSON.stringify({ age: "45", weight: "95", height: "182", sex: "m", act: "1.55", rate: "0.75", eq: "gym", days: "4" }),
   "ffv-log": JSON.stringify({ entries: [{ date: "2026-09-01", weight: 97.5 }, { date: "2026-09-08", weight: 96.4, waist: 104, note: "bra vecka" }] }),
   "ffv-seed": "123456",
+  "ffv-shop-1": JSON.stringify(["gammal_vara"]),
+  [`ffv-shop-${Math.floor((Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()) - Date.UTC(2024, 0, 1)) / 864e5 / 7)}`]: JSON.stringify(["havregryn", "agg"]),
+  "ffv-shop-99999": JSON.stringify(["kvarg"]),
 });
 
 // Appen har en minuttimer för fastans läge; avsluta när testerna är klara.
