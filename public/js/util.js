@@ -123,6 +123,40 @@ export function shuffle(list, random) {
  * Tvåstegsknapp för att ta bort något: första klicket ber om bekräftelse, andra utför.
  * Returnerar true när borttagningen ska göras.
  */
+/**
+ * Fråga med en modal (#confirm i index.html) och svara true för Ja, false för Nej, Escape eller klick utanför.
+ * Webbläsare utan showModal (t.ex. jsdom) får dialogen öppnad med attributet open.
+ */
+export function confirmDialog(question, detail = "") {
+  const dialog = $("confirm");
+  $("confirm-text").textContent = question;
+  $("confirm-detail").textContent = detail;
+  $("confirm-detail").hidden = !detail;
+  return new Promise((resolve) => {
+    const finish = (yes) => {
+      dialog.removeEventListener("click", onClick);
+      dialog.removeEventListener("cancel", onCancel);
+      if (dialog.close) dialog.close();
+      else dialog.removeAttribute("open");
+      resolve(yes);
+    };
+    const onClick = (ev) => {
+      const answer = ev.target.closest("[data-answer]")?.dataset.answer;
+      if (answer) finish(answer === "yes");
+      else if (ev.target === dialog) finish(false); // klick på bakgrunden
+    };
+    const onCancel = (ev) => {
+      ev.preventDefault();
+      finish(false);
+    };
+    dialog.addEventListener("click", onClick);
+    dialog.addEventListener("cancel", onCancel);
+    if (dialog.showModal) dialog.showModal();
+    else dialog.setAttribute("open", "");
+    dialog.querySelector('[data-answer="no"]').focus();
+  });
+}
+
 export function confirmClick(button) {
   if (button.classList.contains("armed")) return true;
   const label = button.textContent;

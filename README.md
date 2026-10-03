@@ -41,6 +41,7 @@ public/js/data/recipes.js    Recept och säsongsråvaror
 public/js/data/exercises.js  Övningar från ExRx
 public/js/views/*.js         En fil per vy som ritar HTML (today, food, training-view, log-view, profile, settings)
 tests/run.mjs                Tester: beräkningarna och hela appen i en simulerad webbläsare
+tests/reload.mjs             Uppdateringstest: startar om appen med sparad data och kontrollerar att inget försvinner
 public/manifest.webmanifest  App-manifest (namn, ikoner, färger)
 public/sw.js                 Service worker för offline och installation
 public/icons/                Appikoner
@@ -99,6 +100,18 @@ Alla sökvägar är relativa, så appen fungerar även i en undermapp som GitHub
 Höj `VERSION` i `public/sw.js` (till exempel från `ffv-v7` till `ffv-v8`) när du ändrar filerna. Då hämtar installerade appar de nya filerna och rensar den gamla cachen.
 
 ## Data
+
+### Användardata vid uppdateringar
+
+Profil, logg, plankod, allergival, egna livsmedel och recept sparas i `localStorage` under nycklar som börjar på `ffv`. En ny version av appen (ny `VERSION` i `public/sw.js`) byter bara filerna i cachen; `localStorage` rörs inte. Därför gäller vid varje ändring:
+
+- **Byt aldrig namn på en nyckel** (`ffv`, `ffv-log`, `ffv-seed`, `ffv-tseed`, `ffv-salt`, `ffv-excl`, `ffv-myfoods`, `ffv-myrecipes`, `ffv-supps`, `ffv-shop-*`) och ändra inte formatet utan att läsa in det gamla formatet också.
+- **Nya fält ska ha ett standardvärde**, så att sparade profiler utan fältet fungerar.
+- `npm test` kör `tests/reload.mjs`, som startar om appen med sparad data, både den aktuella och ett äldre format, och kontrollerar att inget försvinner eller skrivs om.
+
+Lagringen hör till webbadressen. `gym.jonzzon.nu`, en `*.workers.dev`-adress och `localhost:8000` har var sin `localStorage`. Appen ber om beständig lagring (`navigator.storage.persist()`), så att webbläsaren inte rensar den när utrymmet blir trångt.
+
+**iPhone:** En app som lagts på hemskärmen har egen lagring, skild från Safari. Uppgifter som fyllts i i Safari följer inte med; fyll i profilen i appen, eller flytta dem med **Exportera JSON** i Safari och **Importera** i appen. Safari kan radera data för webbplatser som inte besökts på 7 dagar, men det gäller inte appar på hemskärmen.
 
 - Inställningar, allergival, egna livsmedel, avbockningar, logg och omslumpade veckor sparas i webbläsarens `localStorage` på varje enhet.
 - **Exportera JSON** sparar loggen, målvikten, inställningarna, allergivalen och dina egna livsmedel. **Importera JSON** läser in dem igen och slår ihop loggposterna per datum. Använd det för att flytta data mellan enheter och som säkerhetskopia.

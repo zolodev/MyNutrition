@@ -292,26 +292,51 @@ $("exswap").value = "1"; fire($("f"), "change");
 check("Mat har ingen slumpknapp och veckan ligger inte i en karusell", !$("wk-reroll") && !$("week").closest(".scroll-x") && $("pc-new").closest("[data-view]").dataset.view === "installningar");
 const exercises = () => [...$("sessions").querySelectorAll("a.row.exercise b")].map((b) => b.textContent).join("|");
 const dinners = () => [...$("week").querySelectorAll('.day li:not(:first-child) a[href^="#rc-"]')].map((a) => a.getAttribute("href")).join();
-const reshuffle = (scope) => { $("pc-scope").value = scope; if (!$("pc-new").classList.contains("armed")) fire($("pc-new"), "click"); fire($("pc-new"), "click"); };
+const tick = () => new Promise((r) => setTimeout(r, 0));
+const answer = async (yes) => { fire($("confirm").querySelector(`[data-answer="${yes ? "yes" : "no"}"]`), "click"); await tick(); };
+const reshuffle = async (scope) => { $("pc-scope").value = scope; fire($("pc-new"), "click"); await answer(true); };
 check("Recept och träning är förvalt", $("pc-scope").value === "both");
 const codeBefore = text("pc-code"), exBefore = exercises(), dinnersBefore2 = dinners();
 fire($("pc-new"), "click");
-check("Första trycket ber om bekräftelse och ändrar inget", text("pc-code") === codeBefore && text("pc-msg").includes("Bekräfta"));
-fire($("pc-new"), "click");
-check("Slumpa om båda ger nytt frö, nya rätter och nya övningar", text("pc-code") !== codeBefore && dinners() !== dinnersBefore2 && exercises() !== exBefore);
+check("Slumpa om öppnar en modal som frågar om valet", $("confirm").hasAttribute("open") && text("confirm-text") === "Är du säker på att du vill slumpa om recept och träning?");
+await answer(false);
+check("Nej stänger modalen och ändrar inget", !$("confirm").hasAttribute("open") && text("pc-code") === codeBefore && dinners() === dinnersBefore2);
+fire($("pc-new"), "click"); await answer(true);
+check("Ja slumpar om: nytt frö, nya rätter och nya övningar", !$("confirm").hasAttribute("open") && text("pc-code") !== codeBefore && dinners() !== dinnersBefore2 && exercises() !== exBefore);
+$("pc-scope").value = "training"; fire($("pc-new"), "click");
+check("Frågan följer valet i listan", text("confirm-text") === "Är du säker på att du vill slumpa om bara träningen?");
+await answer(false);
 let ex0 = exercises(), d0 = dinners();
-reshuffle("menu");
+await reshuffle("menu");
 check("Bara recepten: nya rätter, samma övningar", dinners() !== d0 && exercises() === ex0 && text("pc-code").includes("+"));
 ex0 = exercises(); d0 = dinners();
-reshuffle("training");
+await reshuffle("training");
 check("Bara träningen: nya övningar, samma rätter", exercises() !== ex0 && dinners() === d0);
 const sharedCode = text("pc-code"), sharedEx = exercises(), sharedD = dinners();
-reshuffle("both");
+await reshuffle("both");
 $("pc-input").value = sharedCode; fire($("pc-form"), "submit");
 check("En kod med eget träningsfrö ger tillbaka samma rätter och övningar", exercises() === sharedEx && dinners() === sharedD && text("pc-code") === sharedCode);
 check("Passindelningen är densamma efter omslumpning", [...$("sessions").querySelectorAll(".session h3")].map((h) => h.textContent).join() === "Helkropp,Överkropp,Ben");
 check("Inga JS-fel", errors.length === 0);
 if (errors.length) console.log(errors);
+
+// Uppdatering: starta appen på nytt med det som sparats, och med sparad data i ett äldre format
+const { spawnSync } = await import("child_process");
+const os = await import("os"), path = await import("path");
+const reload = (name, storage) => {
+  const file = path.join(os.tmpdir(), `ffv-reload-${process.pid}-${name}.json`);
+  fs.writeFileSync(file, JSON.stringify(storage));
+  const r = spawnSync(process.execPath, [new URL("./reload.mjs", import.meta.url).pathname, file, name], { stdio: "inherit" });
+  fs.rmSync(file, { force: true });
+  if (r.status !== 0) process.exitCode = 1;
+};
+console.log("\n# Uppdatering: appen startas om med sparad data");
+reload("omstart", Object.fromEntries(Object.keys(win.localStorage).map((k) => [k, win.localStorage.getItem(k)])));
+reload("äldre format", {
+  ffv: JSON.stringify({ age: "45", weight: "95", height: "182", sex: "m", act: "1.55", rate: "0.75", eq: "gym", days: "4" }),
+  "ffv-log": JSON.stringify({ entries: [{ date: "2026-09-01", weight: 97.5 }, { date: "2026-09-08", weight: 96.4, waist: 104, note: "bra vecka" }] }),
+  "ffv-seed": "123456",
+});
 
 // Appen har en minuttimer för fastans läge; avsluta när testerna är klara.
 process.exit(process.exitCode ?? 0);

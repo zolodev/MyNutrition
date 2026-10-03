@@ -1,6 +1,6 @@
 // Appens styrning: läser profilen, räknar om och ritar alla vyer, kopplar knappar och formulär och sköter flikarna.
 
-import { $, $$, num, radioValue, setRadio, load, save, remove, todayStr, dayToDate, dateToDay, svDate, weekIndexOf, confirmClick, DAYS_SHORT } from "./util.js";
+import { $, $$, num, radioValue, setRadio, load, save, remove, todayStr, dayToDate, dateToDay, svDate, weekIndexOf, confirmClick, confirmDialog, DAYS_SHORT } from "./util.js";
 import { computeTargets, kgPerWeek } from "./nutrition.js";
 import {
   loadPreferences, exclusions, saveExclusions, setExclusions, migrateExclusions, exclusionsAsJson, myFoods, addMyFood, removeMyFood, mergeMyFoods, cleanMyFood,
@@ -210,10 +210,11 @@ $("pc-copy").addEventListener("click", async () => {
     planMessage("Kopieringen nekades. Koden är markerad, så du kan kopiera den själv.");
   }
 });
-$("pc-new").addEventListener("click", (ev) => {
+$("pc-new").addEventListener("click", async () => {
   const scope = $("pc-scope").value;
   const what = RESHUFFLE[scope];
-  if (!confirmClick(ev.currentTarget)) return planMessage(`${what}. Tryck på Bekräfta för att fortsätta.`);
+  const choice = $("pc-scope").selectedOptions[0].textContent.toLowerCase();
+  if (!(await confirmDialog(`Är du säker på att du vill slumpa om ${choice}?`, `${what}.`))) return;
   const { seed, salts, trainingSeed } = planRandomness();
   const fresh = (old) => {
     let next = randomSeed();
@@ -600,6 +601,9 @@ connectCloud({ changed: update, status: (text) => ($("l-where").textContent = te
 if ("serviceWorker" in navigator && window.self === window.top && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
+// Be om beständig lagring, så att webbläsaren inte rensar profilen och loggen när utrymmet blir trångt.
+// Installerade appar (även på iPhone) får det oftast direkt; i en vanlig flik avgör webbläsaren.
+navigator.storage?.persist?.().catch(() => {});
 // Förslaget att installera visas en gång per besök tills användaren installerar eller väljer "Inte nu" (sparas i ffv-install-declined).
 // Chrome och Edge ger ett beforeinstallprompt-event; Safari på iPhone/iPad saknar det, där visas istället hur man lägger till appen.
 const INSTALL_DECLINED_KEY = "ffv-install-declined";
@@ -630,7 +634,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
   if (canSuggestInstall()) $("install-banner").hidden = false;
 });
 if (isIos && canSuggestInstall()) {
-  $("install-text").textContent = "Tryck på dela-knappen och välj Lägg till på hemskärmen, så öppnas Fettförbränning som en egen app och fungerar offline.";
+  $("install-text").textContent = "Tryck på dela-knappen och välj Lägg till på hemskärmen, så öppnas Fettförbränning som en egen app och fungerar offline. Appen på hemskärmen har egen lagring: fyll i profilen där, eller flytta dina uppgifter med Exportera JSON under Logg och Importera i appen.";
   $("install-accept").hidden = true;
   $("install-banner").hidden = false;
 }
