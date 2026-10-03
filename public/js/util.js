@@ -50,33 +50,9 @@ export const hhmm = (h) => `${String(Math.floor(h)).padStart(2, "0")}:${h % 1 ? 
 
 
 // ---------- Lagring i webbläsaren ----------
-// localStorage kan saknas eller vara spärrat (privat läge); då fungerar appen ändå, men sparar inget.
+// IndexedDB med localStorage som reserv; se storage.js.
 
-export function load(key, fallback) {
-  try {
-    const v = JSON.parse(localStorage.getItem(key) || "null");
-    return v == null ? fallback : v;
-  } catch {
-    return fallback;
-  }
-}
-
-export function save(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function remove(key) {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    /* ingen lagring tillgänglig */
-  }
-}
+export { load, save, remove } from "./storage.js";
 
 // ---------- Datum och veckor ----------
 // Veckor räknas som antal veckor sedan måndagen 2024-01-01, så att samma vecka alltid får samma nummer.

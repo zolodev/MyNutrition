@@ -29,6 +29,8 @@ public/index.html            Sidans HTML: flikarna Idag, Mat, Träning, Logg, Pr
 public/guide.html            Förklaringar till alla val och beräkningar
 public/css/app.css           Stilmall (färger, komponenter, vyer)
 public/js/backup.js          Export och import av allt sparat (fil eller text), även äldre exporter
+public/js/main.js            Startpunkt: läser in lagringen och startar appen
+public/js/storage.js         Lagring: IndexedDB, med localStorage som reserv
 public/js/app.js             Styrning: läser profilen, ritar om, kopplar knappar och formulär, flikar, PWA
 public/js/util.js            Hjälpfunktioner: DOM, talformat, lagring, datum, slump som går att upprepa
 public/js/nutrition.js       Energibehov, makromål och skalning av portioner
@@ -48,6 +50,7 @@ public/js/data/recipes.js    Recept och säsongsråvaror
 public/js/data/exercises.js  Övningar från ExRx
 public/js/views/*.js         En fil per vy som ritar HTML (today, food, training-view, log-view, profile, settings)
 tests/run.mjs                Tester: beräkningarna och hela appen i en simulerad webbläsare
+tests/storage.mjs            Lagringstest: IndexedDB, flytt från localStorage, reserv och radering
 tests/reload.mjs             Uppdateringstest: startar om appen med sparad data och kontrollerar att inget försvinner
 public/manifest.webmanifest  App-manifest (namn, ikoner, färger)
 public/sw.js                 Service worker för offline och installation
@@ -81,7 +84,7 @@ python3 -m http.server 8000 -d public
 ## Tester
 
 ```bash
-npm install     # en gång, installerar jsdom
+npm install     # en gång, installerar jsdom och fake-indexeddb (bara för testerna)
 npm test
 ```
 
@@ -111,17 +114,17 @@ Höj `VERSION` i `public/sw.js` (till exempel från `ffv-v7` till `ffv-v8`) när
 
 ### Användardata vid uppdateringar
 
-Profil, logg, plankod, allergival, egna livsmedel och recept sparas i `localStorage` under nycklar som börjar på `ffv`. En ny version av appen (ny `VERSION` i `public/sw.js`) byter bara filerna i cachen; `localStorage` rörs inte. Därför gäller vid varje ändring:
+Profil, logg, plankod, allergival, egna livsmedel och recept sparas i webbläsarens IndexedDB (databasen `fettforbranning`), med localStorage som reserv om IndexedDB saknas, under nycklar som börjar på `ffv`. Data från äldre versioner flyttas automatiskt från localStorage till IndexedDB vid start (`public/js/storage.js`). En ny version av appen (ny `VERSION` i `public/sw.js`) byter bara filerna i cachen; den sparade datan rörs inte. Därför gäller vid varje ändring:
 
 - **Byt aldrig namn på en nyckel** (`ffv`, `ffv-log`, `ffv-seed`, `ffv-tseed`, `ffv-salt`, `ffv-excl`, `ffv-myfoods`, `ffv-myrecipes`, `ffv-supps`, `ffv-shop-*`) och ändra inte formatet utan att läsa in det gamla formatet också.
 - **Nya fält ska ha ett standardvärde**, så att sparade profiler utan fältet fungerar.
 - `npm test` kör `tests/reload.mjs`, som startar om appen med sparad data, både den aktuella och ett äldre format, och kontrollerar att inget försvinner eller skrivs om.
 
-Lagringen hör till webbadressen. `gym.jonzzon.nu`, en `*.workers.dev`-adress och `localhost:8000` har var sin `localStorage`. Appen ber om beständig lagring (`navigator.storage.persist()`), så att webbläsaren inte rensar den när utrymmet blir trångt.
+Lagringen hör till webbadressen. `gym.jonzzon.nu`, en `*.workers.dev`-adress och `localhost:8000` har var sin lagring. Appen ber om beständig lagring (`navigator.storage.persist()`), så att webbläsaren inte rensar den när utrymmet blir trångt.
 
 **iPhone:** En app som lagts på hemskärmen har egen lagring, skild från Safari. Uppgifter som fyllts i i Safari följer inte med; fyll i profilen i appen, eller flytta dem med **Kopiera allt** i Safari och klistra in texten i guidens första steg i appen. Safari kan radera data för webbplatser som inte besökts på 7 dagar, men det gäller inte appar på hemskärmen.
 
-- Inställningar, allergival, egna livsmedel, avbockningar, logg och omslumpade veckor sparas i webbläsarens `localStorage` på varje enhet.
+- Inställningar, allergival, egna livsmedel, avbockningar, logg och omslumpade veckor sparas i webbläsarens IndexedDB (localStorage som reserv) på varje enhet.
 - **Exportera allt** (fil) och **Kopiera allt** (text) tar med allt sparat: profil, logg, plankod och frön, allergier och bortval, egna livsmedel och recept, tillskott och avbockningar (`public/js/backup.js`). Bara det som gäller enheten (svep-tipset, avböjd installation) stannar kvar.
 - **Import** av fil eller inklistrad text ersätter allt som är sparat på enheten, efter en varning om det redan finns data. Sidan laddas sedan om. Äldre exporter (version 1) läses också. Guiden erbjuder import som första steg.
 - **Radera all data** under Inställningar raderar allt appen har sparat, även godkännandet av villkoren, efter en bekräftelse. Appen börjar sedan om med villkoren.

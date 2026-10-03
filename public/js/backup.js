@@ -1,6 +1,8 @@
 // Export och import av allt användaren har sparat: profil, logg, plan, allergier, egna livsmedel och recept m.m.
-// Exporten är en ögonblicksbild av alla nycklar i localStorage som börjar på "ffv", så att nya nycklar kommer med
+// Exporten är en ögonblicksbild av allt sparat (alla nycklar som börjar på "ffv"), så att nya nycklar kommer med
 // automatiskt. En import ersätter allt sparat på enheten; äldre exportfiler (version 1) och rena logglistor läses också.
+
+import { load, save, remove, keys, clearAll, flush } from "./storage.js";
 
 const APP = "fettforbranningsveckan";
 const VERSION = 2;
@@ -8,28 +10,14 @@ const VERSION = 2;
 const DEVICE_ONLY = new Set(["ffv-install-declined", "ffv-swipe-hint", "ffv-terms"]);
 const isDataKey = (k) => (k === "ffv" || k.startsWith("ffv-")) && !DEVICE_ONLY.has(k);
 
-function storedKeys() {
-  try {
-    return Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).filter(isDataKey);
-  } catch {
-    return [];
-  }
-}
-
-const parse = (text) => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-};
+const storedKeys = () => keys().filter(isDataKey);
 
 /** Finns det sparad data på enheten som en import skulle skriva över? */
 export const hasStoredData = () => storedKeys().length > 0;
 
 /** Allt sparat som JSON-text, för fil eller urklipp. */
 export function exportText() {
-  const data = Object.fromEntries(storedKeys().sort().map((k) => [k, parse(localStorage.getItem(k))]));
+  const data = Object.fromEntries(storedKeys().sort().map((k) => [k, load(k)]));
   return JSON.stringify({ app: APP, version: VERSION, exported: new Date().toISOString(), data }, null, 2);
 }
 
@@ -79,15 +67,12 @@ export function describe(data) {
   return parts.join(", ") || "inställningar";
 }
 
-/** Radera allt appen har sparat, även det som bara gäller enheten (som godkända villkor). */
-export function eraseAll() {
-  for (const k of Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))) {
-    if (k === "ffv" || k.startsWith("ffv-")) localStorage.removeItem(k);
-  }
-}
+/** Radera allt appen har sparat, även det som bara gäller enheten (som godkända villkor). Ger ett löfte. */
+export const eraseAll = () => clearAll();
 
-/** Skriv en export till localStorage. Vid replaceAll tas allt annat sparat bort först. */
+/** Spara en export. Vid replaceAll tas allt annat sparat bort först. Ger ett löfte som är klart när allt är skrivet. */
 export function restore({ data, replaceAll }) {
-  if (replaceAll) for (const k of storedKeys()) localStorage.removeItem(k);
-  for (const [k, v] of Object.entries(data)) localStorage.setItem(k, JSON.stringify(v));
+  if (replaceAll) for (const k of storedKeys()) remove(k);
+  for (const [k, v] of Object.entries(data)) if (!save(k, v)) throw new Error("Kunde inte spara");
+  return flush();
 }

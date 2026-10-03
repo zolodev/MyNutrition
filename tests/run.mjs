@@ -3,6 +3,7 @@
 
 import { JSDOM } from "jsdom";
 import fs from "fs";
+const TERMS_VERSION = Number(fs.readFileSync(new URL("../public/js/app.js", import.meta.url), "utf8").match(/const TERMS_VERSION = (\d+)/)[1]);
 const todayStr = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
 
 // ---------- Del 1: beräkningar ----------
@@ -154,7 +155,7 @@ globalThis.window = win; win.scrollTo = () => {}; win.HTMLElement.prototype.scro
 win.addEventListener("error", (e) => errors.push(e.message));
 const $ = (id) => win.document.getElementById(id);
 const text = (id) => $(id).textContent.replace(/\s+/g, " ").trim();
-await import("../public/js/app.js");
+await import("../public/js/main.js");
 const fire = (el, type) => el.dispatchEvent(new win.Event(type, { bubbles: true }));
 const go = (hash) => { win.location.hash = hash; fire(win, "hashchange"); };
 const visible = () => [...win.document.querySelectorAll("[data-view]")].filter((v) => !v.hidden).map((v) => v.dataset.view).join(",");
@@ -195,7 +196,7 @@ check("Steg 4: träning, med gymdagar", text("wz-progress") === "Steg 4 av 5" &&
 next(); check("Steg 5: mat och allergier, inga förvalda", text("wz-progress") === "Steg 5 av 5" && text("wz-next") === "Klar" && $("wz-allergens").querySelectorAll("input").length > 10 && !$("wz-allergens").querySelector(":checked"));
 check("Fortfarande inget sparat innan Klar", win.localStorage.length === 0);
 next();
-check("Klar sparar profil och godkända villkor och stänger guiden", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv")).weight === "95" && JSON.parse(win.localStorage.getItem("ffv-terms")).version === 3 && $("f").closest("[data-view]").dataset.view === "profil");
+check("Klar sparar profil och godkända villkor och stänger guiden", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv")).weight === "95" && JSON.parse(win.localStorage.getItem("ffv-terms")).version === TERMS_VERSION && $("f").closest("[data-view]").dataset.view === "profil");
 check("Målviktsrutan visas också under Profil", !$("goal-info").hidden && $("goal-info").closest("[data-view]").dataset.view === "profil");
 
 
@@ -463,6 +464,12 @@ const importScenario = (scenario) => {
   if (r.status !== 0) process.exitCode = 1;
 };
 for (const scenario of ["guide", "skriv-över", "äldre", "radera"]) importScenario(scenario);
+
+console.log("\n# Lagring: IndexedDB med localStorage som reserv");
+{
+  const r = spawnSync(process.execPath, [new URL("./storage.mjs", import.meta.url).pathname], { stdio: "inherit" });
+  if (r.status !== 0) process.exitCode = 1;
+}
 
 console.log("\n# Uppdatering: appen startas om med sparad data");
 reload("första start", {});

@@ -1,4 +1,4 @@
-// Loggen: dagliga poster och statistik. Posterna sparas bara i webbläsaren (localStorage).
+// Loggen: dagliga poster och statistik. Posterna sparas bara i webbläsaren (se storage.js).
 
 import { load, save, dateToDay, dayToDate, todayStr } from "./util.js";
 

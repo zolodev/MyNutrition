@@ -101,7 +101,7 @@ function showGoalAdvice() {
 
 // Godkända villkor gäller enheten (följer inte med i exporten). Höj versionen när villkoren ändras.
 const TERMS_KEY = "ffv-terms";
-const TERMS_VERSION = 3; // 3: hobbyprojekt och att appen kan innehålla fel
+const TERMS_VERSION = 4; // 4: uppgifterna sparas i IndexedDB (localStorage som reserv)
 const termsAccepted = () => load(TERMS_KEY, null)?.version === TERMS_VERSION;
 const acceptTerms = () => save(TERMS_KEY, { version: TERMS_VERSION, accepted: new Date().toISOString() });
 
@@ -484,7 +484,7 @@ async function importBackup(text, say) {
   ))) return say("Importen avbröts. Inget har ändrats.");
   try {
     if (!$("wizard").hidden) acceptTerms(); // importen i guiden kommer efter villkorssteget
-    restore(backup);
+    await restore(backup);
   } catch {
     return say("Webbläsaren tillåter inte att uppgifterna sparas (t.ex. privat läge).");
   }
@@ -542,7 +542,7 @@ $("erase-all").addEventListener("click", async () => {
   );
   if (!sure) return;
   try {
-    eraseAll();
+    await eraseAll();
   } catch {
     /* ingen lagring att radera */
   }

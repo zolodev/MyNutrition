@@ -7,6 +7,7 @@
 
 import { JSDOM, VirtualConsole } from "jsdom";
 import fs from "fs";
+const TERMS_VERSION = Number(fs.readFileSync(new URL("../public/js/app.js", import.meta.url), "utf8").match(/const TERMS_VERSION = (\d+)/)[1]);
 
 const [scenario, exportFile] = process.argv.slice(2);
 const exported = fs.readFileSync(exportFile, "utf8");
@@ -30,14 +31,14 @@ const stored = () => Object.fromEntries(Object.keys(win.localStorage).map((k) =>
 const same = (a, b) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
 
 if (scenario === "skriv-över" || scenario === "radera") {
-  win.localStorage.setItem("ffv-terms", JSON.stringify({ version: 3, accepted: "2026-01-01T00:00:00.000Z" }));
+  win.localStorage.setItem("ffv-terms", JSON.stringify({ version: TERMS_VERSION, accepted: "2026-01-01T00:00:00.000Z" }));
   win.localStorage.setItem("ffv", JSON.stringify({ age: "50", weight: "110", height: "190", goal: "100", sex: "m" }));
   win.localStorage.setItem("ffv-log", JSON.stringify({ entries: [{ date: "2025-01-01", weight: 112 }] }));
   win.localStorage.setItem("ffv-shop-999", JSON.stringify(["agg"]));
   win.localStorage.setItem("ffv-swipe-hint", "true");
 }
 
-await import("../public/js/app.js");
+await import("../public/js/main.js");
 
 // Guidens villkor kommer först; importen finns i steg 2. Godkännandet gäller enheten och ingår inte i exporten.
 const acceptTerms = () => { $("wz-accept").checked = true; fire($("wz-next"), "click"); };
@@ -55,7 +56,7 @@ if (scenario === "guide") {
   fire($("wz-paste-go"), "click"); await tick();
   check("Ingen varning när enheten är tom", !$("confirm").hasAttribute("open"));
   check("Allt i exporten sparas i localStorage", same(withoutDevice(stored()), expected));
-  check("Godkända villkor sparas vid import i guiden", stored()["ffv-terms"]?.version === 3);
+  check("Godkända villkor sparas vid import i guiden", stored()["ffv-terms"]?.version === TERMS_VERSION);
   check("Sidan laddas om efter importen", reloaded);
 }
 
@@ -70,7 +71,7 @@ if (scenario === "skriv-över") {
   fire($("confirm").querySelector('[data-answer="yes"]'), "click"); await tick();
   const rest = withoutDevice(stored());
   check("Ja ersätter allt med exporten (gammal data och inköpslistor borta)", same(rest, expected) && !("ffv-shop-999" in rest));
-  check("Inställningar som bara gäller enheten ligger kvar (svep-tips, godkända villkor)", stored()["ffv-swipe-hint"] === true && stored()["ffv-terms"]?.version === 3);
+  check("Inställningar som bara gäller enheten ligger kvar (svep-tips, godkända villkor)", stored()["ffv-swipe-hint"] === true && stored()["ffv-terms"]?.version === TERMS_VERSION);
   check("Sidan laddas om efter importen", reloaded);
 }
 

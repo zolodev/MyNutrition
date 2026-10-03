@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sv">
+<html lang="sv" class="booting">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="css/app.css">
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/main.js"></script>
 </head>
 <body>
 <div class="app">
@@ -598,7 +598,7 @@
         <div class="rules">
           <div class="rule"><h3>Byggd på ExRx</h3><p>Beräkningarna och träningen bygger på ExRx som bakgrund och analys: formlerna för energibehov, BMI-gränserna, övningskatalogen och råden om fettförbränning. Källorna länkas i appen och i <a href="guide.html">förklaringarna</a>. Appen och utvecklaren har ingen koppling till ExRx.net.</p></div>
           <div class="rule"><h3>Rekommendationer</h3><p>Allt i appen är generella rekommendationer, inte medicinsk rådgivning. Rådgör med vården innan du ändrar kost eller träning om du har sjukdomar, mediciner eller är osäker.</p></div>
-          <div class="rule"><h3>Dina uppgifter</h3><p>Allt sparas bara i webbläsaren på den här enheten (localStorage). Inget skickas till någon server. Du flyttar och säkerhetskopierar själv med <a href="#logg">Exportera allt</a>.</p></div>
+          <div class="rule"><h3>Dina uppgifter</h3><p>Allt sparas bara i webbläsaren på den här enheten (IndexedDB, eller localStorage om IndexedDB inte finns). Inget skickas till någon server. Du flyttar och säkerhetskopierar själv med <a href="#logg">Exportera allt</a>.</p></div>
           <div class="rule"><h3>Öppen källkod</h3><p>Källkoden finns på <a href="https://github.com/zolodev/MyNutrition" target="_blank" rel="noopener">GitHub: zolodev/MyNutrition</a> och är licensierad under <a href="https://github.com/zolodev/MyNutrition/blob/main/LICENSE" target="_blank" rel="noopener">MIT-licensen</a>. Licensen gäller källkoden; texter och fakta från ExRx tillhör ExRx.net.</p></div>
         </div>
       </section>
@@ -614,7 +614,7 @@
           <h3>Ditt eget ansvar</h3>
           <p>Du ansvarar själv för hur du använder informationen: att kontrollera allergier och ingredienser, att anpassa träningen efter din hälsa och förmåga och att avbryta om något känns fel.</p>
           <h3>Dina uppgifter</h3>
-          <p>Allt du fyller i sparas endast i webbläsarens lokala lagring (localStorage) på den här enheten. Inga uppgifter skickas till någon server, och utvecklaren kan inte se dem. Typsnitten hämtas från Google Fonts, men utan dina uppgifter. Du kan exportera och importera uppgifterna som säkerhetskopia eller för att flytta dem till en annan enhet; filen eller texten hanteras då av dig, och du ansvarar för var den sparas och vem som får den. Rensar du webbläsarens data eller tar bort appen försvinner uppgifterna.</p>
+          <p>Allt du fyller i sparas endast i webbläsarens lokala lagring på den här enheten (IndexedDB, eller localStorage om webbläsaren inte har IndexedDB). Inga uppgifter skickas till någon server, och utvecklaren kan inte se dem. Typsnitten hämtas från Google Fonts, men utan dina uppgifter. Du kan exportera och importera uppgifterna som säkerhetskopia eller för att flytta dem till en annan enhet; filen eller texten hanteras då av dig, och du ansvarar för var den sparas och vem som får den. Rensar du webbläsarens data eller tar bort appen försvinner uppgifterna.</p>
           <h3>Dra tillbaka ditt godkännande</h3>
           <p>Du kan när som helst dra tillbaka ditt godkännande genom att radera alla uppgifter: under <b>Inställningar → Radera all data</b>, genom att rensa webbläsarens data för sidan eller genom att ta bort appen från enheten. Då raderas allt som är sparat, även godkännandet, och appen börjar om med villkoren nästa gång den öppnas. Exportera först om du vill behålla något.</p>
           <h3>I befintligt skick</h3>

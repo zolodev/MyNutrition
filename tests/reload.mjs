@@ -4,6 +4,7 @@
 
 import { JSDOM } from "jsdom";
 import fs from "fs";
+const TERMS_VERSION = Number(fs.readFileSync(new URL("../public/js/app.js", import.meta.url), "utf8").match(/const TERMS_VERSION = (\d+)/)[1]);
 
 const [file, name = "omstart"] = process.argv.slice(2);
 const stored = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -18,7 +19,7 @@ win.addEventListener("error", (e) => errors.push(e.message));
 const $ = (id) => win.document.getElementById(id);
 const check = (label, cond) => { console.log((cond ? "OK   " : "FEL  ") + `${name}: ${label}`); if (!cond) process.exitCode = 1; };
 
-await import("../public/js/app.js");
+await import("../public/js/main.js");
 
 if (!Object.keys(stored).length) {
   // Första start: guiden visas och inget sparas förrän den är klar; sedan finns profil och ett eget frö
@@ -44,7 +45,7 @@ if (!("ffv-terms" in stored)) {
   check("Utan godkända villkor visas villkoren först", !$("wizard").hidden && $("wz-progress").textContent === "Villkor" && $("f").closest("[data-view]").dataset.view === "profil");
   $("wz-accept").checked = true;
   $("wz-next").dispatchEvent(new win.Event("click"));
-  check("Godkännandet sparas och appen startar", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv-terms")).version === 3);
+  check("Godkännandet sparas och appen startar", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv-terms")).version === TERMS_VERSION);
 }
 
 const after = (k) => win.localStorage.getItem(k);
