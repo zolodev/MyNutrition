@@ -1,0 +1,12 @@
+# Lokala filer som inte hör hemma i repot
+.DS_Store
+Thumbs.db
+*.swp
+__pycache__/
+.claude/skills/exrx/scripts/__pycache__/
+.claude/settings.local.json
+# Exporterade loggar innehåller personliga hälsodata
+fettforbranning-logg-*.json
+
+# Beroenden för testerna
+node_modules/

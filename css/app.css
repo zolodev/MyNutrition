@@ -1,0 +1,340 @@
+/* Fettförbränningsveckan – stilmall
+   Ordning: färger och typsnitt · grund · formulär · appskal · komponenter · vyer */
+
+/* ---------- Färger och typsnitt ---------- */
+:root {
+  --bg: #edf1ee;
+  --surface: #ffffff;
+  --sunken: #e2e8e4;
+  --fg: #17211d;
+  --muted: #56645e;
+  --line: #cdd6d1;
+  --accent: #1d5c4c;
+  --accent-ink: #ffffff;
+  --accent-soft: #d5e6df;
+  --spice: #b87910;
+  --spice-soft: #f6e8cc;
+  --warn: #9a3b22;
+  --warn-soft: #f6dfd6;
+  --c-weight: #14896a; /* diagram: viktkurva och styrkepass (kontrollerad för färgblindhet) */
+  --c-plan: #c27c00;   /* diagram: planens linje och intervaller */
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+  --appbar-h: 57px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111715; --surface: #18211e; --sunken: #0d1311; --fg: #e2e9e5; --muted: #95a49d;
+    --line: #2b3833; --accent: #6cc0a5; --accent-ink: #0d1a15; --accent-soft: #1d3a31;
+    --spice: #e3b04d; --spice-soft: #3a2f17; --warn: #f0947a; --warn-soft: #3d221a;
+    --c-weight: #1f9e78; --c-plan: #c4860e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111715; --surface: #18211e; --sunken: #0d1311; --fg: #e2e9e5; --muted: #95a49d;
+  --line: #2b3833; --accent: #6cc0a5; --accent-ink: #0d1a15; --accent-soft: #1d3a31;
+  --spice: #e3b04d; --spice-soft: #3a2f17; --warn: #f0947a; --warn-soft: #3d221a;
+  --c-weight: #1f9e78; --c-plan: #c4860e;
+  color-scheme: dark;
+}
+
+/* ---------- Grund ---------- */
+* { box-sizing: border-box; }
+[hidden] { display: none !important; } /* dolda element ska vara dolda även om en klass sätter display */
+html { color-scheme: light; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+h1, h2, h3, h4 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(1.7rem, 6vw, 2.4rem); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 1.55rem; font-weight: 700; }
+h3 { font-size: 1.1rem; font-weight: 700; }
+p, ul, ol { margin: 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--spice); outline-offset: 2px; }
+code { font-family: var(--font-data); font-size: 0.85rem; background: var(--sunken); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.note { font-size: 0.85rem; color: var(--muted); max-width: 75ch; }
+.hint { font-size: 0.76rem; color: var(--muted); }
+.highlight { background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; }
+.scroll-x { overflow-x: auto; padding-bottom: 6px; }
+section { display: grid; gap: 16px; min-width: 0; scroll-margin-top: 64px; }
+.sec-head { display: grid; gap: 4px; }
+.sec-head p:not(.highlight) { color: var(--muted); max-width: 70ch; }
+
+/* ---------- Formulär och knappar ---------- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
+.form { display: grid; gap: 14px; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field label, .field .label { font-weight: 600; font-size: 0.86rem; }
+.field small { color: var(--muted); font-size: 0.78rem; line-height: 1.4; font-weight: 400; }
+.row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.row4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 520px) { .row4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+input[type="number"], input[type="text"], input[type="search"], select {
+  width: 100%; font: inherit; font-size: 0.95rem; padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--fg);
+}
+input[type="number"], #l-date, #l-test { font-family: var(--font-data); }
+input:invalid:not(:placeholder-shown) { border-color: var(--warn); }
+.help { font-weight: 500; font-size: 0.78rem; margin-left: 6px; }
+
+.btn { display: inline-block; font: inherit; font-weight: 600; font-size: 0.88rem; line-height: 1.3; padding: 9px 13px; border-radius: 8px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; text-decoration: none; text-align: center; }
+.btn:hover { background: var(--accent-soft); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.small { padding: 6px 10px; font-size: 0.82rem; }
+.linkbtn { font: inherit; font-size: 0.82rem; font-weight: 600; background: none; border: 0; padding: 4px 0; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.linkbtn:hover, .linkbtn.armed { color: var(--warn); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.status { font-size: 0.82rem; color: var(--muted); }
+
+/* Segmenterade val (radioknappar som ser ut som knappar) */
+.seg { display: flex; gap: 4px; background: var(--sunken); padding: 3px; border-radius: 8px; flex-wrap: wrap; }
+.seg label { flex: 1 1 auto; text-align: center; cursor: pointer; padding: 7px 8px; border-radius: 6px; font-weight: 600; font-size: 0.84rem; color: var(--muted); }
+.seg input, .daypick input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked), .daypick label:has(input:checked) { background: var(--accent); color: var(--accent-ink); }
+.seg label:has(input:focus-visible), .daypick label:has(input:focus-visible) { outline: 2px solid var(--spice); outline-offset: 1px; }
+.daypick { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.daypick label { display: grid; place-items: center; cursor: pointer; padding: 8px 0; border-radius: 7px; background: var(--sunken); font-weight: 600; font-size: 0.8rem; color: var(--muted); }
+#tdays-msg.bad { color: var(--warn); font-weight: 600; }
+.date-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
+.input-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+
+/* Kryssrutor som etiketter (allergier, ingredienser) */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-check { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); cursor: pointer; font-size: 0.86rem; line-height: 1.3; }
+.chips.small .chip-check { padding: 4px 9px; font-size: 0.8rem; }
+.chip-check input { accent-color: var(--warn); width: 16px; height: 16px; margin: 0; }
+.chip-check:has(input:checked) { background: var(--warn-soft); border-color: var(--warn); }
+.chip-check:has(input:focus-visible) { outline: 2px solid var(--spice); outline-offset: 1px; }
+
+/* ---------- Appskal: toppfält, vyer och flikrad ----------
+   Appen fyller skärmen som en kolumn: toppfält, innehåll som scrollar, flikrad. Flikraden är en vanlig del av
+   layouten (inte fast positionerad), så den syns alltid, även när mobilens adressfält visas eller döljs. */
+html, body { height: 100%; }
+body { overflow: hidden; }
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.appbar { flex: none; z-index: 20; display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: var(--appbar-h); padding: max(8px, env(safe-area-inset-top, 0px)) 16px 8px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.brand { font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; color: var(--fg); text-decoration: none; letter-spacing: -0.01em; }
+.appbar-actions { display: flex; align-items: center; gap: 6px; }
+.iconbtn { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; color: var(--fg); text-decoration: none; }
+.iconbtn:hover, .iconbtn[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+.views { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.view { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 32px; }
+.view, .subview { display: grid; gap: 36px; min-width: 0; }
+.tabbar { flex: none; z-index: 20; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; background: var(--surface); border-top: 1px solid var(--line); padding: 6px 8px max(10px, env(safe-area-inset-bottom, 0px)); box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06); }
+.tab { display: grid; justify-items: center; align-content: center; gap: 3px; min-height: 58px; padding: 6px 0; border-radius: 12px; font-size: 0.78rem; font-weight: 600; color: var(--muted); text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.tab svg { width: 26px; height: 26px; }
+.tab[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
+.tab[aria-current="page"] svg { stroke-width: 2.3; }
+.subtabs { position: sticky; top: 0; z-index: 10; display: flex; gap: 4px; padding: 3px; background: var(--sunken); border-radius: 9px; }
+.subtabs a { flex: 1; text-align: center; padding: 8px 6px; border-radius: 7px; font-weight: 600; font-size: 0.9rem; color: var(--muted); text-decoration: none; }
+.subtabs a[aria-current="page"] { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+
+/* Svep mellan flikar: den nya fliken glider in från sidan */
+@keyframes slide-from-right { from { transform: translateX(24px); opacity: 0.4; } }
+@keyframes slide-from-left { from { transform: translateX(-24px); opacity: 0.4; } }
+.view.slide-from-right { animation: slide-from-right 0.18s ease-out; }
+.view.slide-from-left { animation: slide-from-left 0.18s ease-out; }
+@media (prefers-reduced-motion: reduce) { .view.slide-from-right, .view.slide-from-left { animation: none; } }
+.views { touch-action: pan-y; }
+.swipe-hint { position: fixed; left: 50%; top: calc(var(--appbar-h) + 12px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); z-index: 30; background: var(--fg); color: var(--bg); font-size: 0.85rem; font-weight: 600; padding: 8px 14px; border-radius: 99px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2); white-space: nowrap; pointer-events: none; }
+
+/* ---------- Komponenter ---------- */
+
+/* Nyckeltal i rutor */
+.tiles { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tiles.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 640px) { .tiles.four, .tiles.three.wrap { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { background: var(--surface); padding: 14px; display: grid; gap: 2px; min-width: 0; }
+.tile .v { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.tile .v small { font-family: var(--font-body); font-size: 0.85rem; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+.tile .sub { font-size: 0.8rem; color: var(--muted); }
+.tile .sub.up { color: var(--warn); }
+.tile .sub.down { color: var(--c-weight); }
+.tile.main { background: var(--accent); color: var(--accent-ink); }
+.tile.main .eyebrow, .tile.main .v small, .tile.main .sub { color: var(--accent-ink); opacity: 0.85; }
+
+/* Meddelanden */
+.flag { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: var(--warn-soft); font-size: 0.9rem; }
+.flag b { color: var(--warn); }
+.flag.good { background: var(--accent-soft); }
+.flag.good b { color: var(--accent); }
+.flag.tip-example { background: var(--spice-soft); display: block; }
+.safety { background: var(--warn-soft); border-radius: var(--r); padding: 16px 18px; display: grid; gap: 6px; }
+.safety h3 { color: var(--warn); }
+
+/* Råd i korta stycken */
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.rule { border-left: 3px solid var(--spice); padding: 2px 0 2px 12px; display: grid; gap: 4px; }
+.rule p { color: var(--muted); font-size: 0.9rem; }
+
+/* Lista med klickbara rader: hela raden är länken eller knappen */
+.list { display: grid; gap: 8px; }
+.row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; color: var(--fg); text-decoration: none; min-height: 56px; }
+a.row:hover, summary.row:hover { border-color: var(--accent); }
+.row .lead { font-family: var(--font-data); font-weight: 500; color: var(--accent); }
+.row .main { display: grid; min-width: 0; }
+.row .main small, .row .kind { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.row .main b { font-weight: 600; }
+.row .end { font-family: var(--font-data); font-size: 0.8rem; color: var(--muted); text-align: right; white-space: nowrap; }
+.row.accent { border-left: 4px solid var(--c-weight); }
+.chevron { width: 18px; height: 18px; color: var(--muted); flex: none; transition: transform 0.15s; }
+@media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
+
+/* Tabeller */
+table.data { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 520px; }
+table.data th { text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; padding: 4px 8px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.data td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.data td.num { white-space: nowrap; }
+
+/* Tidslinje över dygnet: färgade fält, etiketter under i textfärg */
+.timeline { display: grid; gap: 6px; }
+.tl-track { position: relative; height: 26px; background: var(--sunken); border-radius: 8px; overflow: hidden; }
+.tl-seg { position: absolute; top: 0; bottom: 0; }
+.tl-mark { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--fg); }
+.tl-labels { position: relative; }
+.tl-label { position: absolute; display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 600; color: var(--fg); white-space: nowrap; line-height: 1.2; }
+.tl-label i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.tl-label i.mark { width: 2px; height: 12px; border-radius: 0; background: var(--fg); }
+.tl-axis { position: relative; height: 14px; font-family: var(--font-data); font-size: 0.7rem; color: var(--muted); }
+.tl-axis span { position: absolute; transform: translateX(-50%); }
+.tl-axis span:first-child { transform: none; }
+.tl-axis span:last-child { transform: translateX(-100%); }
+.eat { background: var(--accent); }
+.str { background: var(--c-weight); }
+.int { background: var(--c-plan); }
+.walk { background: repeating-linear-gradient(135deg, var(--muted) 0 4px, transparent 4px 8px); }
+
+/* Små etiketter */
+.chip { display: inline-block; font-size: 0.74rem; font-weight: 700; padding: 3px 8px; border-radius: 99px; }
+.chip.str { color: var(--accent-ink); background: var(--accent); }
+.chip.int { background: var(--spice-soft); color: var(--spice); }
+.chip.rest { background: var(--sunken); color: var(--muted); }
+.chip.season { background: var(--accent-soft); color: var(--accent); }
+
+/* ---------- Idag ---------- */
+.fast-card { display: grid; gap: 14px; }
+.fast-now { display: grid; gap: 4px; }
+.fast-now b { font-family: var(--font-display); font-size: 1.3rem; }
+.fast-now span { color: var(--muted); font-size: 0.9rem; }
+.meter { height: 10px; border-radius: 99px; background: var(--sunken); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.meter.fasting i { background: var(--c-plan); }
+.fast-plan { list-style: none; padding: 0; display: grid; gap: 6px; font-size: 0.92rem; }
+.fast-plan li { padding-left: 12px; border-left: 3px solid var(--line); }
+.fast-plan li.warn { border-left-color: var(--warn); }
+input[type="time"] { width: 100%; font: inherit; font-family: var(--font-data); font-size: 1rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--fg); }
+.today-head { display: grid; gap: 4px; }
+.today-head p { color: var(--muted); }
+
+/* ---------- Mat: veckan ---------- */
+.weeknav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; }
+.weeknav-arrow { font: inherit; font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; line-height: 1; width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+.weeknav-arrow:hover { background: var(--accent-soft); }
+.weeknav-label { display: grid; min-width: 150px; }
+.weeknav-label .num { font-size: 0.8rem; color: var(--muted); }
+.weeknav-title { font-family: var(--font-display); font-weight: 800; font-size: 1.25rem; line-height: 1.2; }
+.weeknav-actions { margin-left: auto; }
+@media (max-width: 520px) { .weeknav-actions { margin-left: 0; width: 100%; } }
+.week { display: grid; grid-template-columns: repeat(7, minmax(150px, 1fr)); gap: 8px; }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.day h3 { font-size: 1.05rem; font-weight: 800; }
+.day ul { list-style: none; padding: 0; display: grid; gap: 4px; font-size: 0.84rem; }
+.day li a { display: block; padding: 5px 6px; margin: 0 -6px; border-radius: 6px; color: var(--fg); text-decoration: none; }
+.day li a:hover { background: var(--accent-soft); }
+.day li small { color: var(--muted); display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.day .tot { border-top: 1px solid var(--line); padding-top: 6px; font-size: 0.78rem; color: var(--muted); }
+
+/* ---------- Mat: recept (rad som fälls ut) ---------- */
+details.recipe { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+details.recipe > summary { list-style: none; border: 0; cursor: pointer; }
+details.recipe > summary::-webkit-details-marker { display: none; }
+details.recipe[open] > summary .chevron { transform: rotate(90deg); }
+details.recipe[open] { border-color: var(--accent); }
+.recipe-body { display: grid; gap: 10px; padding: 0 14px 14px; }
+.macros { display: flex; gap: 12px; flex-wrap: wrap; font-family: var(--font-data); font-size: 0.8rem; color: var(--muted); }
+.macros b { color: var(--fg); font-weight: 500; }
+.ingredients { padding: 0; list-style: none; display: grid; gap: 3px; font-size: 0.9rem; }
+.ingredients li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dotted var(--line); padding-bottom: 3px; }
+.ingredients .q { font-family: var(--font-data); white-space: nowrap; color: var(--muted); }
+.recipe .alt { font-size: 0.84rem; background: var(--spice-soft); border-radius: 7px; padding: 8px 10px; }
+.recipe .adapt { font-size: 0.82rem; color: var(--muted); border-left: 3px solid var(--warn); padding-left: 8px; }
+.recipe .used { font-size: 0.78rem; color: var(--muted); }
+
+/* ---------- Mat: inköpslista ---------- */
+.shop-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.shop-bar .num { font-weight: 600; }
+.shop { columns: 2 280px; column-gap: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; }
+.shop-group { break-inside: avoid; margin-bottom: 14px; }
+.shop-group h4 { margin-bottom: 4px; font-size: 0.95rem; }
+.shop-item { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 0; border-bottom: 1px dotted var(--line); font-size: 0.92rem; cursor: pointer; }
+.shop-item input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); flex: none; }
+.shop-item .name { flex: 1; min-width: 0; }
+.shop-item .q { font-family: var(--font-data); color: var(--muted); white-space: nowrap; }
+.shop-item.done .name, .shop-item.done .q { text-decoration: line-through; color: var(--muted); opacity: 0.7; }
+
+/* ---------- Träning: ett pass per rad, varje övning är en klickbar rad ---------- */
+.sessions { display: grid; gap: 16px; }
+.session { display: grid; gap: 8px; }
+.session-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.session-head span { font-size: 0.82rem; color: var(--muted); }
+.exercise { grid-template-columns: minmax(0, 1fr) auto auto; }
+.exercise .end { display: grid; justify-items: end; color: var(--fg); }
+.exercise .end small { color: var(--muted); font-family: var(--font-body); }
+.circuit { display: grid; gap: 6px; background: var(--spice-soft); border-radius: var(--r); padding: 10px; }
+.circuit-head { padding: 2px 4px; }
+.circuit-head small { display: block; color: var(--muted); font-size: 0.8rem; }
+
+/* ---------- Logg ---------- */
+.log-grid { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 1000px) { .log-grid { grid-template-columns: minmax(0, 1fr); } }
+.log-stats { display: grid; gap: 12px; min-width: 0; }
+.chart { position: relative; padding: 8px; }
+#l-chart { width: 100%; height: auto; display: block; font-family: var(--font-data); }
+#l-chart .grid { stroke: var(--line); stroke-width: 1; }
+#l-chart .axis { fill: var(--muted); font-size: 11px; }
+#l-chart .raw { fill: var(--muted); opacity: 0.55; }
+#l-chart .avg { fill: none; stroke: var(--c-weight); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+#l-chart .avg-end { fill: var(--c-weight); stroke: var(--surface); stroke-width: 2; }
+#l-chart .plan { fill: none; stroke: var(--c-plan); stroke-width: 2; stroke-dasharray: 6 5; }
+#l-chart .goal { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 2 4; }
+#l-chart .lbl { font-size: 11px; font-weight: 500; fill: var(--fg); }
+#l-chart .cross { stroke: var(--muted); stroke-width: 1; }
+#l-chart .empty { fill: var(--muted); font-size: 13px; font-family: var(--font-body); }
+.tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 0.78rem; line-height: 1.4; padding: 6px 9px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -110%); }
+.chart-key { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); }
+.chart-key i { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid; vertical-align: middle; margin-right: 6px; }
+.log-table td:last-child { white-space: nowrap; }
+
+/* ---------- Profil ---------- */
+.projection { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.9rem; color: var(--muted); }
+.projection b { color: var(--fg); }
+.calc { display: grid; gap: 8px; }
+.calc ol { padding-left: 1.2em; display: grid; gap: 6px; }
+.saved { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.8rem; color: var(--accent); font-weight: 600; border-top: 1px solid var(--line); padding-top: 10px; }
+.sources { columns: 2 280px; column-gap: 28px; padding-left: 1.1em; font-size: 0.9rem; }
+.sources li { margin-bottom: 4px; break-inside: avoid; }
+
+/* ---------- Inställningar ---------- */
+textarea { width: 100%; font: inherit; font-size: 0.95rem; padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--fg); resize: vertical; }
+.mr-items { display: grid; gap: 6px; }
+.mr-item { display: grid; grid-template-columns: minmax(0, 1fr) 90px auto; gap: 6px; align-items: center; }
+.supplements-info { display: grid; gap: 12px; }
+.chip-check.positive:has(input:checked) { background: var(--accent-soft); border-color: var(--accent); }
+.chip-check.positive input { accent-color: var(--accent); }
+.plancode { display: grid; gap: 8px; }
+.plancode .code { font-size: 1.7rem; font-weight: 500; letter-spacing: 0.06em; color: var(--accent); overflow-wrap: anywhere; user-select: all; }
+#pc-input { font-family: var(--font-data); text-transform: uppercase; letter-spacing: 0.04em; }
+.search { max-width: 420px; background: var(--surface); }
+.ex-foods { display: grid; gap: 6px; }
+.ex-cat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 0 12px; }
+.ex-cat summary { font-weight: 700; cursor: pointer; padding: 12px 0; }
+.ex-cat summary span { font-weight: 500; color: var(--warn); font-size: 0.85rem; margin-left: 6px; }
+.ex-cat .chips { padding: 0 0 12px; }
+.my-food { grid-template-columns: minmax(0, 1fr) auto; }
+.my-food small { display: block; color: var(--muted); font-family: var(--font-data); font-size: 0.78rem; }
+.plan-steps { display: grid; gap: 8px; }
+.plan-steps ol { padding-left: 1.2em; display: grid; gap: 4px; }

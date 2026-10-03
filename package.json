@@ -1,0 +1,13 @@
+{
+  "name": "fettforbranningsveckan",
+  "private": true,
+  "type": "module",
+  "description": "Personlig veckoplan för viktnedgång som installerbar webbapp (PWA).",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node tests/run.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}

@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Personlig veckoplan för viktnedgång: kalorimål, styrkeprogram med ExRx-övningar, säsongsrecept, fasta 16:8 och logg.">
+<meta name="theme-color" content="#1d5c4c" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111715" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Fettförbränning">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Fettförbränningsveckan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/app.css">
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<div class="app">
+  <header class="appbar">
+    <a class="brand" href="#idag">Fettförbränning</a>
+    <div class="appbar-actions">
+      <button type="button" class="btn small" id="install" hidden>Installera appen</button>
+      <a class="iconbtn" href="guide.html" aria-label="Förklaringar" title="Förklaringar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .8c0 1.8-2.5 2.2-2.5 3.8"/><path d="M12 17.2h.01"/></svg></a>
+      <a class="iconbtn" href="#installningar" aria-label="Inställningar" title="Inställningar" data-tab="installningar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    </div>
+  </header>
+
+  <main class="views">
+
+    <!-- ============ Idag ============ -->
+    <div class="view" data-view="idag">
+      <section id="idag">
+        <div class="today-head">
+          <span class="eyebrow" id="td-date"></span>
+          <h1 id="td-title">Idag</h1>
+          <p id="td-sub"></p>
+        </div>
+        <p class="flag good" id="td-profile" hidden><b>Kom igång</b><span>Fyll i din <a href="#profil">profil</a> så räknas kalorimål, träningspass och recept om efter dig. Allergier och ingredienser du inte äter ställer du in under <a href="#installningar">Inställningar</a>.</span></p>
+        <div class="tiles three" id="td-targets"></div>
+        <div class="timeline" id="td-timeline" role="img"></div>
+      </section>
+
+      <section id="fastan">
+        <div class="sec-head"><span class="eyebrow">Periodisk fasta</span><h2>Fastan i dag</h2><p>Åt du vid en annan tid än planen, till exempel hoppade över frukosten och åt först vid lunch? Fyll i tiden så räknas resten av dagen om.</p></div>
+        <div class="card fast-card">
+          <div class="fast-now" id="fs-now" role="status"></div>
+          <div class="row2">
+            <div class="field">
+              <label for="fs-first">Första måltiden</label>
+              <div class="input-row"><input type="time" id="fs-first" step="300"><button type="button" class="btn small" data-now="fs-first">Nu</button></div>
+              <small id="fs-first-hint"></small>
+            </div>
+            <div class="field">
+              <label for="fs-last">Sista måltiden klar</label>
+              <div class="input-row"><input type="time" id="fs-last" step="300"><button type="button" class="btn small" data-now="fs-last">Nu</button></div>
+              <small id="fs-last-hint"></small>
+            </div>
+          </div>
+          <ul class="fast-plan" id="fs-plan"></ul>
+          <button type="button" class="linkbtn" id="fs-reset" hidden>Tillbaka till planens tider</button>
+        </div>
+      </section>
+
+      <section id="dagens-mat">
+        <div class="sec-head"><span class="eyebrow">Dagens mat</span><h2>Recept för i dag</h2><p>Tryck på en måltid för att se ingredienser och hur du lagar den.</p></div>
+        <div class="list" id="td-food"></div>
+      </section>
+
+      <section id="dagens-traning">
+        <div class="sec-head"><span class="eyebrow">Dagens träning</span><h2 id="td-train-title">Träning</h2><p id="td-train-sub"></p></div>
+        <div id="td-training"></div>
+        <div id="td-supps-box" hidden>
+          <h3>Tillskott i dag</h3>
+          <ul class="fast-plan" id="td-supps"></ul>
+        </div>
+      </section>
+
+      <div class="actions"><a class="btn primary" href="#logg">Logga dagens vikt</a><a class="btn" href="#inkop">Inköpslistan</a><a class="btn" href="#vecka">Hela veckan</a></div>
+
+    </div>
+
+    <!-- ============ Mat ============ -->
+    <div class="view" data-view="mat" hidden>
+      <nav class="subtabs" aria-label="Mat">
+        <a href="#vecka" data-sub="vecka">Veckan</a><a href="#recept" data-sub="recept">Recept</a><a href="#inkop" data-sub="inkop">Handla</a>
+      </nav>
+
+      <div class="subview" data-subview="vecka">
+        <section id="vecka">
+          <div class="sec-head">
+            <span class="eyebrow">Översikt</span>
+            <h2>Veckan dag för dag</h2>
+            <p>Två måltider om dagen: frukost och en eftermiddagsmåltid med efterrätt. Menyn roterar varje vecka och följer säsongen i Norrland, och två veckor i följd delar aldrig rätt. Samma vecka visar alltid samma meny, så du kan planera och handla i förväg. Slumpar du om en vecka ändras också veckorna efter den.</p>
+          </div>
+          <div class="weeknav">
+            <button type="button" class="weeknav-arrow" id="wk-prev" aria-label="Föregående vecka">‹</button>
+            <div class="weeknav-label"><span class="weeknav-title" id="wk-title">Vecka</span><span class="num" id="wk-range"></span></div>
+            <button type="button" class="weeknav-arrow" id="wk-next" aria-label="Nästa vecka">›</button>
+            <div class="actions weeknav-actions">
+              <button type="button" class="btn primary" id="wk-reroll">Slumpa om veckan</button>
+              <button type="button" class="btn" id="wk-reset" hidden>Återställ</button>
+              <button type="button" class="btn" id="wk-today" hidden>Till denna vecka</button>
+            </div>
+          </div>
+          <div class="scroll-x"><div class="week" id="week"></div></div>
+        </section>
+
+        <section id="fusk">
+          <div class="sec-head">
+            <span class="eyebrow">Fri måltid</span>
+            <h2>Fuska på lördagen, en måltid</h2>
+            <p>Lördagens eftermiddagsmåltid med efterrätt och godis är enligt planen ca <b class="num" id="cheat-plan">–</b> kcal. Vill du fuska byter du ut just den måltiden. Så mycket av veckans underskott kostar det:</p>
+          </div>
+          <div class="scroll-x"><table class="data" id="cheat-table"></table></div>
+          <div class="rules">
+            <div class="rule"><h3>När</h3><p>En gång i veckan, på lördagens eftermiddagsmåltid och inom ätfönstret. En måltid, inte en hel dag. Fastan dagen efter är som vanligt.</p></div>
+            <div class="rule"><h3>Vad</h3><p>Vad du vill: pizza, hamburgare, tacos eller en restaurangmiddag. Börja med proteinet och ät dig mätt men inte proppmätt. Lördagsgodiset utgår den veckan.</p></div>
+            <div class="rule"><h3>Inga straff</h3><p>Svält inte och träna inte extra dagen efter för att "betala tillbaka". Ta nästa måltid enligt planen. Vågen kan visa +1 kg vätska i 1–2 dagar, det är inte fett.</p></div>
+            <div class="rule"><h3>Hoppa över</h3><p>Om viktnedgången stått still i 2–3 veckor: behåll lördagsgodiset men skippa den fria måltiden tills kurvan rör sig igen.</p></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="subview" data-subview="recept" hidden>
+        <section id="recept">
+          <div class="sec-head">
+            <span class="eyebrow">Kost</span>
+            <h2 id="recipe-title">Veckans recept</h2>
+            <p id="scale-note"></p>
+            <p class="highlight" id="plan-macros"></p>
+          </div>
+          <h3>Eftermiddagsmåltider <span class="eyebrow">· mängder per portion, laga gärna dubbelt och frys in</span></h3>
+          <div class="list" id="r-dinner"></div>
+          <h3>Frukostar</h3>
+          <div class="list" id="r-breakfast"></div>
+          <h3>Efterrätter och tillägg <span class="eyebrow">· äts direkt efter eftermiddagsmåltiden</span></h3>
+          <div class="list" id="r-other"></div>
+          <h3>Lördagsgodis <span class="eyebrow">· i stället för godispåsen, som efterrätt på lördagen</span></h3>
+          <div class="list" id="r-treat"></div>
+          <p class="note">Näringsvärdena är uppskattningar från standardvärden för råvarorna (rå vikt för kött, fisk, ris, pasta och potatis; torr vikt för gryn, linser och pasta). Exakta värden finns i Livsmedelsverkets livsmedelsdatabas. Kryddor, citron, lime, vitlök, soja och örter räknas inte.</p>
+        </section>
+
+        <section id="mage">
+          <div class="sec-head">
+            <span class="eyebrow">Mage och lukt</span>
+            <h2>Mindre gaser från ägg och kål</h2>
+            <p>Måltider med ägg, kål eller baljväxter har fått 100 g ananas (frukost) eller mango (eftermiddag). Det är det enda undantaget från säsongsregeln, och frukten äts inne i måltiden så att fastan inte bryts.</p>
+          </div>
+          <div class="rules">
+            <div class="rule"><h3>Ananas och mango</h3><p>Färsk eller fryst ananas innehåller enzymet bromelain som bryter ner protein. Konserverad ananas är värmebehandlad och enzymet fungerar inte. Mango ger mest fibrer och smak. Att frukterna minskar lukt är dåligt studerat, så se det som ett försök.</p></div>
+            <div class="rule"><h3>Enzymtillskott</h3><p>Bäst dokumenterat är <b>alfa-galaktosidas</b> (t.ex. Beano), som tas vid första tuggan kål, bönor eller ärtor. Det bryter ner de sockerarter som tarmbakterierna annars jäser till gas. Ger mjölk, filmjölk eller kvarg gaser kan <b>laktas</b> eller laktosfria varianter hjälpa.</p></div>
+            <div class="rule"><h3>Lukten</h3><p>Den svavliga lukten kommer från proteinets svavel, och mycket protein ger mer. Koka kålen i stället för att äta den rå, krydda kålrätter med kummin eller fänkålsfrö, ät långsamt och ta en promenad efter maten. Pepparmynts- eller ingefärste går bra under fastan.</p></div>
+            <div class="rule"><h3>Om det inte hjälper</h3><p>Byt äggvitan mot kvarg eller keso några dagar och se om det blir bättre. Långvariga magbesvär är värda att ta upp med vårdcentralen.</p></div>
+          </div>
+          <p class="note"><b>Allergi:</b> inga apelsiner, mandariner eller clementiner. Citron och lime finns som smaksättning i några recept; den som inte tål dem kryssar i Citron eller Lime under Inställningar, så byts de mot vinäger.</p>
+        </section>
+      </div>
+
+      <div class="subview" data-subview="inkop" hidden>
+        <section id="inkop">
+          <div class="sec-head">
+            <span class="eyebrow">Handla</span>
+            <h2 id="shop-title">Inköpslista för veckan</h2>
+            <p>Summan av allt du äter under veckan, avrundat och sorterat efter avdelning i butiken. Bocka av när du handlar; bockarna sparas för veckan.</p>
+          </div>
+          <div class="shop-bar"><span class="num" id="shop-progress"></span><button type="button" class="btn" id="shop-clear" hidden>Avmarkera alla</button></div>
+          <div class="shop" id="shop"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ============ Träning ============ -->
+    <div class="view" data-view="traning" hidden>
+      <section id="traning">
+        <div class="sec-head">
+          <span class="eyebrow">Träningsprogram</span>
+          <h2 id="prog-title">Styrkepass</h2>
+          <p class="highlight" id="prog-week"></p>
+          <p id="prog-sub"></p>
+        </div>
+        <div class="sessions" id="sessions"></div>
+        <div class="rules">
+          <div class="rule"><h3>Progression</h3><p>Dubbel progression: när du klarar översta repantalet i alla set med god teknik, öka vikten 2,5–5&nbsp;% (eller svårare variant) och börja om i botten av spannet.</p></div>
+          <div class="rule"><h3>Vila och tempo</h3><p>Basövningar 90–120&nbsp;s vila, övriga 60–90&nbsp;s. Lämna 1–2 reps i reserv. Volymen hålls måttlig eftersom återhämtningen är sämre i underskott.</p></div>
+          <div class="rule"><h3>Bål</h3><p>Planka högst en gång i veckan. En gång i veckan körs en intensiv bålcirkel: fyra övningar i följd utan vila, tre varv. Gör den tyngre genom att lägga till vikt eller sekunder när du klarar alla varv. Övriga pass har sidoplanka, fågelhund och ryggbrygga som tränar att stå emot sidböjning, rotation och svank.</p></div>
+          <div class="rule"><h3>Kondition</h3><p>8&nbsp;000–10&nbsp;000 steg varje dag. Lägg till intervaller som markeras i schemat: 5 min uppvärmning, 8×30&nbsp;s hårt / 90&nbsp;s lugnt på cykel eller i backe.</p></div>
+        </div>
+        <div class="card supplements-info">
+          <span class="eyebrow">Kosttillskott</span>
+          <h3>PWO, vassle och kreatin</h3>
+          <div class="rules">
+            <div class="rule"><h3>PWO (koffein)</h3><p>200–400 mg koffein cirka 30 minuter före passet, enligt ExRx. Inte efter kl. 15 om du vill sova bra. En PWO utan kalorier bryter inte fastan i praktiken; en med socker, kolhydrater eller BCAA gör det.</p></div>
+            <div class="rule"><h3>Vassle</h3><p>25–30 g direkt efter passet om det dröjer till nästa måltid. ExRx påpekar att tajmingen spelar liten roll när dagens protein redan räcker, vilket planen ger. Vassle bryter fastan och ska tas inne i ätfönstret.</p></div>
+            <div class="rule"><h3>Kreatin</h3><p>3–5 g varje dag, även vilodagar (ExRx: 0,1 g/kg räcker, laddning behövs inte). Helst efter passet tillsammans med kolhydrater, alltså med eftermiddagsmåltiden. Inte samtidigt som PWO: en äldre studie visade att koffein kan motverka effekten.</p></div>
+            <div class="rule"><h3>Vågen</h3><p>Kreatin binder vatten i musklerna, så vikten kan gå upp 0,5–2 kg de första veckorna. Det är inte fett. Följ midjan och 7-dagarssnittet.</p></div>
+          </div>
+          <p class="note">Apelsinallergi: PWO och smaksatt vassle har ofta apelsinsmak eller tropisk smak med apelsin. Läs ingrediensförteckningen. Vilka tillskott du använder ställer du in under Inställningar; tipsen för dagen visas på Idag. Källor: <a href="https://exrx.net/Nutrition/Supplements/Creatine" target="_blank" rel="noopener">ExRx Creatine</a>, <a href="https://exrx.net/Nutrition/SupplementTidbits" target="_blank" rel="noopener">ExRx Supplement Tidbits</a>, <a href="https://exrx.net/Nutrition/Supplements/ProteinPowder" target="_blank" rel="noopener">ExRx Protein Powder</a>.</p>
+        </div>
+        <p class="note">Varför styrka först? I ExRx-studien med 40 kvinnor i 8 veckor tappade gruppen som bara bantade fettfri massa, medan gruppen som bantade och styrketränade behöll den. Att intervaller skulle ge "nio gånger" mer fettförlust per kalori kommer från en enda studie (Tremblay 1994). Intervaller är ett tidseffektivt tillskott, inte ett krav.</p>
+      </section>
+    </div>
+
+    <!-- ============ Logg ============ -->
+    <div class="view" data-view="logg" hidden>
+      <section id="logg">
+        <div class="sec-head">
+          <span class="eyebrow">Logg och statistik</span>
+          <h2>Följ din utveckling</h2>
+          <p>Logga vikt, mående och prestation, helst samma tid varje morgon. En post per dag; sparar du samma datum igen skrivs den över.</p>
+        </div>
+        <div class="log-grid">
+          <form class="card form" id="logf" autocomplete="off" novalidate>
+            <div class="field">
+              <label for="l-date">Datum <small>ÅÅÅÅ-MM-DD</small></label>
+              <div class="date-row">
+                <input type="text" id="l-date" inputmode="numeric" maxlength="10" placeholder="ÅÅÅÅ-MM-DD" pattern="\d{4}-\d{2}-\d{2}" autocomplete="off">
+                <button type="button" class="btn small" data-date-offset="0">Idag</button>
+                <button type="button" class="btn small" data-date-offset="-1">Igår</button>
+              </div>
+            </div>
+            <div class="row2">
+              <div class="field"><label for="l-weight">Vikt (kg)</label><input type="number" id="l-weight" min="30" max="300" step="0.1" placeholder="t.ex. 94,2"></div>
+              <div class="field"><label for="l-waist">Midja (cm) <small>valfritt</small></label><input type="number" id="l-waist" min="40" max="200" step="0.5"></div>
+            </div>
+            <div class="field"><label for="l-test">Testtid (mm:ss) <small>valfritt</small></label><input type="text" id="l-test" inputmode="numeric" placeholder="t.ex. 18:45"></div>
+            <div class="field">
+              <span class="label">Hur mår du?</span>
+              <div class="seg" role="radiogroup" aria-label="Hur mår du?">
+                <label><input type="radio" name="l-mood" value="1"><span>1 Dåligt</span></label>
+                <label><input type="radio" name="l-mood" value="2"><span>2</span></label>
+                <label><input type="radio" name="l-mood" value="3"><span>3 Okej</span></label>
+                <label><input type="radio" name="l-mood" value="4"><span>4</span></label>
+                <label><input type="radio" name="l-mood" value="5"><span>5 Toppen</span></label>
+              </div>
+            </div>
+            <div class="field">
+              <span class="label">Blev du snabbare eller starkare än förra passet?</span>
+              <div class="seg" role="radiogroup" aria-label="Prestation">
+                <label><input type="radio" name="l-perf" value="1"><span>Ja</span></label>
+                <label><input type="radio" name="l-perf" value="0"><span>Samma</span></label>
+                <label><input type="radio" name="l-perf" value="-1"><span>Sämre</span></label>
+                <label><input type="radio" name="l-perf" value="none"><span>Tränade inte</span></label>
+              </div>
+              <small>Testtiden är samma test varje gång, t.ex. 3 km rask promenad eller jogg. Lägre tid betyder snabbare.</small>
+            </div>
+            <div class="field"><label for="l-note">Anteckning <small>valfritt</small></label><input type="text" id="l-note" maxlength="200" placeholder="t.ex. sov dåligt, fri måltid i går"></div>
+            <div class="actions">
+              <button type="submit" class="btn primary">Spara logg</button>
+              <span class="status" id="l-msg" role="status"></span>
+            </div>
+            <div class="actions">
+              <button type="button" class="btn" id="l-export">Exportera JSON</button>
+              <label class="btn" for="l-import">Importera JSON</label>
+              <input type="file" id="l-import" accept="application/json,.json" hidden>
+              <button type="button" class="btn" id="l-copy">Kopiera JSON</button>
+            </div>
+            <p class="hint" id="l-where">Loggen sparas i den här webbläsaren. Exportera då och då som säkerhetskopia.</p>
+          </form>
+          <div class="log-stats">
+            <div class="tiles three" id="l-tiles"></div>
+            <div class="card chart">
+              <svg id="l-chart" viewBox="0 0 640 260" role="img" aria-label="Viktkurva"></svg>
+              <div class="tip" id="l-tip" hidden></div>
+            </div>
+            <div class="chart-key" id="l-key"></div>
+            <div class="flag" id="l-advice" hidden></div>
+          </div>
+        </div>
+        <div class="scroll-x"><table class="data log-table" id="l-table"></table></div>
+      </section>
+
+      <section id="uppfoljning">
+        <div class="sec-head">
+          <span class="eyebrow">Uppföljning</span>
+          <h2>Justera efter 2–3 veckor</h2>
+        </div>
+        <div class="rules">
+          <div class="rule"><h3>Mät</h3><p>Väg dig på morgonen 3–4 dagar i veckan och jämför veckomedel, inte enskilda dagar. Mät midjan en gång i veckan.</p></div>
+          <div class="rule"><h3>För långsamt</h3><p>Under 0,5&nbsp;%/vecka i 2–3 veckor: sänk med 150–200&nbsp;kcal eller lägg till 2&nbsp;000 steg per dag. Inte båda samtidigt.</p></div>
+          <div class="rule"><h3>För snabbt</h3><p>Över 1,2&nbsp;%/vecka eller sjunkande styrka: höj med 150–200&nbsp;kcal, helst kolhydrater runt passen.</p></div>
+        </div>
+        <p class="note">Beräkningen av energibehovet kan enligt ExRx avvika 20–30&nbsp;% hos friska personer. Siffrorna ovan är en startpunkt. Din faktiska viktkurva avgör.</p>
+      </section>
+    </div>
+
+    <!-- ============ Profil ============ -->
+    <div class="view" data-view="profil" hidden>
+      <section id="profil">
+        <div class="sec-head">
+          <span class="eyebrow">Profil</span>
+          <h2>Dina uppgifter</h2>
+          <p>Snabbast möjliga viktnedgång som du faktiskt behåller är <strong>cirka 1&nbsp;% av kroppsvikten per vecka</strong>. Fyll i dina uppgifter så räknas kalorimål, träningspass och recept om efter dig. Allt sparas i telefonen.</p>
+        </div>
+        <form class="card form" id="f" autocomplete="off">
+          <p class="flag tip-example" id="exnote">Formuläret är förifyllt med ett <b>exempel</b>. Byt till dina egna värden.</p>
+          <div class="field">
+            <span class="label">Kön</span>
+            <div class="seg" role="radiogroup" aria-label="Kön">
+              <label><input type="radio" name="sex" value="m" checked><span>Man</span></label>
+              <label><input type="radio" name="sex" value="k"><span>Kvinna</span></label>
+            </div>
+            <small>Rätterna och övningarna är desamma för båda; kalorier, protein och portioner räknas om.</small>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="age">Ålder</label><input type="number" id="age" min="18" max="90" value="40"></div>
+            <div class="field"><label for="weight">Vikt (kg)</label><input type="number" id="weight" min="40" max="250" step="0.1" value="95"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="height">Längd (cm)</label><input type="number" id="height" min="130" max="220" value="180"></div>
+            <div class="field"><label for="bf">Fett % <small>valfritt</small></label><input type="number" id="bf" min="5" max="60" step="0.1" placeholder="t.ex. 28"></div>
+          </div>
+          <div class="field"><label for="goal">Målvikt (kg)</label><input type="number" id="goal" min="35" max="250" step="0.5" value="85"></div>
+          <div class="field">
+            <label for="act">Vardagsaktivitet <a class="help" href="guide.html#aktivitet">Vad betyder valen?</a></label>
+            <select id="act">
+              <option value="1.2">Stillasittande (kontor, lite promenader)</option>
+              <option value="1.375" selected>Lätt aktiv (promenader, lätt jobb)</option>
+              <option value="1.55">Måttligt aktiv (mycket på fötterna)</option>
+              <option value="1.725">Mycket aktiv (fysiskt jobb)</option>
+            </select>
+            <small>Räkna inte med träningen här. ExRx påpekar att de flesta överskattar sin aktivitetsnivå.</small>
+          </div>
+          <div class="field">
+            <span class="label">Takt</span>
+            <div class="seg" role="radiogroup" aria-label="Takt">
+              <label><input type="radio" name="rate" value="0.5"><span>0,5 %/v</span></label>
+              <label><input type="radio" name="rate" value="0.75"><span>0,75 %/v</span></label>
+              <label><input type="radio" name="rate" value="1" checked><span>1 %/v max</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label">Utrustning</span>
+            <div class="seg" role="radiogroup" aria-label="Utrustning">
+              <label><input type="radio" name="eq" value="gym" checked><span>Gym</span></label>
+              <label><input type="radio" name="eq" value="db"><span>Hantlar</span></label>
+              <label><input type="radio" name="eq" value="bw"><span>Kroppsvikt</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label">Gymdagar</span>
+            <div class="daypick" id="tdays" role="group" aria-label="Gymdagar">
+              <label><input type="checkbox" data-day="0"><span>Mån</span></label><label><input type="checkbox" data-day="1"><span>Tis</span></label>
+              <label><input type="checkbox" data-day="2"><span>Ons</span></label><label><input type="checkbox" data-day="3"><span>Tor</span></label>
+              <label><input type="checkbox" data-day="4"><span>Fre</span></label><label><input type="checkbox" data-day="5"><span>Lör</span></label>
+              <label><input type="checkbox" data-day="6"><span>Sön</span></label>
+            </div>
+            <input type="hidden" id="tdays-val" value="0,2,4">
+            <small id="tdays-msg">Välj 3 eller 4 dagar. 3 dagar ger helkropp, överkropp och ben; 4 dagar ger över- och underkropp två gånger var.</small>
+          </div>
+          <div class="field">
+            <label for="exswap">Byt övningar</label>
+            <select id="exswap">
+              <option value="1" selected>Varje vecka</option>
+              <option value="2">Varannan vecka</option>
+              <option value="4">Var fjärde vecka</option>
+            </select>
+            <small>Passen är alltid desamma (helkropp, överkropp, ben), men övningarna i dem växlar. Byter du mer sällan är det lättare att öka vikten steg för steg i samma övning.</small>
+          </div>
+          <div class="field">
+            <label for="bmeal">Frukost</label>
+            <select id="bmeal">
+              <option value="F0" selected>Samma varje dag: ägg och kvarg med bär</option>
+              <option value="F2">Samma varje dag: äggröra på knäckebröd</option>
+              <option value="F5">Samma varje dag: omelett med kalkon</option>
+              <option value="F3">Samma varje dag: kvargskål med frukt</option>
+              <option value="F1">Samma varje dag: kvarggröt med bär</option>
+              <option value="rot">Variera, ny frukost varje dag</option>
+            </select>
+            <small>Samma frukost varje dag gör det lätt att handla och följa planen.</small>
+          </div>
+          <div class="field">
+            <label for="bfast">Frukost klockan</label>
+            <select id="bfast">
+              <option value="6">06:00</option><option value="6.5">06:30</option><option value="7" selected>07:00</option><option value="7.5">07:30</option>
+              <option value="8">08:00</option><option value="8.5">08:30</option><option value="9">09:00</option>
+            </select>
+            <small>Eftermiddagsmåltiden läggs 7 timmar senare. Sedan fastar du 16 timmar.</small>
+          </div>
+          <div class="saved" id="saved" hidden>
+            <span id="saved-text">Sparat i den här webbläsaren</span>
+            <button type="button" class="linkbtn" id="clear">Rensa mina uppgifter</button>
+          </div>
+          <p class="hint" id="saved-hint">Uppgifterna sparas bara i den här webbläsaren när du ändrar något. De skickas ingenstans.</p>
+        </form>
+      </section>
+
+      <section id="mal">
+        <div class="sec-head">
+          <span class="eyebrow">Energi &amp; makron</span>
+          <h2>Dina dagliga mål</h2>
+        </div>
+        <div class="tiles four" id="targets"></div>
+        <div class="projection" id="projection"></div>
+        <div id="flags"></div>
+        <div class="card calc">
+          <span class="eyebrow">Så räknades det</span>
+          <ol id="steps"></ol>
+        </div>
+      </section>
+
+      <section id="fasta">
+        <div class="sec-head">
+          <span class="eyebrow">Periodisk fasta</span>
+          <h2>16:8 med tidigt ätfönster</h2>
+          <p id="fast-sum"></p>
+        </div>
+        <h3>Ätfönster och fasta</h3>
+        <div class="timeline" id="tl-eat" role="img"></div>
+        <h3>När du ska träna</h3>
+        <div class="timeline" id="tl-train" role="img"></div>
+        <p class="note" id="tl-train-note"></p>
+        <div class="rules">
+          <div class="rule"><h3>Under fastan</h3><p>Vatten, kolsyrat vatten, svart kaffe och te utan mjölk och socker. Allt annat, även frukt, bryter fastan.</p></div>
+          <div class="rule"><h3>Frukt</h3><p>Ät frukt och bär <b>inne i måltiderna</b>, i frukosten eller som efterrätt, inte mellan dem. Frukten är redan inräknad i recepten.</p></div>
+          <div class="rule"><h3>Protein</h3><p>Med två måltider behöver varje måltid ungefär <b id="fast-protein">–</b> protein. Börja måltiden med proteinet.</p></div>
+          <div class="rule"><h3>Träning</h3><p>Styrkepasset 1–3 h före eftermiddagsmåltiden, så blir den din återhämtningsmåltid. Intervaller på förmiddagen när frukosten har lagt sig.</p></div>
+        </div>
+        <p class="note">Varför 16:8 och ätfönster tidigt på dagen? ExRx beskriver tidsbegränsat ätande, med 12–21 timmars daglig fasta, som den enklaste formen av periodisk fasta att hålla. Längre fasta än 16 h gör det svårt att få i sig tillräckligt med protein på två måltider. Ett tidigt fönster passar din frukost-och-eftermiddag-rytm, och studier på tidigt ätfönster har visat bättre insulinkänslighet än sent ätande. Men ExRx påpekar också att antalet måltider inte påverkar viktnedgången när kalorierna är desamma. Fastan gör det lättare att hålla underskottet, det är underskottet som ger viktnedgången.</p>
+      </section>
+
+      <section id="sakerhet">
+        <div class="safety">
+          <h3>Innan du börjar</h3>
+          <p>Planen är för friska vuxna. Prata med läkare eller dietist först om du är gravid eller ammar, har diabetes, hjärt-kärlsjukdom eller njursjukdom, tar blodtrycks- eller blodsockersänkande läkemedel, eller har haft ätstörning. Gå inte under 1&nbsp;500&nbsp;kcal (män) eller 1&nbsp;200&nbsp;kcal (kvinnor) per dag utan medicinsk uppföljning.</p>
+        </div>
+      </section>
+
+      <section id="kallor">
+        <div class="sec-head"><span class="eyebrow">Källor</span><h2>ExRx-sidor som planen bygger på</h2></div>
+        <ul class="sources">
+          <li><a href="https://exrx.net/Calculators/CalRequire" target="_blank" rel="noopener">Estimated Calorie Requirements</a></li>
+          <li><a href="https://exrx.net/FatLoss/EnergyBalance" target="_blank" rel="noopener">Energy Balance</a></li>
+          <li><a href="https://exrx.net/Nutrition/Macronutrients" target="_blank" rel="noopener">Macronutrients for Resistance Training</a></li>
+          <li><a href="https://exrx.net/Nutrition/Protein" target="_blank" rel="noopener">Protein</a></li>
+          <li><a href="https://exrx.net/Nutrition/Diets/Fasting" target="_blank" rel="noopener">Intermittent Fasting</a></li>
+          <li><a href="https://exrx.net/FatLoss/WTCalLBWStudy" target="_blank" rel="noopener">Weight training during caloric restriction</a></li>
+          <li><a href="https://exrx.net/FatLoss/WT-End" target="_blank" rel="noopener">Weight training with endurance training</a></li>
+          <li><a href="https://exrx.net/FatLoss/DietExStudy" target="_blank" rel="noopener">Effect of diet and exercise</a></li>
+          <li><a href="https://exrx.net/FatLoss/HIITvsET" target="_blank" rel="noopener">HIIT vs endurance training</a></li>
+          <li><a href="https://exrx.net/Questions/StarvationEffect" target="_blank" rel="noopener">Starvation effect</a></li>
+          <li><a href="https://exrx.net/Questions/WeightTrainingSplits" target="_blank" rel="noopener">Weight training program splits</a></li>
+          <li><a href="https://exrx.net/Lists/Directory" target="_blank" rel="noopener">Exercise Directory</a></li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- ============ Inställningar ============ -->
+    <div class="view" data-view="installningar" hidden>
+      <section id="plankod">
+        <div class="sec-head">
+          <span class="eyebrow">Dela planen</span>
+          <h2>Plankod</h2>
+          <p>Allt som slumpas fram, alltså veckornas recept, och ditt träningsupplägg sparas i en kod. Ger du koden till en vän får ni exakt samma rätter vecka för vecka och samma träningsprogram.</p>
+        </div>
+        <div class="card plancode">
+          <span class="eyebrow">Din kod</span>
+          <output class="code num" id="pc-code"></output>
+          <p class="hint" id="pc-what"></p>
+          <div class="actions">
+            <button type="button" class="btn primary" id="pc-copy">Kopiera koden</button>
+            <button type="button" class="btn" id="pc-new">Ny plankod</button>
+          </div>
+        </div>
+        <form class="card form" id="pc-form" autocomplete="off">
+          <div class="field">
+            <label for="pc-input">Använd en kod du har fått</label>
+            <div class="input-row">
+              <input type="text" id="pc-input" autocapitalize="characters" spellcheck="false" placeholder="t.ex. 7K2Q XM-G150">
+              <button type="submit" class="btn primary">Använd</button>
+            </div>
+          </div>
+          <p class="status" id="pc-msg" role="status"></p>
+        </form>
+        <p class="note">Kön, vikt, mål och allergier ingår inte i koden. Portionerna räknas efter den som använder koden, så en man och en kvinna med samma kod äter samma rätter och gör samma övningar, men med portioner efter sina egna kalori- och proteinmål. Byter du kön i profilen behålls rätterna och övningarna och portionerna räknas om. ExRx skiljer inte på övningar för män och kvinnor; vikterna väljer var och en efter sin styrka. Har ni olika allergival kan enstaka rätter skilja.</p>
+      </section>
+
+      <section id="anpassa">
+        <div class="sec-head">
+          <span class="eyebrow">Anpassa</span>
+          <h2>Allergier och livsmedel du inte äter</h2>
+          <p>Kryssa i det du inte vill eller kan äta. Recepten byter då ut det mot något likvärdigt, stryker det om det är en liten ingrediens, eller tar bort rätten om huvudingrediensen saknar ersättare. Valen sparas i webbläsaren.</p>
+        </div>
+        <p class="highlight" id="ex-sum"></p>
+        <h3>Allergener</h3>
+        <div class="chips" id="ex-allergens"></div>
+        <h3>Ingredienser jag inte äter</h3>
+        <p class="note">Kryssa i de ingredienser du vill ta bort ur recepten. Ikryssade ingredienser byts ut eller stryks och kommer aldrig med i inköpslistan.</p>
+        <input type="search" id="ex-search" class="search" placeholder="Sök ingrediens, t.ex. bönor eller tonfisk" aria-label="Sök ingrediens att ta bort">
+        <div class="ex-foods" id="ex-foods"></div>
+
+        <h3>Mina livsmedel</h3>
+        <p class="note">Lägg till ett eget livsmedel med näringsvärden per 100 g (står på förpackningen). Välj om det ska ersätta något i recepten, alltid eller bara när originalet är bortvalt.</p>
+        <form class="card form" id="mf" autocomplete="off">
+          <div class="row2">
+            <div class="field"><label for="mf-name">Namn</label><input type="text" id="mf-name" maxlength="60" placeholder="t.ex. Kycklinglårfilé" required></div>
+            <div class="field"><label for="mf-cat">Kategori</label><select id="mf-cat"></select></div>
+          </div>
+          <div class="row4">
+            <div class="field"><label for="mf-k">kcal</label><input type="number" id="mf-k" min="0" max="900" step="1" required></div>
+            <div class="field"><label for="mf-p">Protein g</label><input type="number" id="mf-p" min="0" max="100" step="0.1"></div>
+            <div class="field"><label for="mf-c">Kolhydr. g</label><input type="number" id="mf-c" min="0" max="100" step="0.1"></div>
+            <div class="field"><label for="mf-f">Fett g</label><input type="number" id="mf-f" min="0" max="100" step="0.1"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="mf-rep">Ersätter i recepten</label><select id="mf-rep"></select></div>
+            <div class="field"><label for="mf-mode">När</label><select id="mf-mode"><option value="excl">Bara när originalet är bortvalt</option><option value="always">Alltid</option></select></div>
+          </div>
+          <div class="field"><span class="label">Innehåller allergener</span><div class="chips small" id="mf-allergens"></div></div>
+          <div class="actions"><button type="submit" class="btn primary">Lägg till livsmedel</button><span class="status" id="mf-msg" role="status"></span></div>
+        </form>
+        <div class="list" id="mf-list"></div>
+      </section>
+
+      <section id="mina-recept">
+        <div class="sec-head">
+          <span class="eyebrow">Egna recept</span>
+          <h2>Mina recept</h2>
+          <p>Bygg ett eget recept av livsmedel och gram per portion. Ett eget frukostrecept kan du sedan välja som frukost varje dag under Profil. Mängderna skalas efter dina mål precis som i de andra recepten, och ingredienserna hamnar i inköpslistan.</p>
+        </div>
+        <form class="card form" id="mr" autocomplete="off">
+          <div class="row2">
+            <div class="field"><label for="mr-name">Namn</label><input type="text" id="mr-name" maxlength="60" placeholder="t.ex. Min proteinfrukost"></div>
+            <div class="field"><label for="mr-type">Måltid</label><select id="mr-type"></select></div>
+          </div>
+          <div class="field">
+            <span class="label">Ingredienser per portion</span>
+            <div class="mr-items" id="mr-items"></div>
+            <button type="button" class="btn small" id="mr-add">+ Lägg till ingrediens</button>
+            <small>Saknas ett livsmedel kan du lägga till det under Mina livsmedel nedan.</small>
+          </div>
+          <div class="field"><label for="mr-how">Så gör du <small>valfritt</small></label><textarea id="mr-how" rows="3" maxlength="500"></textarea></div>
+          <p class="hint" id="mr-sum"></p>
+          <div class="actions"><button type="submit" class="btn primary">Spara recept</button><span class="status" id="mr-msg" role="status"></span></div>
+        </form>
+        <div class="list" id="mr-list"></div>
+      </section>
+
+      <section id="tillskott">
+        <div class="sec-head">
+          <span class="eyebrow">Kosttillskott</span>
+          <h2>Tillskott jag använder</h2>
+          <p>Kryssa i det du använder, så får du tips om när du ska ta det på Idag, utifrån fastan och dagens pass.</p>
+        </div>
+        <div class="chips" id="supps"></div>
+      </section>
+
+      <section id="om-appen">
+        <div class="sec-head"><span class="eyebrow">Appen</span><h2>Om appen</h2></div>
+        <p><a href="guide.html">Förklaringar till alla val och beräkningar</a></p>
+        <p class="note">Allt du fyller i sparas bara i den här enheten. Säkerhetskopiera och flytta data med <a href="#logg">Exportera JSON</a> under Logg.</p>
+      </section>
+    </div>
+  </main>
+
+  <nav class="tabbar" aria-label="Huvudmeny">
+    <a class="tab" href="#idag" data-tab="idag"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Idag</span></a>
+    <a class="tab" href="#mat" data-tab="mat"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v8"/><path d="M4.5 3v5a2.5 2.5 0 0 0 5 0V3"/><path d="M7 11v10"/><path d="M17 21V3c-2.2 1.4-3 4-3 7v3h3"/></svg><span>Mat</span></a>
+    <a class="tab" href="#traning" data-tab="traning"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11"/><path d="M17.5 6.5v11"/><path d="M3.5 9v6"/><path d="M20.5 9v6"/><path d="M6.5 12h11"/></svg><span>Träning</span></a>
+    <a class="tab" href="#logg" data-tab="logg"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5h16"/><path d="M5 15l4-4 3.5 3 6.5-7"/><path d="M15 7h4v4"/></svg><span>Logg</span></a>
+    <a class="tab" href="#profil" data-tab="profil"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg><span>Profil</span></a>
+  </nav>
+</div>
+</body>
+</html>

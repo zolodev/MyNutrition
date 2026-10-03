@@ -1,0 +1,23 @@
+{
+  "name": "Fettförbränningsveckan",
+  "short_name": "Fettförbränning",
+  "description": "Personlig veckoplan för viktnedgång: kalorimål, styrkeprogram, säsongsrecept från Norrland, fasta 16:8 och logg.",
+  "lang": "sv",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#edf1ee",
+  "theme_color": "#1d5c4c",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Logga vikt", "url": "./#logg", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Inköpslista", "url": "./#inkop", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Förklaringar", "url": "./guide.html", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

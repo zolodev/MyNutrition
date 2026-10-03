@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Förklaringar till alla val och beräkningar i Fettförbränningsveckan.">
+<meta name="theme-color" content="#1d5c4c" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111715" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Fettförbränningsveckan: förklaringar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: en läskolumn med innehållsförteckning överst; samma färger och typsnitt som huvudsidan */
+:root {
+  --bg: #edf1ee;
+  --surface: #ffffff;
+  --sunken: #e2e8e4;
+  --fg: #17211d;
+  --muted: #56645e;
+  --line: #cdd6d1;
+  --accent: #1d5c4c;
+  --accent-ink: #ffffff;
+  --accent-soft: #d5e6df;
+  --spice: #b87910;
+  --spice-soft: #f6e8cc;
+  --warn: #9a3b22;
+  --warn-soft: #f6dfd6;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --c-weight: #14896a;
+  --c-plan: #c27c00;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111715; --surface: #18211e; --sunken: #0d1311; --fg: #e2e9e5; --muted: #95a49d;
+    --line: #2b3833; --accent: #6cc0a5; --accent-ink: #0d1a15; --accent-soft: #1d3a31;
+    --spice: #e3b04d; --spice-soft: #3a2f17; --warn: #f0947a; --warn-soft: #3d221a;
+    --c-weight: #1f9e78; --c-plan: #c4860e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111715; --surface: #18211e; --sunken: #0d1311; --fg: #e2e9e5; --muted: #95a49d;
+  --line: #2b3833; --accent: #6cc0a5; --accent-ink: #0d1a15; --accent-soft: #1d3a31;
+  --spice: #e3b04d; --spice-soft: #3a2f17; --warn: #f0947a; --warn-soft: #3d221a;
+  --c-weight: #1f9e78; --c-plan: #c4860e;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { color-scheme: light; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 780px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 80px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(1.9rem, 5vw, 2.6rem); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: 1.45rem; font-weight: 700; margin-top: 8px; }
+h3 { font-size: 1.05rem; font-weight: 700; }
+p, ul, ol { margin: 0; }
+ul, ol { padding-left: 1.2em; display: grid; gap: 4px; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--spice); outline-offset: 2px; }
+.eyebrow { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.num, code { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+code { font-size: 0.86em; background: var(--sunken); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+header { display: grid; gap: 10px; margin-bottom: 24px; }
+header p { color: var(--muted); }
+.back { font-weight: 600; font-size: 0.92rem; }
+nav.toc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 18px; margin-bottom: 32px; }
+nav.toc ol { columns: 2 220px; column-gap: 24px; display: block; }
+nav.toc li { margin-bottom: 3px; break-inside: avoid; }
+section { display: grid; gap: 12px; padding-block: 18px; border-top: 1px solid var(--line); scroll-margin-top: 12px; }
+dl { display: grid; gap: 12px; margin: 0; }
+dt { font-weight: 700; }
+dd { margin: 2px 0 0; color: var(--fg); }
+.tbl { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; min-width: 520px; }
+th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 600; padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); }
+td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.box { background: var(--accent-soft); border-radius: 8px; padding: 12px 14px; }
+.warn { background: var(--warn-soft); border-radius: 8px; padding: 12px 14px; }
+.note { font-size: 0.9rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <a class="back" href="./#idag">← Tillbaka till appen</a>
+  <span class="eyebrow">Förklaringar</span>
+  <h1>Så fungerar Fettförbränningsveckan</h1>
+  <p>Vad varje val betyder, hur appen räknar och varför. Siffrorna i appen räknas om när du ändrar något, så exemplen här är just exempel.</p>
+  <p><b>Så hittar du i appen:</b> flikraden längst ner har <b>Idag</b> (dagens recept, dagens träningspass och dagens tider), <b>Mat</b> (veckan, recept och inköpslista), <b>Träning</b>, <b>Logg</b> och <b>Profil</b> (dina uppgifter, mål och hur fastan fungerar). Allergier, ingredienser du inte äter och egna livsmedel finns under <b>Inställningar</b>, kugghjulet uppe till höger. Tryck på ett recept för att fälla ut ingredienser och instruktion, och på en övning för att se den i ExRx.</p>
+</header>
+
+<nav class="toc" aria-label="Innehåll">
+  <ol>
+    <li><a href="#uppgifter">Dina uppgifter</a></li>
+    <li><a href="#aktivitet">Vardagsaktivitet</a></li>
+    <li><a href="#takt">Takt</a></li>
+    <li><a href="#utrustning">Utrustning och antal pass</a></li>
+    <li><a href="#frukost">Frukost och frukosttid</a></li>
+    <li><a href="#energi">Kalorimål och makron</a></li>
+    <li><a href="#fasta">Periodisk fasta 16:8</a></li>
+    <li><a href="#plankod">Plankod: dela planen</a></li>
+    <li><a href="#anpassa">Allergier och egna livsmedel</a></li>
+    <li><a href="#fastan">Fastan i dag: egna måltidstider</a></li>
+    <li><a href="#mina-recept">Mina recept</a></li>
+    <li><a href="#tillskott">PWO, vassle och kreatin</a></li>
+    <li><a href="#vecka">Veckomenyn och rotationen</a></li>
+    <li><a href="#traning">Träningsprogrammet</a></li>
+    <li><a href="#bal">Bålövningar</a></li>
+    <li><a href="#recept">Recepten och säsongerna</a></li>
+    <li><a href="#mage">Ananas, mango och magen</a></li>
+    <li><a href="#lordag">Lördagsgodis och fri måltid</a></li>
+    <li><a href="#inkop">Inköpslistan</a></li>
+    <li><a href="#logg">Logg och statistik</a></li>
+    <li><a href="#data">Var dina uppgifter sparas</a></li>
+    <li><a href="#app">Installera som app</a></li>
+    <li><a href="#kallor">Källor</a></li>
+  </ol>
+</nav>
+
+<section id="uppgifter">
+  <span class="eyebrow">Formuläret</span>
+  <h2>Dina uppgifter</h2>
+  <dl>
+    <dt>Kön, ålder, vikt och längd</dt>
+    <dd>Används för att räkna ut ditt basbehov (BMR), det kroppen gör av med i vila. Män har högre basbehov än kvinnor vid samma storlek, och behovet sjunker med åldern.</dd>
+    <dt>Fett % (valfritt)</dt>
+    <dd>Om du vet din fettprocent räknar sidan med en noggrannare formel som bygger på fettfri massa. Fyll bara i den om du har ett hyggligt mått, till exempel från en kroppsanalysvåg på gym eller ett DEXA-test. En gissning gör beräkningen sämre, inte bättre.</dd>
+    <dt>Målvikt</dt>
+    <dd>Vikten du vill nå. Sidan visar hur många veckor det tar med planens takt, och i loggen hur lång tid det tar med din faktiska takt.</dd>
+  </dl>
+</section>
+
+<section id="aktivitet">
+  <span class="eyebrow">Formuläret</span>
+  <h2>Vardagsaktivitet</h2>
+  <p>Hur mycket du rör dig en vanlig dag, <b>utan</b> träningspassen. Sidan multiplicerar ditt basbehov med en aktivitetsfaktor och får fram ditt underhållsbehov, alltså hur mycket du kan äta utan att gå upp eller ner.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Val</th><th>Faktor</th><th>En typisk dag</th></tr></thead>
+    <tbody>
+      <tr><td><b>Stillasittande</b></td><td class="num">× 1,2</td><td>Kontorsjobb eller studier, bil till jobbet, lite promenader. Ofta under ca 5 000 steg om dagen.</td></tr>
+      <tr><td><b>Lätt aktiv</b></td><td class="num">× 1,375</td><td>Sittande jobb men promenader varje dag, går och handlar, städar, tar hand om barn. Ungefär 5 000–8 000 steg.</td></tr>
+      <tr><td><b>Måttligt aktiv</b></td><td class="num">× 1,55</td><td>Mycket på fötterna i jobbet: vård, butik, skola, lager. Ungefär 8 000–12 000 steg.</td></tr>
+      <tr><td><b>Mycket aktiv</b></td><td class="num">× 1,725</td><td>Fysiskt tungt jobb: bygg, skog, lantbruk, flytt. Bär och lyfter stora delar av dagen.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Stegintervallen är ungefärliga riktmärken, inte en del av formeln.</p>
+  <h3>Hur ExRx beskriver aktivitetsnivåerna</h3>
+  <ul>
+    <li><b>Mycket lätt:</b> sitta och stå, köra bil, skrivbordsarbete, laga mat.</li>
+    <li><b>Lätt:</b> promenad på plan mark i 4–5 km/h, städning, barnpassning, golf.</li>
+    <li><b>Måttlig:</b> promenad i 5,5–6,5 km/h, cykling, skidåkning, styrketräning inklusive vila.</li>
+    <li><b>Tung:</b> gå i uppförsbacke med packning, tungt grävarbete, bollsporter, klättring.</li>
+  </ul>
+  <div class="box"><b>Välj hellre för lågt än för högt.</b> ExRx påpekar att de flesta överskattar sin aktivitet. Skillnaden är stor: för en man på 95 kg med ett basbehov på ca 2 000 kcal är stillasittande ca 2 400 kcal och lätt aktiv ca 2 750 kcal, alltså 350 kcal om dagen. Är du osäker, välj den lägre nivån och låt loggen visa om du går ner för fort.</div>
+  <p>Träningen räknas inte in. Styrkepassen och stegen blir därför en extra marginal som gör att planen tål att du uppskattat lite fel.</p>
+</section>
+
+<section id="takt">
+  <span class="eyebrow">Formuläret</span>
+  <h2>Takt</h2>
+  <p>Hur fort du vill gå ner, i procent av kroppsvikten per vecka. 1 % är det snabbaste som sidan rekommenderar.</p>
+  <ul>
+    <li><b>0,5 %/v:</b> lugnast. Lättast att hålla, bäst för att behålla styrka. Passar om du har lite kvar till målet.</li>
+    <li><b>0,75 %/v:</b> mellanläget.</li>
+    <li><b>1 %/v:</b> snabbast hållbara. Kräver att du följer planen noga.</li>
+  </ul>
+  <p>Ett kilo kroppsfett motsvarar ungefär 7 700 kcal. Takten räknas om till ett dagligt underskott: <code>procent × vikt × 7 700 ÷ 7</code>. Underskottet begränsas till högst 1 000 kcal per dag, och kalorimålet går aldrig under 1 500 kcal för män och 1 200 kcal för kvinnor. Större underskott ökar risken att tappa muskler, ork och humör, och att vikten kommer tillbaka.</p>
+</section>
+
+<section id="utrustning">
+  <span class="eyebrow">Formuläret</span>
+  <h2>Utrustning och antal pass</h2>
+  <dl>
+    <dt>Gym, hantlar eller kroppsvikt</dt>
+    <dd>Styr vilka övningar programmet väljer. Samma muskelgrupper tränas oavsett val. <b>Gym</b> ger skivstång, kabel och maskiner. <b>Hantlar</b> passar hemma med ett par justerbara hantlar. <b>Kroppsvikt</b> kräver bara golv, en stol och ett stadigt bord.</dd>
+    <dt>Gymdagar</dt>
+    <dd>Tryck på de veckodagar du tränar på gymmet. <b>3 dagar</b> ger helkropp, överkropp och ben. <b>4 dagar</b> ger över- och underkropp två gånger var, med olika bålövningar i A- och B-passen. Varje stor muskelgrupp tränas två gånger i veckan i båda uppläggen, vilket ACSM rekommenderar enligt ExRx.</dd>
+    <dt>Så fördelas passen</dt>
+    <dd>Sidan provar alla sätt att lägga passen på dina dagar och väljer det där samma muskler inte tränas två dagar i rad. Ben efter ben undviks i första hand och överkropp efter överkropp i andra hand. Går det inte, till exempel med tre dagar i rad, står det under programmet, och då kan du köra det andra passet lite lättare. Intervallerna läggs på upp till två vilodagar, helst inte dagen före ett benpass och aldrig två dagar i rad. Väljer du färre än 3 eller fler än 4 dagar används ditt senaste giltiga val tills du ändrat.</dd>
+  </dl>
+</section>
+
+<section id="frukost">
+  <span class="eyebrow">Formuläret</span>
+  <h2>Frukost och frukosttid</h2>
+  <dl>
+    <dt>Frukost</dt>
+    <dd>Standard är samma frukost varje dag: ägg och kvarg med bär. Det gör det lätt att handla och följa planen. Du kan välja en annan frukost som också gäller alla dagar, eller <b>Variera</b> för en ny varje dag.</dd>
+    <dt>Frukost klockan</dt>
+    <dd>Startar ditt ätfönster. Eftermiddagsmåltiden läggs 7 timmar senare och fönstret stänger efter 8 timmar. Med frukost 07:00 äter du klockan 14:00 och fastar från 15:00 till 07:00.</dd>
+  </dl>
+</section>
+
+<section id="energi">
+  <span class="eyebrow">Beräkningarna</span>
+  <h2>Kalorimål och makron</h2>
+  <ol>
+    <li><b>Basbehov (BMR).</b> Med fettprocent: Katch-McArdle, <code>370 + 21,6 × fettfri massa</code>. Utan: Harris-Benedict, för män <code>66,5 + 13,75 × vikt + 5,003 × längd − 6,755 × ålder</code> och för kvinnor <code>655,1 + 9,563 × vikt + 1,850 × längd − 4,676 × ålder</code>. Båda formlerna är de som ExRx kalkylator anger.</li>
+    <li><b>Underhållsbehov</b> = basbehov × aktivitetsfaktor.</li>
+    <li><b>Kalorimål</b> = underhållsbehov − underskottet från takten.</li>
+    <li><b>Protein:</b> 2,2 g per kg. Vid övervikt räknar sidan på vikten vid BMI 27, eftersom fettvävnad inte behöver protein. Med fettprocent ifylld blir det 2,8 g per kg fettfri massa. Högt protein skyddar musklerna i underskott och mättar bäst.</li>
+    <li><b>Fett:</b> 0,6 g per kg, ungefär 20–25 % av kalorierna. Lägre än 0,5 g per kg rekommenderas inte, eftersom kroppen behöver fett för hormoner och för att ta upp vitaminerna A, D, E och K.</li>
+    <li><b>Kolhydrater:</b> resten, minst 75 g. ExRx påpekar att ett styrkepass bara tömmer 25–40 % av musklernas glykogen, så lite kolhydrater räcker.</li>
+  </ol>
+  <p class="note">ExRx varnar för att formlerna kan slå fel med 20–30 %. Se kalorimålet som en startpunkt och justera efter vad loggen visar.</p>
+</section>
+
+<section id="fasta">
+  <span class="eyebrow">Upplägget</span>
+  <h2>Periodisk fasta 16:8</h2>
+  <p>Du äter två måltider inom 8 timmar och fastar i 16. ExRx beskriver tidsbegränsat ätande, med 12–21 timmars fasta per dygn, som den enklaste formen av periodisk fasta att hålla. Längre fasta gör det svårt att få i sig tillräckligt med protein på två måltider.</p>
+  <ul>
+    <li><b>Under fastan:</b> vatten, kolsyrat vatten, svart kaffe och te. Allt annat bryter fastan, även frukt.</li>
+    <li><b>Frukt och bär</b> äts i måltiderna, inte mellan dem.</li>
+    <li><b>Träning:</b> tidslinjen överst på Idag visar dagens tider, och <i>När du ska träna</i> under Profil visar alla tider utifrån din frukosttid. Styrkepasset ligger 3–1 timmar före eftermiddagsmåltiden, så att måltiden blir återhämtningsmåltid. Intervallerna ligger 1,5–3 timmar efter frukosten, och en promenad på 20–30 minuter efter maten sänker blodsockret. Kan du bara träna efter jobbet, välj en senare frukost eller träna när det passar. Att passet blir av betyder mer än klockslaget.</li>
+  </ul>
+  <p>Det är kaloriunderskottet som ger viktnedgången. ExRx påpekar att antalet måltider inte påverkar resultatet när kalorierna är desamma. Fastan gör det bara lättare att hålla underskottet.</p>
+</section>
+
+<section id="plankod">
+  <span class="eyebrow">Inställningar</span>
+  <h2>Plankod: dela planen</h2>
+  <p>Allt som slumpas fram i appen styrs av ett frö. Plankoden, till exempel <code>7K2Q XM-G150</code>, innehåller fröet, de veckor du har slumpat om, utrustningen, gymdagarna, frukostvalet och hur ofta övningarna byts. Fröet styr både recepten och vilka övningar varje vecka får. Matar någon in din kod under Inställningar får ni exakt samma rätter vecka för vecka och samma träningsprogram.</p>
+  <dl>
+    <dt>Ingår inte</dt>
+    <dd>Kön, ålder, vikt, längd, mål och allergier. De är personliga, så portionerna, kalorierna och proteinet räknas efter den som använder koden. En man och en kvinna med samma kod äter samma rätter och gör samma övningar, men med olika portioner.</dd>
+    <dt>Män och kvinnor</dt>
+    <dd>ExRx skiljer inte på övningar eller set för män och kvinnor. Det som skiljer är vikterna, och dem väljer var och en efter sin styrka. Byter du kön i profilen behålls rätterna och övningarna, och kalorier, protein och portioner räknas om.</dd>
+    <dt>Ny plankod</dt>
+    <dd>Ger nya rätter för alla veckor. Slumpar du om en enskild vecka ändras också koden, eftersom den veckan ingår.</dd>
+    <dt>Olika allergier</dt>
+    <dd>Har den du delar med andra allergival kan enstaka rätter bytas ut hos henne eller honom.</dd>
+  </dl>
+</section>
+
+<section id="anpassa">
+  <span class="eyebrow">Anpassa</span>
+  <h2>Allergier och egna livsmedel</h2>
+  <dl>
+    <dt>Allergener</dt>
+    <dd>Varje allergen är ett eget val, så du kryssar i precis det du inte tål, till exempel apelsin, mandarin och clementin men inte citron och lime. Listan: vete, råg, korn, havre, mjölkprotein, laktos, ägg, fisk, skaldjur, blötdjur, nötter, mandel, jordnötter, soja, bönor, ärtor, linser, apelsin, mandarin, clementin, citron, lime, selleri, senap, sesam, lupin och sulfiter. Vid celiaki kryssar du i vete, råg och korn; glutenfri havre används då som ersättare om inte havre också är ikryssat.</dd>
+    <dt>Ingredienser jag inte äter</dt>
+    <dd>Kryssa i de ingredienser du vill ta bort ur recepten, till exempel bruna bönor eller grönkål. Under <i>Andra vanliga allergener</i> finns produkter som inte ingår i recepten, som tonfisk, rödbetor, grapefrukt och kiwi. De stoppar också egna livsmedel med samma namn.</dd>
+    <dt>Vad som händer med recepten</dt>
+    <dd>
+      <ul>
+        <li><b>Byts ut:</b> ett bortvalt livsmedel ersätts med något likvärdigt, till exempel sej med torsk, kvarg med keso eller mjölkfri sojayoghurt, och vanligt knäckebröd med glutenfritt.</li>
+        <li><b>Stryks:</b> små ingredienser utan ersättare tas bort ur receptet, till exempel osten eller mandlarna.</li>
+        <li><b>Tas bort:</b> om huvudingrediensen (minst 30 % av rättens protein eller kalorier) saknar ersättare används inte rätten.</li>
+      </ul>
+      Varje anpassat recept har en rad som visar vad som är ändrat. Överst i Allergier-rutan ser du hur många rätter som passar i den aktuella säsongen.
+    </dd>
+    <dt>Om få rätter passar</dt>
+    <dd>Passar färre än 14 rätter kan samma rätt komma två veckor i rad. Passar färre än sju kan den komma flera gånger samma vecka. Lägg då till egna livsmedel som ersättare.</dd>
+    <dt>Protein med ersättare</dt>
+    <dd>Mjölkfria alternativ som sojayoghurt och havredryck har mycket mindre protein än kvarg och mjölk. Med mjölk- eller äggallergi kan veckan därför hamna under proteinmålet. Rutan ovanför recepten visar vad veckan faktiskt ger.</dd>
+    <dt>Mina livsmedel</dt>
+    <dd>Lägg till ett eget livsmedel med kalorier, protein, kolhydrater och fett per 100 g, som du hittar på förpackningen. Välj vad det ska ersätta och när: <b>bara när originalet är bortvalt</b>, eller <b>alltid</b>, om du till exempel hellre vill äta kycklinglårfilé än kycklingbröst. Markera vilka allergener det innehåller, så stoppas det av dina allergival.</dd>
+  </dl>
+</section>
+
+<section id="fastan">
+  <span class="eyebrow">Idag</span>
+  <h2>Fastan i dag: egna måltidstider</h2>
+  <p>På Idag fyller du i när du faktiskt åt. <b>Första måltiden</b> flyttar hela dagen: hoppar du över frukosten och äter först 12:00 blir ätfönstret 12:00–20:00, eftermiddagsmåltiden 19:00 och fastan klar i morgon 12:00. <b>Sista måltiden klar</b> stänger ätfönstret tidigare om du är färdig. Knappen <b>Nu</b> fyller i klockslaget.</p>
+  <ul>
+    <li>Rutan visar om du fastar eller äter just nu, och hur länge, uppdaterat varje minut.</li>
+    <li>Skulle den planerade frukosten i morgon ge kortare fasta än 16 timmar visas när du tidigast kan äta.</li>
+    <li>Tiderna sparas i loggen. Loggtabellen visar hur många timmar du fastade varje natt, och Idag visar snittet för den senaste veckan.</li>
+    <li>Tomma fält betyder att planens tider gäller. <b>Tillbaka till planens tider</b> tömmer dem.</li>
+  </ul>
+</section>
+
+<section id="mina-recept">
+  <span class="eyebrow">Inställningar</span>
+  <h2>Mina recept</h2>
+  <p>Bygg ett eget recept av livsmedel och gram per portion, och välj om det är frukost, efterrätt eller eftermiddagsmåltid. Ett eget frukostrecept blir ett val under Profil → Frukost, så att du kan äta det varje dag. Mängderna skalas efter dina mål, bortvalda ingredienser byts ut och ingredienserna hamnar i inköpslistan. Saknas ett livsmedel lägger du till det under Mina livsmedel. Egna recept delas inte med plankoden; den som får koden får planens vanliga frukost.</p>
+</section>
+
+<section id="tillskott">
+  <span class="eyebrow">Träning</span>
+  <h2>PWO, vassle och kreatin</h2>
+  <p>Kryssa i vilka tillskott du använder under Inställningar. Idag visar då när du ska ta dem, utifrån din första måltid och dagens pass.</p>
+  <dl>
+    <dt>PWO (koffein)</dt><dd>200–400 mg koffein cirka 30 minuter före passet, enligt ExRx. Inte efter kl. 15, för sömnens skull. En PWO utan kalorier bryter inte fastan i praktiken; en med socker, kolhydrater eller BCAA gör det.</dd>
+    <dt>Vassle</dt><dd>25–30 g direkt efter passet om nästa måltid dröjer. Med planens tider kommer eftermiddagsmåltiden en timme efter passet, så vassle behövs oftast inte. ExRx påpekar att tajmingen spelar liten roll när dagens protein redan räcker. Vassle bryter fastan; räkna in den (30 g ≈ 115 kcal, 23 g protein).</dd>
+    <dt>Kreatin</dt><dd>3–5 g varje dag, även vilodagar; laddning behövs inte (ExRx: 0,1 g/kg räcker). Helst med eftermiddagsmåltiden efter passet, eftersom kolhydrater kan förbättra upptaget. Inte samtidigt som PWO: en äldre studie visade att koffein kan motverka effekten. Kreatin binder vatten, så vikten kan gå upp 0,5–2 kg de första veckorna utan att det är fett.</dd>
+    <dt>Apelsinallergi</dt><dd>PWO och smaksatt vassle har ofta apelsinsmak. Läs ingrediensförteckningen.</dd>
+  </dl>
+  <p class="note">Recepten innehåller inget proteinpulver; vassle är ett tillägg du väljer själv.</p>
+</section>
+
+<section id="vecka">
+  <span class="eyebrow">Veckoschemat</span>
+  <h2>Veckomenyn och rotationen</h2>
+  <ul>
+    <li><b>Pilarna ‹ ›</b> byter vecka. Samma vecka visar alltid samma meny, så du kan planera och handla i förväg.</li>
+    <li><b>Två veckor i följd delar aldrig rätt.</b> Varje vecka väljs bland säsongens rätter som inte åts veckan innan.</li>
+    <li><b>Slumpa om veckan</b> ger en ny meny för den vecka du tittar på. <b>Återställ</b> tar tillbaka originalet. Veckorna efter ändras också, eftersom de inte får upprepa den nya menyn.</li>
+    <li><b>Säsongsrätter</b>, till exempel ren- och älgskav, prioriteras med upp till tre per vecka.</li>
+  </ul>
+</section>
+
+<section id="traning">
+  <span class="eyebrow">Träningsprogrammet</span>
+  <h2>Övningar, set och progression</h2>
+  <dl>
+    <dt>Övningarna växlar, passen ligger fast</dt>
+    <dd>Passindelningen är alltid densamma: helkropp, överkropp och ben (eller över- och underkropp A och B med fyra dagar). Övningarna i passen växlar. Varje rörelse, till exempel knäböj, har flera alternativ från ExRx, som knäböj med skivstång, frontböj, benpress och knäböj med hantlar. De gås igenom i tur och ordning, så samma övning kommer inte två perioder i rad. Samma vecka får helkropp och ben olika knäböjsvarianter. Under Profil väljer du om övningarna ska bytas varje vecka, varannan vecka eller var fjärde vecka. Byter du mer sällan är det lättare att öka vikten steg för steg i samma övning. Träning visar övningarna för veckan du valt under Mat → Veckan.</dd>
+    <dt>Set × reps</dt>
+    <dd><code>3 × 6–10</code> betyder 3 set med 6 till 10 repetitioner. Välj en vikt där du klarar spannet med god teknik och har 1–2 reps kvar i reserv.</dd>
+    <dt>Dubbel progression</dt>
+    <dd>När du klarar översta repantalet i alla set ökar du vikten 2,5–5 % och börjar om i botten av spannet.</dd>
+    <dt>Intervaller och steg</dt>
+    <dd>8 000–10 000 steg varje dag. Intervaller (5 minuters uppvärmning, sedan 8 × 30 sekunder hårt och 90 sekunder lugnt) på de dagar som markeras i schemat. Påståendet att intervaller ger "nio gånger" mer fettförlust kommer från en enda studie från 1994. Se intervallerna som ett tidseffektivt tillskott.</dd>
+    <dt>Länkarna</dt>
+    <dd>Varje övning länkar till ExRx övningskatalog med bild eller film på utförandet.</dd>
+  </dl>
+</section>
+
+<section id="bal">
+  <span class="eyebrow">Träningsprogrammet</span>
+  <h2>Bålövningar</h2>
+  <p>Planka förekommer högst en gång i veckan. De andra passen har övningar som tränar bålen att stå emot rörelse: sidoplanka mot sidböjning, fågelhund mot rotation, benlyft och ryggbrygga för bäckenkontroll. En gång i veckan körs en <b>intensiv bålcirkel</b>: fyra övningar direkt efter varandra utan vila, 60–90 sekunders vila efter varje varv, tre varv.</p>
+</section>
+
+<section id="recept">
+  <span class="eyebrow">Kosten</span>
+  <h2>Recepten och säsongerna</h2>
+  <dl>
+    <dt>Säsonger i Norrland</dt>
+    <dd><b>Vinter</b> (november–februari) och <b>vår</b> (mars–maj): rotfrukter, kålrot, vitkål, morötter och lingon. <b>Sommar</b> (juni–augusti): färskpotatis, tomat, gurka, paprika, broccoli och jordgubbar. <b>Höst</b> (september–oktober): grönkål, blomkål, svamp och färska blåbär. Tomat, gurka och paprika förekommer bara på sommaren. Rödbetor, apelsin, mandarin och clementin förekommer aldrig. Citron och lime används som smaksättning.</dd>
+    <dt>Bara färska grönsaker från svenska odlare</dt>
+    <dd>Inga frysta grönsaksblandningar och inga konserverade tomater. Bönor och ärtor är svenska bruna bönor och gula ärtor. Frysta svenska bär är tillåtna på vintern.</dd>
+    <dt>Så skalas mängderna</dt>
+    <dd>Grundrecepten skalas för att veckan ska landa på ditt kalorimål. Proteinkällor (kött, fisk, ägg, kvarg, keso), kolhydratkällor (potatis, ris, pasta, gryn, bröd, baljväxter) och fettkällor (olja, ost) får var sin faktor. Grönsaker, bär och frukt behåller sina mängder. Ovanför recepten står vad veckans meny faktiskt ger.</dd>
+    <dt>Alternativ med lax</dt>
+    <dd>Under fiskrätterna står hur mycket lax du kan ta i stället för vit fisk. Det är ungefär tre fjärdedelar av fiskvikten och ingen olja, eftersom lax är fetare.</dd>
+    <dt>Näringsvärdena</dt>
+    <dd>Uppskattade utifrån vanliga värden för råvarorna. Exakta värden finns i Livsmedelsverkets livsmedelsdatabas.</dd>
+  </dl>
+</section>
+
+<section id="mage">
+  <span class="eyebrow">Kosten</span>
+  <h2>Ananas, mango och magen</h2>
+  <p>Måltider med ägg, kål eller baljväxter får 100 g ananas (frukost) eller mango (eftermiddag). Det är det enda undantaget från säsongsregeln. Färsk eller fryst ananas innehåller enzymet bromelain som bryter ner protein. Konserverad ananas är värmebehandlad, och då fungerar inte enzymet. Att frukterna minskar lukt är dåligt studerat.</p>
+  <p>Bäst dokumenterat är tillskott med <b>alfa-galaktosidas</b> (till exempel Beano), som tas vid första tuggan kål, bönor eller ärtor. Ger mjölkprodukter gaser kan <b>laktas</b> eller laktosfria varianter hjälpa.</p>
+</section>
+
+<section id="lordag">
+  <span class="eyebrow">Kosten</span>
+  <h2>Lördagsgodis och fri måltid</h2>
+  <dl>
+    <dt>Lördagsgodis</dt>
+    <dd>Varje lördag har ett bestämt godis som efterrätt, till exempel kvargbark med bär eller popcorn. Det är inräknat i veckans kalorier.</dd>
+    <dt>Fri måltid</dt>
+    <dd>En gång i veckan, på lördagens eftermiddagsmåltid och inom ätfönstret. En måltid, inte en hel dag. Tabellen på huvudsidan visar hur stor del av veckans underskott olika storlekar kostar. Svält inte och träna inte extra dagen efter för att kompensera. Vågen kan visa ett kilo mer i 1–2 dagar, och det är vätska.</dd>
+  </dl>
+</section>
+
+<section id="inkop">
+  <span class="eyebrow">Handla</span>
+  <h2>Inköpslistan</h2>
+  <p>Listan summerar allt du äter under veckan och sorterar det efter avdelning i butiken. Bocka av varorna medan du handlar. Bockarna sparas för den veckan i telefonen, så du kan stänga appen och fortsätta senare. <b>Avmarkera alla</b> nollställer listan. Bortvalda livsmedel kommer aldrig med i listan.</p>
+</section>
+
+<section id="logg">
+  <span class="eyebrow">Uppföljning</span>
+  <h2>Logg och statistik</h2>
+  <dl>
+    <dt>Datum</dt>
+    <dd>Skrivs som ÅÅÅÅ-MM-DD, till exempel 2026-10-03. Skriv bara siffrorna så fylls bindestrecken i automatiskt, eller tryck på <b>Idag</b> eller <b>Igår</b>.</dd>
+    <dt>Vikt och 7-dagarssnitt</dt>
+    <dd>Väg dig på morgonen efter toalettbesök, före frukost. Vikten svänger 0,5–1,5 kg från dag till dag av vätska och salt, så sidan räknar ett snitt för de senaste 7 dagarna. Följ snittet, inte enskilda vägningar.</dd>
+    <dt>Takt</dt>
+    <dd>Räknas med linjär regression över de senaste 3 veckorna, minst 4 vägningar över 10 dagar. Efter 14 dagar får du ett råd: under 0,5 % i veckan, sänk med 150–200 kcal eller lägg till 2 000 steg. Över 1,2 %, höj med 150–200 kcal.</dd>
+    <dt>Mående</dt>
+    <dd>1 till 5. Sjunker snittet flera veckor i rad, ofta tillsammans med sämre sömn och prestation, kan underskottet vara för stort.</dd>
+    <dt>Prestation och testtid</dt>
+    <dd>Om du blev snabbare eller starkare än förra passet. Testtiden är samma test varje gång, till exempel 3 km rask promenad eller jogg. Lägre tid betyder snabbare. Att styrkan och testtiden håller i underskott är ett bra tecken på att du tappar fett och inte muskler.</dd>
+    <dt>Midja</dt>
+    <dd>Mät i navelhöjd en gång i veckan. Midjan visar fettförlust även när vikten står still.</dd>
+  </dl>
+</section>
+
+<section id="data">
+  <span class="eyebrow">Integritet</span>
+  <h2>Var dina uppgifter sparas</h2>
+  <ul>
+    <li><b>Installerad app eller lokal fil:</b> allt sparas i webbläsaren på enheten. Inget skickas någonstans.</li>
+    <li><b>Den delade claude-länken:</b> loggen sparas också privat i ditt claude-konto när du är inloggad. Bara du ser den.</li>
+    <li><b>Exportera JSON</b> sparar loggen, målvikten, inställningarna, allergivalen och dina egna livsmedel i en fil. <b>Importera JSON</b> läser in en sådan fil och slår ihop posterna per datum. Använd det för att flytta data mellan telefon och dator och som säkerhetskopia.</li>
+    <li>Rensar du webbläsarens data eller avinstallerar appen försvinner loggen. Exportera regelbundet.</li>
+  </ul>
+</section>
+
+<section id="app">
+  <span class="eyebrow">Mobilen</span>
+  <h2>Installera som app</h2>
+  <ul>
+    <li><b>Android (Chrome):</b> öppna sidan, tryck på <b>Installera appen</b> överst eller välj menyn ⋮ → <i>Installera app</i>.</li>
+    <li><b>iPhone (Safari):</b> tryck på dela-knappen → <i>Lägg till på hemskärmen</i>.</li>
+    <li>Efter första besöket fungerar appen även utan internet.</li>
+  </ul>
+  <p class="note">Appen måste öppnas från en https-adress, till exempel GitHub Pages, för att kunna installeras. En fil som öppnas direkt från disken fungerar som vanlig sida men kan inte installeras.</p>
+</section>
+
+<section id="kallor">
+  <span class="eyebrow">Källor</span>
+  <h2>ExRx-sidor som planen bygger på</h2>
+  <ul>
+    <li><a href="https://exrx.net/Calculators/CalRequire" target="_blank" rel="noopener">Estimated Calorie Requirements</a> (formler och aktivitetsnivåer)</li>
+    <li><a href="https://exrx.net/FatLoss/EnergyBalance" target="_blank" rel="noopener">Energy Balance</a></li>
+    <li><a href="https://exrx.net/Nutrition/Macronutrients" target="_blank" rel="noopener">Macronutrients for Resistance Training</a></li>
+    <li><a href="https://exrx.net/Nutrition/Diets/Fasting" target="_blank" rel="noopener">Intermittent Fasting</a></li>
+    <li><a href="https://exrx.net/FatLoss/WTCalLBWStudy" target="_blank" rel="noopener">Weight training during caloric restriction</a></li>
+    <li><a href="https://exrx.net/FatLoss/HIITvsET" target="_blank" rel="noopener">HIIT vs endurance training</a></li>
+    <li><a href="https://exrx.net/Questions/WeightTrainingSplits" target="_blank" rel="noopener">Weight Training Program Splits</a></li>
+    <li><a href="https://exrx.net/Lists/Directory" target="_blank" rel="noopener">Exercise Directory</a></li>
+  </ul>
+  <div class="warn">Planen är för friska vuxna. Prata med läkare eller dietist först om du är gravid eller ammar, har diabetes, hjärt-kärlsjukdom eller njursjukdom, tar blodtrycks- eller blodsockersänkande läkemedel, eller har haft ätstörning.</div>
+</section>
+
+</div>
+</body>
+</html>
