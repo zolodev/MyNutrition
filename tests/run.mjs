@@ -123,7 +123,7 @@ unit("Gammalt val 'citrus' blir apelsin, mandarin och clementin var för sig", [
 prefs.exclusions.allergens.delete("mandarin"); prefs.saveExclusions(); prefs.loadPreferences();
 unit("Urkryssad allergen läggs inte tillbaka vid nästa start", !prefs.exclusions.allergens.has("mandarin") && prefs.exclusions.allergens.has("apelsin"));
 unit("Gamla grupper i en import översätts", JSON.stringify(prefs.migrateExclusions({ allergens: ["gluten", "baljvaxter"], foods: ["x_citron", "x_tonfisk"] })) === JSON.stringify({ allergens: ["vete", "rag", "korn", "havre", "bonor", "artor", "linser", "citron"], foods: ["x_tonfisk"] }));
-prefs.mergeMyFoods([{ id: "my_juice", n: "Apelsinjuice", k: 45 }, { id: "my_citron", n: "Citronkvarg", k: 70 }]);
+for (const m of [{ id: "my_juice", n: "Apelsinjuice", k: 45 }, { id: "my_citron", n: "Citronkvarg", k: 70 }]) prefs.addMyFood(prefs.cleanMyFood(m));
 unit("Eget livsmedel 'Apelsinjuice' stoppas av apelsinallergin", prefs.isExcluded("my_juice"));
 unit("Eget livsmedel 'Citronkvarg' stoppas inte", !prefs.isExcluded("my_citron"));
 unit("Recepten har citron när citron inte är bortvald", prefs.adaptInstructions("Rör kvarg med dill, citron och salt.").includes("citron"));
@@ -152,10 +152,33 @@ const visible = () => [...win.document.querySelectorAll("[data-view]")].filter((
 const check = (label, cond) => { console.log((cond ? "OK   " : "FEL  ") + label); if (!cond) process.exitCode = 1; };
 console.log("\n# Appen i en simulerad webbläsare (jsdom)");
 
+// Guiden första gången
+const next = () => fire($("wz-next"), "click");
+check("Första gången startar guiden och inget sparas", !$("wizard").hidden && win.localStorage.length === 0 && text("wz-progress") === "Steg 1 av 4");
+check("Guiden kräver egna värden: exemplen är tömda och kön är inte valt", $("age").value === "" && $("weight").value === "" && !win.document.querySelector('input[name="sex"]:checked'));
+next();
+check("Nästa utan ifyllda fält stannar på steget och förklarar", text("wz-progress") === "Steg 1 av 4" && text("wz-msg").startsWith("Fyll i"));
+win.document.querySelector('input[name="sex"][value="m"]').checked = true;
+$("age").value = "40"; $("weight").value = "95"; $("height").value = "180";
+next(); check("Steg 2: målet", text("wz-progress") === "Steg 2 av 4" && !$("goal").closest("[data-step]").hidden && $("age").closest("[data-step]").hidden);
+fire($("wz-back"), "click"); check("Tillbaka går till steg 1 och behåller värdena", text("wz-progress") === "Steg 1 av 4" && $("weight").value === "95");
+next(); next(); check("Målvikt krävs", text("wz-progress") === "Steg 2 av 4");
+$("goal").value = "85"; next();
+check("Steg 3: träning, med gymdagar", text("wz-progress") === "Steg 3 av 4" && !$("tdays").closest("[data-step]").hidden);
+next(); check("Steg 4: mat och allergier, inga förvalda", text("wz-progress") === "Steg 4 av 4" && text("wz-next") === "Klar" && $("wz-allergens").querySelectorAll("input").length > 10 && !$("wz-allergens").querySelector(":checked"));
+check("Fortfarande inget sparat innan Klar", win.localStorage.length === 0);
+next();
+check("Klar sparar profil och frö och stänger guiden", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv")).weight === "95" && $("f").closest("[data-view]").dataset.view === "profil");
+
+
 check("Idag har titel, dagens recept och tidslinje", text("td-title").length > 3 && $("td-food").querySelectorAll("details.recipe").length >= 3 && $("td-timeline").querySelectorAll(".tl-label").length === 4);
 check("Dagens recept går att fälla ut med ingredienser", $("td-food").querySelector("details.recipe .ingredients li") !== null);
 check("Dagens träning visas", text("td-train-title").length > 2 && ($("td-training").querySelectorAll("a.row.exercise").length >= 5 || $("td-training").querySelector(".plan-steps")));
-check("Kom igång visas utan sparad profil", !$("td-profile").hidden);
+check("Inga allergier eller bortval är ifyllda från början", !win.document.querySelector("[data-allergen]:checked, [data-food]:checked") && JSON.parse(win.localStorage.getItem("ffv-excl")).allergens.length === 0 && JSON.parse(win.localStorage.getItem("ffv-excl")).foods.length === 0);
+check("Inget apelsintips utan bortvald apelsin", !text("td-supps").includes("apelsin"));
+const orange = win.document.querySelector('[data-allergen="apelsin"]'); orange.checked = true; fire(orange, "change");
+check("Apelsintipset visas när apelsin är bortvald", text("td-supps").includes("Du har valt bort apelsin"));
+orange.checked = false; fire(orange, "change");
 check("Profilens mål ritas", $("targets").querySelectorAll(".tile").length === 4);
 check("Veckan har 7 dagar med länkar till recept", $("week").querySelectorAll(".day").length === 7 && $("week").querySelectorAll('a[href^="#rc-"]').length >= 21);
 check("Recept är utfällbara rader", $("r-dinner").querySelectorAll("details.recipe > summary.row").length === 7);
@@ -189,7 +212,7 @@ check("Övningsrader har set och vila", [...$("sessions").querySelectorAll("a.ro
 for (const el of win.document.querySelectorAll("[data-day]")) el.checked = ["1", "3", "5"].includes(el.dataset.day);
 fire($("tdays"), "change");
 check("Gymdagar sparas och schemat följer", $("tdays-val").value === "1,3,5" && text("prog-sub").startsWith("Helkropp på tisdag"));
-check("Profilen sparas", JSON.parse(localStorage.getItem("ffv"))["tdays-val"] === "1,3,5" && $("td-profile").hidden);
+check("Profilen sparas", JSON.parse(localStorage.getItem("ffv"))["tdays-val"] === "1,3,5");
 
 // Allergi: fisk
 const fish = win.document.querySelector('[data-allergen="fisk"]'); fish.checked = true; fire(fish, "change");
@@ -317,6 +340,24 @@ await reshuffle("both");
 $("pc-input").value = sharedCode; fire($("pc-form"), "submit");
 check("En kod med eget träningsfrö ger tillbaka samma rätter och övningar", exercises() === sharedEx && dinners() === sharedD && text("pc-code") === sharedCode);
 check("Passindelningen är densamma efter omslumpning", [...$("sessions").querySelectorAll(".session h3")].map((h) => h.textContent).join() === "Helkropp,Överkropp,Ben");
+// Ta bort en loggpost via modalen
+go("logg");
+const delDate = win.document.querySelector("[data-del]").dataset.del;
+fire(win.document.querySelector(`[data-del="${delDate}"]`), "click");
+check("Ta bort frågar i en modal", $("confirm").hasAttribute("open") && text("confirm-text").includes(delDate));
+await answer(false);
+check("Nej behåller posten", !!win.document.querySelector(`[data-del="${delDate}"]`));
+fire(win.document.querySelector(`[data-del="${delDate}"]`), "click"); await answer(true);
+check("Ja tar bort posten", !win.document.querySelector(`[data-del="${delDate}"]`) && text("l-msg") === "Posten är borttagen.");
+// Rensa mina uppgifter: bekräfta, guiden startar igen, loggen finns kvar
+const logBefore = win.localStorage.getItem("ffv-log");
+go("profil"); fire($("clear"), "click");
+check("Rensa frågar först", $("confirm").hasAttribute("open"));
+await answer(true);
+check("Rensa öppnar guiden och tar bort profilen", !$("wizard").hidden && win.localStorage.getItem("ffv") == null && win.localStorage.getItem("ffv-log") === logBefore);
+win.document.querySelector('input[name="sex"][value="m"]').checked = true;
+$("age").value = "41"; $("weight").value = "92"; $("height").value = "180"; next(); $("goal").value = "84"; next(); next(); next();
+check("Guiden sparar den nya profilen", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv")).weight === "92" && $("f").closest("[data-view]").dataset.view === "profil");
 check("Inga JS-fel", errors.length === 0);
 if (errors.length) console.log(errors);
 
@@ -330,7 +371,28 @@ const reload = (name, storage) => {
   fs.rmSync(file, { force: true });
   if (r.status !== 0) process.exitCode = 1;
 };
+// Export av allt: kopiera (urklipp saknas i jsdom, så texten visas för att kopieras för hand)
+go("logg"); fire($("l-copy"), "click"); await tick();
+const exportedText = $("l-copytext").value;
+const exportedData = JSON.parse(exportedText).data;
+check("Kopiera allt visar texten när urklipp nekas", !$("l-copytext").hidden && text("l-msg").startsWith("Kopieringen nekades"));
+check("Exporten innehåller profil, logg, plan, allergier och tillskott", ["ffv", "ffv-log", "ffv-seed", "ffv-excl"].every((k) => k in exportedData) && exportedData["ffv-log"].entries.length > 0 && exportedData.ffv.weight === "92");
+check("Exporten innehåller allt sparat utom det som bara gäller enheten", Object.keys(win.localStorage).filter((k) => k.startsWith("ffv") && k !== "ffv-swipe-hint" && k !== "ffv-install-declined").every((k) => k in exportedData) && !("ffv-swipe-hint" in exportedData));
+$("l-paste").value = "{ trasig"; fire($("l-paste-go"), "click"); await tick();
+check("Trasig importtext avvisas utan att något ändras", text("l-msg").startsWith("Texten är inte en giltig export") && win.localStorage.getItem("ffv-log") === JSON.stringify(exportedData["ffv-log"]));
+
+console.log("\n# Import i en ren webbläsare");
+const importScenario = (scenario) => {
+  const file = path.join(os.tmpdir(), `ffv-export-${process.pid}.json`);
+  fs.writeFileSync(file, exportedText);
+  const r = spawnSync(process.execPath, [new URL("./backup.mjs", import.meta.url).pathname, scenario, file], { stdio: "inherit" });
+  fs.rmSync(file, { force: true });
+  if (r.status !== 0) process.exitCode = 1;
+};
+for (const scenario of ["guide", "skriv-över", "äldre"]) importScenario(scenario);
+
 console.log("\n# Uppdatering: appen startas om med sparad data");
+reload("första start", {});
 reload("omstart", Object.fromEntries(Object.keys(win.localStorage).map((k) => [k, win.localStorage.getItem(k)])));
 reload("äldre format", {
   ffv: JSON.stringify({ age: "45", weight: "95", height: "182", sex: "m", act: "1.55", rate: "0.75", eq: "gym", days: "4" }),

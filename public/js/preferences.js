@@ -7,16 +7,15 @@ const EXCLUSIONS_KEY = "ffv-excl";
 const MY_FOODS_KEY = "ffv-myfoods";
 const EXCLUSIONS_VERSION = 2; // 2 = en allergen per val
 
-/** Bortvalda allergener och livsmedel. Standard för den här användaren: apelsin/mandarin/clementin, rödbetor och tonfisk. */
+/** Bortvalda allergener och livsmedel. Inget är bortvalt från början; varje användare väljer själv. */
 export const exclusions = { allergens: new Set(), foods: new Set() };
 
 /** Egna livsmedel: { id, n, k, p, c, f, cat, allergens, replaces, always } */
 export let myFoods = [];
 
 export function loadPreferences() {
-  const saved = load(EXCLUSIONS_KEY, { v: EXCLUSIONS_VERSION, allergens: ["apelsin", "mandarin", "clementin"], foods: ["x_rodbetor", "x_tonfisk"] });
+  const saved = load(EXCLUSIONS_KEY, { v: EXCLUSIONS_VERSION, allergens: [], foods: [] });
   setExclusions(migrateExclusions(saved));
-  saveExclusions();
   myFoods = load(MY_FOODS_KEY, []).map(cleanMyFood).filter(Boolean);
   registerMyFoods();
 }
@@ -40,7 +39,6 @@ export function setExclusions({ allergens = [], foods = [] }) {
 }
 
 export const saveExclusions = () => save(EXCLUSIONS_KEY, { v: EXCLUSIONS_VERSION, allergens: [...exclusions.allergens], foods: [...exclusions.foods] });
-export const exclusionsAsJson = () => ({ v: EXCLUSIONS_VERSION, allergens: [...exclusions.allergens], foods: [...exclusions.foods] });
 
 export function addMyFood(food) {
   myFoods.push(food);
@@ -53,12 +51,6 @@ export function removeMyFood(id) {
 }
 
 /** Lägg till egna livsmedel från en import; befintliga med samma id behålls. */
-export function mergeMyFoods(list) {
-  const known = new Set(myFoods.map((m) => m.id));
-  for (const m of list.map(cleanMyFood).filter(Boolean)) if (!known.has(m.id)) myFoods.push(m);
-  saveMyFoods();
-}
-
 function saveMyFoods() {
   save(MY_FOODS_KEY, myFoods);
   registerMyFoods();

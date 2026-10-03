@@ -1,15 +1,13 @@
 // Appens styrning: läser profilen, räknar om och ritar alla vyer, kopplar knappar och formulär och sköter flikarna.
 
-import { $, $$, num, radioValue, setRadio, load, save, remove, todayStr, dayToDate, dateToDay, svDate, weekIndexOf, confirmClick, confirmDialog, DAYS_SHORT } from "./util.js";
+import { $, $$, num, radioValue, setRadio, load, save, remove, todayStr, dayToDate, dateToDay, svDate, weekIndexOf, confirmDialog, toast, DAYS_SHORT } from "./util.js";
 import { computeTargets, kgPerWeek } from "./nutrition.js";
-import {
-  loadPreferences, exclusions, saveExclusions, setExclusions, migrateExclusions, exclusionsAsJson, myFoods, addMyFood, removeMyFood, mergeMyFoods, cleanMyFood,
-} from "./preferences.js";
+import { loadPreferences, exclusions, saveExclusions, setExclusions, myFoods, addMyFood, removeMyFood, cleanMyFood } from "./preferences.js";
 import { buildWeek, invalidateMenu, initSeed, planRandomness, setPlanRandomness } from "./menu.js";
 import { encodePlan, decodePlan, prettyCode, randomSeed } from "./plancode.js";
 import { SEASONS } from "./data/recipes.js";
-import { parseTrainingDays, buildProgram } from "./training.js";
-import { loadLog, entries, entryFor, upsertEntry, removeEntry, importEntries, cleanEntry, isIsoDate, parseTestTime, formatTestTime, connectCloud, setMealTimes } from "./log.js";
+import { parseTrainingDays, buildProgram, SWAP_TEXT } from "./training.js";
+import { loadLog, entryFor, upsertEntry, removeEntry, cleanEntry, isIsoDate, parseTestTime, formatTestTime, connectCloud, setMealTimes } from "./log.js";
 import { renderTargets } from "./views/profile.js";
 import { renderToday, renderFasting } from "./views/today.js";
 import { renderFastingToday, renderFastingNow, todaysFasting } from "./views/fasting-view.js";
@@ -17,8 +15,11 @@ import { weekLabel, renderWeekGrid, renderCheatTable, renderRecipes, renderShopp
 import { renderProgram } from "./views/training-view.js";
 import { renderLog } from "./views/log-view.js";
 import { renderSettings, renderIngredientPicker, recipeItemRow, readRecipeItems, updateRecipeSum } from "./views/settings.js";
-import { loadMyRecipes, myRecipes, addMyRecipe, removeMyRecipe, mergeMyRecipes, cleanRecipe } from "./myrecipes.js";
+import { loadMyRecipes, myRecipes, addMyRecipe, removeMyRecipe, cleanRecipe } from "./myrecipes.js";
+import { exportText, readBackup, describe, restore, hasStoredData } from "./backup.js";
 import { setUsing } from "./supplements.js";
+import { openWizard } from "./wizard.js";
+import "./pwa.js";
 
 // ---------- Tillstånd ----------
 
@@ -66,14 +67,17 @@ function applyProfile(saved) {
   syncDayButtons();
 }
 
-function saveProfile() {
-  const ok = save(PROFILE_KEY, profileAsJson());
+function showSaved(text) {
   $("saved").hidden = false;
   $("saved-hint").hidden = true;
-  $("exnote").hidden = true;
-  $("saved-text").textContent = ok
+  $("saved-text").textContent = text;
+}
+
+function saveProfile() {
+  const ok = save(PROFILE_KEY, profileAsJson());
+  showSaved(ok
     ? `Sparat i den här webbläsaren ${new Date().toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })}`
-    : "Webbläsaren tillåter inte att uppgifterna sparas (t.ex. privat läge).";
+    : "Webbläsaren tillåter inte att uppgifterna sparas (t.ex. privat läge).");
 }
 
 function syncDayButtons() {
@@ -103,8 +107,7 @@ function update() {
 
   renderTargets(targets, profile.goal);
   renderProgram(program);
-  const swapText = { 1: "varje vecka", 2: "varannan vecka", 4: "var fjärde vecka" }[profile.swapPeriod];
-  $("prog-week").textContent = `Övningarna för ${label.title.toLowerCase()}${state.week === TODAY_WEEK ? " (denna vecka)" : ""}. De byts ${swapText}; passindelningen är alltid densamma. Byt vecka under Mat → Veckan.`;
+  $("prog-week").textContent = `Övningarna för ${label.title.toLowerCase()}${state.week === TODAY_WEEK ? " (denna vecka)" : ""}. De byts ${SWAP_TEXT[profile.swapPeriod]}; passindelningen är alltid densamma. Byt vecka under Mat → Veckan.`;
 
   $("wk-title").textContent = `${label.title} · ${SEASONS[week.season].n}`;
   $("wk-range").textContent = label.range + (state.week === TODAY_WEEK ? " · denna vecka" : state.week === TODAY_WEEK + 1 ? " · nästa vecka" : "");
@@ -121,7 +124,6 @@ function update() {
   renderLog(kgPerWeek(targets.deficit), profile.goal, profile.weight);
   renderSettings(state.week);
   renderPlanCode(profile);
-  $("td-profile").hidden = $("exnote").hidden;
 }
 
 function showWeek(week) {
@@ -143,19 +145,29 @@ $("tdays").addEventListener("change", () => {
 });
 for (const type of ["input", "change"]) {
   $("f").addEventListener(type, () => {
+    if (!$("wizard").hidden) return; // guiden sparar allt när den är klar
     saveProfile();
     update();
   });
 }
-$("clear").addEventListener("click", () => {
+$("clear").addEventListener("click", async () => {
+  if (!(await confirmDialog("Är du säker på att du vill rensa dina uppgifter?", "Profilen tas bort och guiden startar igen. Loggen, plankoden och dina egna recept finns kvar."))) return;
   remove(PROFILE_KEY);
   $("f").reset();
   syncDayButtons();
-  $("saved").hidden = true;
-  $("saved-hint").hidden = false;
-  $("exnote").hidden = false;
-  update();
+  runWizard(update);
 });
+
+/** Guiden fyller i profilen och allergierna; allt sparas först när användaren är klar. */
+function runWizard(then) {
+  openWizard(exclusions.allergens, ({ allergens }) => {
+    setExclusions({ allergens, foods: [...exclusions.foods] });
+    saveExclusions();
+    invalidateMenu();
+    saveProfile();
+    then();
+  });
+}
 
 // ---------- Fastan i dag ----------
 
@@ -190,7 +202,7 @@ function renderPlanCode(profile) {
   const rerolled = Object.keys(planRandomness().salts).length;
   const breakfast = $("bmeal").selectedOptions[0]?.textContent.replace("Samma varje dag: ", "samma frukost varje dag, ") || "";
   $("pc-what").textContent =
-    `Träning på ${EQUIPMENT_NAME[profile.equipment]} ${profile.days.days.map((d) => DAYS_SHORT[d].toLowerCase()).join(", ")}, nya övningar ${{ 1: "varje vecka", 2: "varannan vecka", 4: "var fjärde vecka" }[profile.swapPeriod]} · ${breakfast.toLowerCase()}` +
+    `Träning på ${EQUIPMENT_NAME[profile.equipment]} ${profile.days.days.map((d) => DAYS_SHORT[d].toLowerCase()).join(", ")}, nya övningar ${SWAP_TEXT[profile.swapPeriod]} · ${breakfast.toLowerCase()}` +
     (rerolled ? ` · ${rerolled} omslumpad${rerolled > 1 ? "e" : ""} vecka${rerolled > 1 ? "or" : ""}` : "");
 }
 
@@ -216,17 +228,9 @@ $("pc-new").addEventListener("click", async () => {
   const choice = $("pc-scope").selectedOptions[0].textContent.toLowerCase();
   if (!(await confirmDialog(`Är du säker på att du vill slumpa om ${choice}?`, `${what}.`))) return;
   const { seed, salts, trainingSeed } = planRandomness();
-  const fresh = (old) => {
-    let next = randomSeed();
-    while (next === old || next === seed || next === trainingSeed) next = randomSeed();
-    return next;
-  };
-  if (scope === "menu") setPlanRandomness(fresh(seed), {}, trainingSeed);
-  else if (scope === "training") setPlanRandomness(seed, salts, fresh(trainingSeed));
-  else {
-    const next = fresh(seed);
-    setPlanRandomness(next, {}, next);
-  }
+  if (scope === "menu") setPlanRandomness(randomSeed(), {}, trainingSeed);
+  else if (scope === "training") setPlanRandomness(seed, salts, randomSeed());
+  else setPlanRandomness(randomSeed(), {});
   invalidateMenu();
   update();
   planMessage(`Klart: ${what.charAt(0).toLowerCase() + what.slice(1)}. Plankoden ovan är uppdaterad.`);
@@ -297,10 +301,10 @@ $("mf").addEventListener("submit", (ev) => {
   invalidateMenu();
   update();
 });
-$("mf-list").addEventListener("click", (ev) => {
-  const button = ev.target.closest("[data-mfdel]");
-  if (!button || !confirmClick(button)) return;
-  removeMyFood(button.dataset.mfdel);
+$("mf-list").addEventListener("click", async (ev) => {
+  const id = ev.target.closest("[data-mfdel]")?.dataset.mfdel;
+  if (!id || !(await confirmDialog(`Är du säker på att du vill ta bort ${myFoods.find((m) => m.id === id)?.n || "livsmedlet"}?`))) return;
+  removeMyFood(id);
   invalidateMenu();
   update();
 });
@@ -341,10 +345,10 @@ $("mr").addEventListener("submit", (ev) => {
   invalidateMenu();
   update();
 });
-$("mr-list").addEventListener("click", (ev) => {
-  const button = ev.target.closest("[data-mrdel]");
-  if (!button || !confirmClick(button)) return;
-  removeMyRecipe(button.dataset.mrdel);
+$("mr-list").addEventListener("click", async (ev) => {
+  const id = ev.target.closest("[data-mrdel]")?.dataset.mrdel;
+  if (!id || !(await confirmDialog(`Är du säker på att du vill ta bort receptet ${myRecipes.find((r) => r.id === id)?.t || ""}?`))) return;
+  removeMyRecipe(id);
   syncBreakfastOptions();
   saveProfile();
   invalidateMenu();
@@ -406,29 +410,58 @@ $("logf").addEventListener("submit", (ev) => {
   update();
   logMessage(`Sparat för ${entry.date} (${svDate(entry.date, { weekday: "long" })}).`);
 });
-$("l-table").addEventListener("click", (ev) => {
-  const edit = ev.target.closest("[data-edit]");
-  const del = ev.target.closest("[data-del]");
+$("l-table").addEventListener("click", async (ev) => {
+  const edit = ev.target.closest("[data-edit]")?.dataset.edit;
+  const del = ev.target.closest("[data-del]")?.dataset.del;
   if (edit) {
-    fillLogForm(edit.dataset.edit);
+    fillLogForm(edit);
     $("logf").scrollIntoView({ behavior: "smooth", block: "start" });
   }
-  if (del && confirmClick(del)) {
-    removeEntry(del.dataset.del);
+  if (del && (await confirmDialog(`Är du säker på att du vill ta bort loggen för ${del}?`))) {
+    removeEntry(del);
     update();
     logMessage("Posten är borttagen.");
   }
 });
 
 // ---------- Export och import ----------
+// Allt sparat följer med (se backup.js). Importen varnar om den skriver över något och laddar sedan om sidan,
+// så att alla delar av appen läser in de nya uppgifterna från början.
 
-const exportJson = () =>
-  JSON.stringify({ app: "fettforbranningsveckan", version: 1, exported: new Date().toISOString(), goal: num($("goal").value),
-    settings: load(PROFILE_KEY, null) || profileAsJson(), plan: planRandomness(), exclusions: exclusionsAsJson(), myFoods, myRecipes, entries }, null, 2);
+const IMPORTED_KEY = "ffv-imported"; // sessionStorage: visa ett kvitto efter omladdningen
+
+async function importBackup(text, say) {
+  const backup = readBackup(text);
+  if (backup.error) return say(backup.error);
+  const what = describe(backup.data);
+  const replaced = backup.replaceAll ? "allt som är sparat här" : "motsvarande uppgifter";
+  if (hasStoredData() && !(await confirmDialog(
+    "Det finns redan sparade uppgifter på den här enheten. Vill du skriva över dem?",
+    `Importen ersätter ${replaced} med: ${what}. Det går inte att ångra; exportera först om du vill behålla det som finns.`,
+  ))) return say("Importen avbröts. Inget har ändrats.");
+  try {
+    restore(backup);
+  } catch {
+    return say("Webbläsaren tillåter inte att uppgifterna sparas (t.ex. privat läge).");
+  }
+  try {
+    sessionStorage.setItem(IMPORTED_KEY, what);
+  } catch {
+    /* kvittot är inte nödvändigt */
+  }
+  location.reload();
+}
+
+/** Läs en vald fil som text och importera den. */
+async function importFile(input, say) {
+  const file = input.files?.[0];
+  input.value = "";
+  if (file) importBackup(await file.text(), say);
+}
 
 $("l-export").addEventListener("click", async () => {
-  const data = exportJson();
-  const filename = `fettforbranning-logg-${todayStr()}.json`;
+  const data = exportText();
+  const filename = `fettforbranning-${todayStr()}.json`;
   // I claude.ai sparas filer via downloads-capability; i en vanlig webbläsare via en nedladdningslänk.
   const downloads = typeof window.claude?.use === "function" ? await window.claude.use("downloads").catch(() => null) : null;
   try {
@@ -442,52 +475,36 @@ $("l-export").addEventListener("click", async () => {
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
-    logMessage(`Exporterade ${entries.length} dagar till ${filename}.`);
+    logMessage(`Allt är exporterat till ${filename}.`);
   } catch (e) {
-    logMessage(e?.code === "declined" ? "Exporten avbröts." : "Kunde inte spara filen här. Använd Kopiera JSON i stället.");
+    logMessage(e?.code === "declined" ? "Exporten avbröts." : "Kunde inte spara filen här. Använd Kopiera allt i stället.");
   }
 });
 $("l-copy").addEventListener("click", async () => {
+  const text = exportText();
   try {
-    await navigator.clipboard.writeText(exportJson());
-    logMessage("JSON är kopierad. Klistra in i en textfil och spara som .json.");
+    await navigator.clipboard.writeText(text);
+    $("l-copytext").hidden = true;
+    logMessage("Allt är kopierat. Klistra in texten under Importera på den andra enheten.");
   } catch {
-    logMessage("Kopieringen nekades av webbläsaren.");
+    // T.ex. när webbläsaren nekar urklipp: visa texten så att den kan markeras och kopieras för hand
+    Object.assign($("l-copytext"), { value: text, hidden: false });
+    $("l-copytext").select();
+    logMessage("Kopieringen nekades. Texten visas nedan: markera allt och kopiera.");
   }
 });
-$("l-import").addEventListener("change", async (ev) => {
-  const file = ev.target.files?.[0];
-  ev.target.value = "";
-  if (!file) return;
-  let data;
-  try {
-    data = JSON.parse(await file.text());
-  } catch {
-    return logMessage("Filen är inte giltig JSON.");
-  }
-  const list = Array.isArray(data) ? data : data.entries || [];
-  if (!list.length && !data.settings && !data.exclusions && !data.myFoods) return logMessage("Hittade inga loggposter i filen.");
-  const count = importEntries(list);
-  if (data.settings && typeof data.settings === "object") {
-    applyProfile(data.settings);
-    saveProfile();
-  }
-  if (typeof data.goal === "number") $("goal").value = data.goal;
-  if (data.exclusions && typeof data.exclusions === "object") {
-    setExclusions(migrateExclusions(data.exclusions));
-    saveExclusions();
-  }
-  if (Array.isArray(data.myFoods)) mergeMyFoods(data.myFoods);
-  if (Array.isArray(data.myRecipes)) {
-    mergeMyRecipes(data.myRecipes);
-    syncBreakfastOptions();
-    if (data.settings?.bmeal) $("bmeal").value = data.settings.bmeal;
-  }
-  if (data.plan && Number.isInteger(data.plan.seed)) setPlanRandomness(data.plan.seed, data.plan.salts || {}, Number.isInteger(data.plan.trainingSeed) ? data.plan.trainingSeed : data.plan.seed);
-  invalidateMenu();
-  update();
-  logMessage(`Importerade ${count} dagar${data.settings ? " och dina inställningar" : ""}.`);
+$("l-import").addEventListener("change", (ev) => importFile(ev.target, logMessage));
+$("l-paste-go").addEventListener("click", () => importBackup($("l-paste").value, logMessage));
+
+// Import som första steg i guiden
+const wizardMessage = (text) => ($("wz-msg").textContent = text);
+$("wz-import").addEventListener("change", (ev) => importFile(ev.target, wizardMessage));
+$("wz-paste-toggle").addEventListener("click", (ev) => {
+  $("wz-paste").hidden = !$("wz-paste").hidden;
+  ev.currentTarget.setAttribute("aria-expanded", String(!$("wz-paste").hidden));
+  if (!$("wz-paste").hidden) $("wz-paste-text").focus();
 });
+$("wz-paste-go").addEventListener("click", () => importBackup($("wz-paste-text").value, wizardMessage));
 
 // ---------- Flikar ----------
 // Varje flik är en vy (#idag, #mat, ...). En länk till en sektion eller ett recept öppnar fliken den ligger i.
@@ -564,12 +581,8 @@ function enableSwipeNavigation() {
 
   // Visa en kort hjälptext första gången på en pekskärm
   if ("ontouchstart" in window && !load(SWIPE_HINT_KEY, false)) {
-    const hint = document.createElement("div");
-    hint.className = "swipe-hint";
-    hint.textContent = "Svep åt vänster eller höger för att byta flik";
-    document.body.append(hint);
+    toast("Svep åt vänster eller höger för att byta flik");
     save(SWIPE_HINT_KEY, true);
-    setTimeout(() => hint.remove(), 4000);
   }
 }
 
@@ -579,72 +592,34 @@ loadPreferences();
 loadMyRecipes();
 syncBreakfastOptions();
 loadLog();
+syncDayButtons();
+
+/**
+ * Starta appen. En ny användare (från guiden) får ett eget slumpfrö. Den som hade en profil eller omslumpade veckor
+ * innan fröet fanns behåller frö 0, så att menyerna inte ändras.
+ */
+function start(newUser = false) {
+  initSeed(newUser && !Object.keys(load("ffv-salt", {}) || {}).length, randomSeed);
+  syncDayButtons();
+  update();
+  window.addEventListener("hashchange", route);
+  route();
+  enableSwipeNavigation();
+  connectCloud({ changed: update, status: (text) => ($("l-where").textContent = text) });
+  try {
+    const imported = sessionStorage.getItem(IMPORTED_KEY);
+    sessionStorage.removeItem(IMPORTED_KEY);
+    if (imported) toast(`Importen är klar: ${imported}.`, 5000);
+  } catch {
+    /* ingen sessionStorage */
+  }
+}
+
 const savedProfile = load(PROFILE_KEY, null);
-initSeed(!savedProfile && !Object.keys(load("ffv-salt", {}) || {}).length, randomSeed);
 if (savedProfile) {
   applyProfile(savedProfile);
-  $("exnote").hidden = true;
-  $("saved").hidden = false;
-  $("saved-hint").hidden = true;
-  $("saved-text").textContent = "Dina sparade uppgifter är inlästa";
+  showSaved("Dina sparade uppgifter är inlästa");
+  start();
+} else {
+  runWizard(() => start(true)); // första gången: inget sparas och inget frö skapas förrän guiden är klar
 }
-syncDayButtons();
-update();
-window.addEventListener("hashchange", route);
-route();
-enableSwipeNavigation();
-connectCloud({ changed: update, status: (text) => ($("l-where").textContent = text) });
-
-// ---------- PWA: offline och installation ----------
-// Service workern registreras bara när sidan körs som egen webbplats (inte inbäddad i claude.ai och inte från disk).
-
-if ("serviceWorker" in navigator && window.self === window.top && location.protocol !== "file:") {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
-}
-// Be om beständig lagring, så att webbläsaren inte rensar profilen och loggen när utrymmet blir trångt.
-// Installerade appar (även på iPhone) får det oftast direkt; i en vanlig flik avgör webbläsaren.
-navigator.storage?.persist?.().catch(() => {});
-// Förslaget att installera visas en gång per besök tills användaren installerar eller väljer "Inte nu" (sparas i ffv-install-declined).
-// Chrome och Edge ger ett beforeinstallprompt-event; Safari på iPhone/iPad saknar det, där visas istället hur man lägger till appen.
-const INSTALL_DECLINED_KEY = "ffv-install-declined";
-const isStandalone = () => window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone === true;
-const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-const canSuggestInstall = () => window.self === window.top && !isStandalone() && !load(INSTALL_DECLINED_KEY, false);
-let installPrompt = null;
-
-function hideInstall() {
-  $("install").hidden = true;
-  $("install-banner").hidden = true;
-}
-
-async function install() {
-  if (!installPrompt) return;
-  const prompt = installPrompt;
-  installPrompt = null;
-  hideInstall();
-  prompt.prompt();
-  const choice = await prompt.userChoice.catch(() => null);
-  if (choice?.outcome === "dismissed") save(INSTALL_DECLINED_KEY, true);
-}
-
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  installPrompt = e;
-  $("install").hidden = false;
-  if (canSuggestInstall()) $("install-banner").hidden = false;
-});
-if (isIos && canSuggestInstall()) {
-  $("install-text").textContent = "Tryck på dela-knappen och välj Lägg till på hemskärmen, så öppnas Fettförbränning som en egen app och fungerar offline. Appen på hemskärmen har egen lagring: fyll i profilen där, eller flytta dina uppgifter med Exportera JSON under Logg och Importera i appen.";
-  $("install-accept").hidden = true;
-  $("install-banner").hidden = false;
-}
-$("install").addEventListener("click", install);
-$("install-accept").addEventListener("click", install);
-$("install-decline").addEventListener("click", () => {
-  save(INSTALL_DECLINED_KEY, true);
-  $("install-banner").hidden = true;
-});
-window.addEventListener("appinstalled", () => {
-  installPrompt = null;
-  hideInstall();
-});

@@ -15,7 +15,7 @@
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const EQUIPMENT = { gym: "G", db: "H", bw: "K" };
 const BREAKFASTS = ["F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "rot"];
-export const SEED_LIMIT = 2 ** 30;
+const SEED_LIMIT = 2 ** 30;
 
 function toBase32(n, length = 0) {
   let s = "";

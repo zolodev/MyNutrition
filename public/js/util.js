@@ -119,10 +119,14 @@ export function shuffle(list, random) {
 
 // ---------- Gränssnitt ----------
 
-/**
- * Tvåstegsknapp för att ta bort något: första klicket ber om bekräftelse, andra utför.
- * Returnerar true när borttagningen ska göras.
- */
+/** Kort meddelande högst upp som försvinner av sig själv. */
+export function toast(text, ms = 4000) {
+  const el = Object.assign(document.createElement("div"), { className: "toast", textContent: text });
+  el.setAttribute("role", "status");
+  document.body.append(el);
+  setTimeout(() => el.remove(), ms);
+}
+
 /**
  * Fråga med en modal (#confirm i index.html) och svara true för Ja, false för Nej, Escape eller klick utanför.
  * Webbläsare utan showModal (t.ex. jsdom) får dialogen öppnad med attributet open.
@@ -155,16 +159,4 @@ export function confirmDialog(question, detail = "") {
     else dialog.setAttribute("open", "");
     dialog.querySelector('[data-answer="no"]').focus();
   });
-}
-
-export function confirmClick(button) {
-  if (button.classList.contains("armed")) return true;
-  const label = button.textContent;
-  button.classList.add("armed");
-  button.textContent = "Bekräfta";
-  setTimeout(() => {
-    button.classList.remove("armed");
-    button.textContent = label;
-  }, 4000);
-  return false;
 }

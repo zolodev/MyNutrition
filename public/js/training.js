@@ -3,8 +3,8 @@
 import { EXERCISES, CORE } from "./data/exercises.js";
 import { DAYS, seededRandom } from "./util.js";
 
-/** Hur ofta övningarna byts: varje vecka (1), varannan (2) eller var fjärde (4). */
-export const SWAP_PERIODS = [1, 2, 4];
+/** Hur ofta övningarna byts, i veckor, och hur det skrivs. */
+export const SWAP_TEXT = { 1: "varje vecka", 2: "varannan vecka", 4: "var fjärde vecka" };
 
 /**
  * Välj övning för en rörelse. Alternativen gås igenom i tur och ordning: varje period flyttar ett steg,

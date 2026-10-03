@@ -5,6 +5,7 @@
 import { MEAL_AT, STRENGTH, INTERVALS } from "./day.js";
 import { load, save } from "./util.js";
 import { formatClock } from "./fasting.js";
+import { exclusions } from "./preferences.js";
 
 const KEY = "ffv-supps";
 export const SUPPLEMENTS = [["pwo", "PWO (koffein)"], ["whey", "Vassleprotein"], ["creatine", "Kreatin"]];
@@ -59,9 +60,13 @@ export function supplementTips({ start, kind, weight }) {
   return tips.sort((a, b) => a.at - b.at);
 }
 
-export const GENERAL_NOTES = [
-  "Allt som innehåller kalorier, som vassle, ska tas inne i ätfönstret.",
-  "Kreatin binder vatten i musklerna: vågen kan visa 0,5–2 kg mer de första veckorna. Det är inte fett; följ midjan och 7-dagarssnittet.",
-  "Du är allergisk mot apelsin, mandarin och clementin: PWO och smaksatt vassle har ofta apelsin- eller tropisk smak med apelsin. Läs ingrediensförteckningen.",
-];
+/** Allmänna råd: bara de som gäller tillskotten användaren tar och allergierna hen har valt bort. */
+export function generalNotes() {
+  const citrus = ["apelsin", "mandarin", "clementin"].filter((a) => exclusions.allergens.has(a));
+  return [
+    "Allt som innehåller kalorier, som vassle, ska tas inne i ätfönstret.",
+    using.has("creatine") && "Kreatin binder vatten i musklerna: vågen kan visa 0,5–2 kg mer de första veckorna. Det är inte fett; följ midjan och 7-dagarssnittet.",
+    citrus.length && `Du har valt bort ${citrus.join(", ")}: PWO och smaksatt vassle har ofta apelsinsmak eller tropisk smak med apelsin. Läs ingrediensförteckningen.`,
+  ].filter(Boolean);
+}
 

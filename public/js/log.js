@@ -75,13 +75,6 @@ export function removeEntry(date) {
   if (entry) cloudWrite([entry], true);
 }
 
-export function importEntries(list) {
-  const clean = list.map(cleanEntry).filter(Boolean);
-  for (const e of clean) upsertEntry(e, { sync: false });
-  cloudWrite(clean);
-  return clean.length;
-}
-
 export const entryFor = (date) => entries.find((x) => x.date === date);
 
 /** Testtid "18:45" eller "18" (minuter) → sekunder. null om det inte går att tolka. */

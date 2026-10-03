@@ -5,7 +5,7 @@ import { NONE } from "../data/recipes.js";
 import { totals } from "../menu.js";
 import { MEAL_AT, WINDOW, STRENGTH, INTERVALS } from "../day.js";
 import { tile } from "./components.js";
-import { supplementTips, GENERAL_NOTES, using } from "../supplements.js";
+import { supplementTips, generalNotes, using } from "../supplements.js";
 import { formatClock } from "../fasting.js";
 import { recipeRow } from "./food.js";
 import { sessionBlock } from "./training-view.js";
@@ -65,7 +65,7 @@ export function renderToday({ week, targets, program, breakfast, weight }) {
   const tips = supplementTips({ start: breakfast, kind: training.kind, weight });
   $("td-supps-box").hidden = !using.size;
   $("td-supps").innerHTML = tips.map((tip) => `<li><b>${formatClock(tip.at)} ${tip.name}</b> ${tip.text}</li>`).join("") +
-    GENERAL_NOTES.filter((n) => !n.startsWith("Kreatin") || using.has("creatine")).map((n) => `<li>${n}</li>`).join("");
+    generalNotes().map((n) => `<li>${n}</li>`).join("");
 }
 
 export function renderFasting(targets, breakfast) {

@@ -26,12 +26,6 @@ export function removeMyRecipe(id) {
 }
 
 /** Lägg till recept från en import; befintliga med samma id behålls. */
-export function mergeMyRecipes(list) {
-  const known = new Set(myRecipes.map((r) => r.id));
-  for (const r of list.map(cleanRecipe).filter(Boolean)) if (!known.has(r.id)) myRecipes.push(r);
-  persist();
-}
-
 function persist() {
   save(KEY, myRecipes);
   register();

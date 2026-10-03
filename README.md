@@ -6,7 +6,7 @@ En personlig veckoplan för viktnedgång som fungerar som installerbar webbapp (
 - **Träningsprogram** med övningar från ExRx övningskatalog: helkropp, överkropp och ben (3 dagar) eller över/under (4 dagar), med varierad och intensiv bålträning.
 - **Säsongsrecept för Norrland**: färska svenska grönsaker, ren- och älgskav, vit fisk (lax som alternativ). Menyn roterar varje vecka utan upprepning.
 - **Periodisk fasta 16:8** med frukost och en eftermiddagsmåltid, lördagsgodis och en fri måltid.
-- **Logg och statistik**: målvikt, vikt, midja, mående, prestation och testtid, med viktkurva, takt och prognos. Export och import som JSON.
+- **Logg och statistik**: målvikt, vikt, midja, mående, prestation och testtid, med viktkurva, takt och prognos. Export och import av allt, som fil eller som text att klistra in.
 - **Allergier och bortval**: kryssa i allergener och enskilda livsmedel; recepten byter ut, stryker eller tar bort det som inte passar.
 - **Egna livsmedel** med näringsvärden per 100 g, som ersättare i recepten.
 - **Inköpslista att bocka av**, sorterad efter avdelning i butiken.
@@ -24,6 +24,7 @@ Allt körs i webbläsaren. Inga uppgifter skickas till någon server.
 public/index.html            Sidans HTML: flikarna Idag, Mat, Träning, Logg, Profil och Inställningar
 public/guide.html            Förklaringar till alla val och beräkningar
 public/css/app.css           Stilmall (färger, komponenter, vyer)
+public/js/backup.js          Export och import av allt sparat (fil eller text), även äldre exporter
 public/js/app.js             Styrning: läser profilen, ritar om, kopplar knappar och formulär, flikar, PWA
 public/js/util.js            Hjälpfunktioner: DOM, talformat, lagring, datum, slump som går att upprepa
 public/js/nutrition.js       Energibehov, makromål och skalning av portioner
@@ -36,6 +37,8 @@ public/js/myrecipes.js       Egna recept
 public/js/supplements.js     Tips om PWO, vassle och kreatin
 public/js/training.js        Träningsprogram och vilka dagar passen läggs
 public/js/log.js             Loggposter, statistik och synk till claude-kontot
+public/js/pwa.js             Offline, beständig lagring och förslaget att installera appen
+public/js/wizard.js          Guiden första gången: profilen steg för steg innan något sparas
 public/js/data/foods.js      Livsmedel, butiksavdelningar, allergener och ersättare
 public/js/data/recipes.js    Recept och säsongsråvaror
 public/js/data/exercises.js  Övningar från ExRx
@@ -46,6 +49,7 @@ public/manifest.webmanifest  App-manifest (namn, ikoner, färger)
 public/sw.js                 Service worker för offline och installation
 public/icons/                Appikoner
 .claude/skills/exrx/         Claude Code-skill som hämtar fakta från exrx.net
+tests/backup.mjs             Importtest: guiden, skriva över med varning och äldre exporter, i en ren webbläsare
 wrangler.jsonc               Cloudflare-konfiguration: publicerar public/ som statisk sida
 ```
 
@@ -111,10 +115,11 @@ Profil, logg, plankod, allergival, egna livsmedel och recept sparas i `localStor
 
 Lagringen hör till webbadressen. `gym.jonzzon.nu`, en `*.workers.dev`-adress och `localhost:8000` har var sin `localStorage`. Appen ber om beständig lagring (`navigator.storage.persist()`), så att webbläsaren inte rensar den när utrymmet blir trångt.
 
-**iPhone:** En app som lagts på hemskärmen har egen lagring, skild från Safari. Uppgifter som fyllts i i Safari följer inte med; fyll i profilen i appen, eller flytta dem med **Exportera JSON** i Safari och **Importera** i appen. Safari kan radera data för webbplatser som inte besökts på 7 dagar, men det gäller inte appar på hemskärmen.
+**iPhone:** En app som lagts på hemskärmen har egen lagring, skild från Safari. Uppgifter som fyllts i i Safari följer inte med; fyll i profilen i appen, eller flytta dem med **Kopiera allt** i Safari och klistra in texten i guidens första steg i appen. Safari kan radera data för webbplatser som inte besökts på 7 dagar, men det gäller inte appar på hemskärmen.
 
 - Inställningar, allergival, egna livsmedel, avbockningar, logg och omslumpade veckor sparas i webbläsarens `localStorage` på varje enhet.
-- **Exportera JSON** sparar loggen, målvikten, inställningarna, allergivalen och dina egna livsmedel. **Importera JSON** läser in dem igen och slår ihop loggposterna per datum. Använd det för att flytta data mellan enheter och som säkerhetskopia.
+- **Exportera allt** (fil) och **Kopiera allt** (text) tar med allt sparat: profil, logg, plankod och frön, allergier och bortval, egna livsmedel och recept, tillskott och avbockningar (`public/js/backup.js`). Bara det som gäller enheten (svep-tipset, avböjd installation) stannar kvar.
+- **Import** av fil eller inklistrad text ersätter allt som är sparat på enheten, efter en varning om det redan finns data. Sidan laddas sedan om. Äldre exporter (version 1) läses också. Guiden erbjuder import som första steg.
 - I versionen som publiceras på claude.ai sparas loggen även privat i användarens claude-konto.
 
 ## Källor
