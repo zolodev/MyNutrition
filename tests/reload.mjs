@@ -44,7 +44,7 @@ if (!("ffv-terms" in stored)) {
   check("Utan godkända villkor visas villkoren först", !$("wizard").hidden && $("wz-progress").textContent === "Villkor" && $("f").closest("[data-view]").dataset.view === "profil");
   $("wz-accept").checked = true;
   $("wz-next").dispatchEvent(new win.Event("click"));
-  check("Godkännandet sparas och appen startar", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv-terms")).version === 2);
+  check("Godkännandet sparas och appen startar", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv-terms")).version === 3);
 }
 
 const after = (k) => win.localStorage.getItem(k);

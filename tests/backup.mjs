@@ -30,7 +30,7 @@ const stored = () => Object.fromEntries(Object.keys(win.localStorage).map((k) =>
 const same = (a, b) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
 
 if (scenario === "skriv-över" || scenario === "radera") {
-  win.localStorage.setItem("ffv-terms", JSON.stringify({ version: 2, accepted: "2026-01-01T00:00:00.000Z" }));
+  win.localStorage.setItem("ffv-terms", JSON.stringify({ version: 3, accepted: "2026-01-01T00:00:00.000Z" }));
   win.localStorage.setItem("ffv", JSON.stringify({ age: "50", weight: "110", height: "190", goal: "100", sex: "m" }));
   win.localStorage.setItem("ffv-log", JSON.stringify({ entries: [{ date: "2025-01-01", weight: 112 }] }));
   win.localStorage.setItem("ffv-shop-999", JSON.stringify(["agg"]));
@@ -55,7 +55,7 @@ if (scenario === "guide") {
   fire($("wz-paste-go"), "click"); await tick();
   check("Ingen varning när enheten är tom", !$("confirm").hasAttribute("open"));
   check("Allt i exporten sparas i localStorage", same(withoutDevice(stored()), expected));
-  check("Godkända villkor sparas vid import i guiden", stored()["ffv-terms"]?.version === 2);
+  check("Godkända villkor sparas vid import i guiden", stored()["ffv-terms"]?.version === 3);
   check("Sidan laddas om efter importen", reloaded);
 }
 
@@ -70,7 +70,7 @@ if (scenario === "skriv-över") {
   fire($("confirm").querySelector('[data-answer="yes"]'), "click"); await tick();
   const rest = withoutDevice(stored());
   check("Ja ersätter allt med exporten (gammal data och inköpslistor borta)", same(rest, expected) && !("ffv-shop-999" in rest));
-  check("Inställningar som bara gäller enheten ligger kvar (svep-tips, godkända villkor)", stored()["ffv-swipe-hint"] === true && stored()["ffv-terms"]?.version === 2);
+  check("Inställningar som bara gäller enheten ligger kvar (svep-tips, godkända villkor)", stored()["ffv-swipe-hint"] === true && stored()["ffv-terms"]?.version === 3);
   check("Sidan laddas om efter importen", reloaded);
 }
 

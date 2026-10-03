@@ -101,7 +101,7 @@ function showGoalAdvice() {
 
 // Godkända villkor gäller enheten (följer inte med i exporten). Höj versionen när villkoren ändras.
 const TERMS_KEY = "ffv-terms";
-const TERMS_VERSION = 2; // 2: utan molnsynk, med återkallande och förtydligad ExRx-koppling
+const TERMS_VERSION = 3; // 3: hobbyprojekt och att appen kan innehålla fel
 const termsAccepted = () => load(TERMS_KEY, null)?.version === TERMS_VERSION;
 const acceptTerms = () => save(TERMS_KEY, { version: TERMS_VERSION, accepted: new Date().toISOString() });
 
