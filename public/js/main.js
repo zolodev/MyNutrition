@@ -27,12 +27,18 @@ async function appStyles() {
   if (!appCssApplied()) throw new Error("Stilmallen css/app.css gick inte att ladda");
 }
 
+/**
+ * Vänta tills sidan har laddat färdigt. Appen bygger sitt innehåll först därefter, så att ingen layout beräknas
+ * medan sidan laddas (Firefox varnar annars för "Layout was forced before the page was fully loaded").
+ */
+const pageLoaded = () => (document.readyState === "complete" ? Promise.resolve() : new Promise((resolve) => addEventListener("load", resolve, { once: true })));
+
 /** Typsnitten är inte nödvändiga (reservtypsnitt fungerar), så vänta på dem högst två sekunder. */
 const fontsReady = () => Promise.race([document.fonts?.ready, new Promise((resolve) => setTimeout(resolve, 2000))]);
 
 // Laddningsskärmen (index.html) visas tills appen har startat. Går något inte att ladda visas ett fel i stället.
 try {
-  await Promise.all([initStorage(), appStyles(), fontsReady()]);
+  await Promise.all([initStorage(), appStyles(), fontsReady(), pageLoaded()]);
   await import("./app.js");
   document.documentElement.classList.remove("booting", "boot-failed");
 } catch (error) {
