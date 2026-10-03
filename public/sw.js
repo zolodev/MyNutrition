@@ -1,7 +1,7 @@
 // Service worker för Fettförbränningsveckan: gör appen installerbar och användbar offline.
 // Höj VERSION när filerna ändras, så hämtas de nya och den gamla cachen rensas.
 // Lägger du till en fil i js/ eller css/ ska den också in i CORE, annars fungerar den inte offline.
-const VERSION = "ffv-v34";
+const VERSION = "ffv-v36";
 const CORE = [
   "./",
   "./index.html",

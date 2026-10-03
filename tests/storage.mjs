@@ -65,12 +65,17 @@ if (process.argv[2] === "ny-användare") {
 }
 
 // 0. Innan villkoren är godkända skrivs ingenting: ingen databas skapas, inget ändras i localStorage
+const realOpen = indexedDB.open.bind(indexedDB);
+let opened = 0;
+indexedDB.open = (...args) => (opened++, realOpen(...args));
 let s = await pageLoad({ unlock: false });
+check("En ny användares start öppnar inte ens IndexedDB", opened === 0);
 check("Ingen databas skapas vid start", !(await databases()).includes("fettforbranning"));
 s.save("ffv", { age: "1" });
 s.save("ffv-install-declined", true);
 s.remove("ffv-log");
 await s.flush();
+check("Inte heller när något sparas innan villkoren är godkända", opened === 0);
 check("Sparat innan villkoren är godkända finns bara i minnet", s.load("ffv").age === "1" && !(await databases()).includes("fettforbranning") && memory.size === 0);
 
 // 1. Uppdatering från en version som använde localStorage

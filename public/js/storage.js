@@ -100,6 +100,19 @@ function openDb({ create }) {
   });
 }
 
+/**
+ * Finns databasen redan? Frågar webbläsaren utan att öppna (och därmed riskera att skapa) den.
+ * Ger null i äldre webbläsare som saknar indexedDB.databases().
+ */
+async function dbExists() {
+  if (typeof indexedDB.databases !== "function") return null;
+  try {
+    return (await indexedDB.databases()).some((d) => d.name === DB_NAME);
+  } catch {
+    return null;
+  }
+}
+
 /** Skriv till IndexedDB i bakgrunden; databasen skapas vid första skrivningen. */
 function write(change) {
   const result = pending.then(async () => {
@@ -130,7 +143,8 @@ export async function initStorage() {
   cache = new Map();
   try {
     if (typeof indexedDB === "undefined" || !indexedDB) throw new Error("IndexedDB saknas");
-    db = await openDb({ create: false });
+    // En ny användare har ingen databas: öppna den då inte alls förrän villkoren är godkända
+    db = (await dbExists()) === false ? null : await openDb({ create: false });
     useIdb = true;
     backend = "IndexedDB";
     if (db) {
