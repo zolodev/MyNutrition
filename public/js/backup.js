@@ -79,6 +79,13 @@ export function describe(data) {
   return parts.join(", ") || "inställningar";
 }
 
+/** Radera allt appen har sparat, även det som bara gäller enheten (som godkända villkor). */
+export function eraseAll() {
+  for (const k of Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))) {
+    if (k === "ffv" || k.startsWith("ffv-")) localStorage.removeItem(k);
+  }
+}
+
 /** Skriv en export till localStorage. Vid replaceAll tas allt annat sparat bort först. */
 export function restore({ data, replaceAll }) {
   if (replaceAll) for (const k of storedKeys()) localStorage.removeItem(k);

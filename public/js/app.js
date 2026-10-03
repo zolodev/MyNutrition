@@ -7,7 +7,7 @@ import { buildWeek, invalidateMenu, initSeed, planRandomness, setPlanRandomness 
 import { encodePlan, decodePlan, prettyCode, randomSeed } from "./plancode.js";
 import { SEASONS } from "./data/recipes.js";
 import { parseTrainingDays, buildProgram, SWAP_TEXT } from "./training.js";
-import { loadLog, entryFor, upsertEntry, removeEntry, cleanEntry, isIsoDate, parseTestTime, formatTestTime, connectCloud, setMealTimes } from "./log.js";
+import { loadLog, entryFor, upsertEntry, removeEntry, cleanEntry, isIsoDate, parseTestTime, formatTestTime, setMealTimes } from "./log.js";
 import { renderTargets, renderGoalAdvice } from "./views/profile.js";
 import { renderToday, renderFasting } from "./views/today.js";
 import { renderFastingToday, renderFastingNow, todaysFasting } from "./views/fasting-view.js";
@@ -16,7 +16,7 @@ import { renderProgram } from "./views/training-view.js";
 import { renderLog } from "./views/log-view.js";
 import { renderSettings, renderIngredientPicker, recipeItemRow, readRecipeItems, updateRecipeSum } from "./views/settings.js";
 import { loadMyRecipes, myRecipes, addMyRecipe, removeMyRecipe, cleanRecipe } from "./myrecipes.js";
-import { exportText, readBackup, describe, restore, hasStoredData } from "./backup.js";
+import { exportText, readBackup, describe, restore, hasStoredData, eraseAll } from "./backup.js";
 import { setUsing } from "./supplements.js";
 import { openWizard } from "./wizard.js";
 import "./pwa.js";
@@ -101,7 +101,7 @@ function showGoalAdvice() {
 
 // Godkända villkor gäller enheten (följer inte med i exporten). Höj versionen när villkoren ändras.
 const TERMS_KEY = "ffv-terms";
-const TERMS_VERSION = 1;
+const TERMS_VERSION = 2; // 2: utan molnsynk, med återkallande och förtydligad ExRx-koppling
 const termsAccepted = () => load(TERMS_KEY, null)?.version === TERMS_VERSION;
 const acceptTerms = () => save(TERMS_KEY, { version: TERMS_VERSION, accepted: new Date().toISOString() });
 
@@ -503,25 +503,19 @@ async function importFile(input, say) {
   if (file) importBackup(await file.text(), say);
 }
 
-$("l-export").addEventListener("click", async () => {
+$("l-export").addEventListener("click", () => {
   const data = exportText();
   const filename = `fettforbranning-${todayStr()}.json`;
-  // I claude.ai sparas filer via downloads-capability; i en vanlig webbläsare via en nedladdningslänk.
-  const downloads = typeof window.claude?.use === "function" ? await window.claude.use("downloads").catch(() => null) : null;
   try {
-    if (downloads) {
-      await downloads.save({ filename, data });
-    } else {
-      const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
-      const link = Object.assign(document.createElement("a"), { href: url, download: filename });
-      document.body.append(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    }
+    const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+    const link = Object.assign(document.createElement("a"), { href: url, download: filename });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
     logMessage(`Allt är exporterat till ${filename}.`);
-  } catch (e) {
-    logMessage(e?.code === "declined" ? "Exporten avbröts." : "Kunde inte spara filen här. Använd Kopiera allt i stället.");
+  } catch {
+    logMessage("Kunde inte spara filen här. Använd Kopiera allt i stället.");
   }
 });
 $("l-copy").addEventListener("click", async () => {
@@ -539,6 +533,22 @@ $("l-copy").addEventListener("click", async () => {
 });
 $("l-import").addEventListener("change", (ev) => importFile(ev.target, logMessage));
 $("l-paste-go").addEventListener("click", () => importBackup($("l-paste").value, logMessage));
+
+// Radera all data (Inställningar): drar också tillbaka godkännandet av villkoren
+$("erase-all").addEventListener("click", async () => {
+  const sure = await confirmDialog(
+    "Är du säker på att du vill radera all data och dra tillbaka ditt godkännande?",
+    "Allt som är sparat i den här webbläsaren raderas: profil, logg, plankod, allergier, egna livsmedel och recept och ditt godkännande av villkoren. Det går inte att ångra. Exportera först under Logg om du vill behålla något.",
+  );
+  if (!sure) return;
+  try {
+    eraseAll();
+  } catch {
+    /* ingen lagring att radera */
+  }
+  window.history.replaceState(null, "", location.pathname); // börja om från början (utan #installningar), med villkoren
+  location.reload();
+});
 
 // Import som första steg i guiden
 const wizardMessage = (text) => ($("wz-msg").textContent = text);
@@ -649,7 +659,6 @@ function start(newUser = false) {
   window.addEventListener("hashchange", route);
   route();
   enableSwipeNavigation();
-  connectCloud({ changed: update, status: (text) => ($("l-where").textContent = text) });
   try {
     const imported = sessionStorage.getItem(IMPORTED_KEY);
     sessionStorage.removeItem(IMPORTED_KEY);

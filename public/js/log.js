@@ -1,6 +1,4 @@
-// Loggen: dagliga poster, statistik och synk till claude-kontot.
-// Poster sparas i webbläsaren. I den publicerade claude-sidan sparas de även privat i användarens konto
-// (db-capability, data/users/<id>), så att loggen följer med mellan enheter.
+// Loggen: dagliga poster och statistik. Posterna sparas bara i webbläsaren (localStorage).
 
 import { load, save, dateToDay, dayToDate, todayStr } from "./util.js";
 
@@ -59,20 +57,17 @@ const saveLog = () => save(LOG_KEY, { entries });
 const sortEntries = () => entries.sort((a, b) => (a.date < b.date ? -1 : 1));
 
 /** Lägg till eller ersätt posten för ett datum. */
-export function upsertEntry(entry, { sync = true } = {}) {
+export function upsertEntry(entry) {
   const i = entries.findIndex((x) => x.date === entry.date);
   if (i >= 0) entries[i] = entry;
   else entries.push(entry);
   sortEntries();
   saveLog();
-  if (sync) cloudWrite([entry]);
 }
 
 export function removeEntry(date) {
-  const entry = entries.find((x) => x.date === date);
   entries = entries.filter((x) => x.date !== date);
   saveLog();
-  if (entry) cloudWrite([entry], true);
 }
 
 export const entryFor = (date) => entries.find((x) => x.date === date);
@@ -85,69 +80,6 @@ export function parseTestTime(text) {
   return /^\d+$/.test(t) ? +t * 60 : null;
 }
 export const formatTestTime = (seconds) => (seconds == null ? "–" : `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`);
-
-// ---------- Synk till claude-kontot (bara i den publicerade sidan) ----------
-
-let cloud = null;
-let onCloudChange = () => {};
-let onStatus = () => {};
-
-async function cloudWrite(list, remove = false) {
-  if (!cloud) return;
-  for (const e of list) {
-    try {
-      const ref = cloud.doc("d-" + e.date);
-      await (remove ? ref.delete() : ref.set(e));
-    } catch {
-      cloud = null;
-      onStatus("Kunde inte spara i kontot just nu. Loggen sparas i den här webbläsaren.");
-      return;
-    }
-  }
-}
-
-/**
- * Anslut till kontots privata lagring om sidan körs på claude.ai. Lokala poster som saknas i kontot laddas upp.
- * `changed` anropas när loggen ändrats utifrån, `status` med en text om var loggen sparas.
- */
-export async function connectCloud({ changed, status }) {
-  onCloudChange = changed;
-  onStatus = status;
-  try {
-    if (typeof window.claude?.use !== "function") return;
-    const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
-    const uid = db && user ? await user.id() : null;
-    if (!uid) return;
-    const collection = db.collection("data/users/" + uid);
-    let first = true;
-    collection.onSnapshot(
-      (snap) => {
-        const remote = snap.docs.filter((d) => d.id.startsWith("d-")).map((d) => cleanEntry(d.data())).filter(Boolean);
-        if (first) {
-          first = false;
-          cloud = collection;
-          onStatus("Loggen sparas privat i ditt claude-konto och i den här webbläsaren. Bara du kan se den.");
-          const known = new Set(remote.map((e) => e.date));
-          const localOnly = entries.filter((e) => !known.has(e.date));
-          entries = remote;
-          for (const e of localOnly) upsertEntry(e, { sync: false });
-          if (localOnly.length) cloudWrite(localOnly);
-        } else {
-          entries = remote;
-          sortEntries();
-        }
-        saveLog();
-        onCloudChange();
-      },
-      () => {
-        cloud = null;
-        onStatus("Loggen sparas i den här webbläsaren. Exportera då och då som säkerhetskopia.");
-      },
-    );
-  } catch {
-    /* ingen claude-miljö: loggen finns bara lokalt */
-  }
-}
 
 // ---------- Statistik ----------
 

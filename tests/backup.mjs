@@ -3,6 +3,7 @@
 //   guide        tom enhet: importera genom att klistra in i guidens första steg, utan varning
 //   skriv-över   enhet med annan data: importera under Logg, varning, Ja ersätter allt
 //   äldre        tom enhet: en export i det gamla formatet (version 1) läses in
+//   radera       Inställningar → Radera all data: bekräftelse, allt raderas (även godkända villkor), sidan börjar om
 
 import { JSDOM, VirtualConsole } from "jsdom";
 import fs from "fs";
@@ -28,8 +29,8 @@ const check = (label, cond) => { console.log((cond ? "OK   " : "FEL  ") + `impor
 const stored = () => Object.fromEntries(Object.keys(win.localStorage).map((k) => [k, JSON.parse(win.localStorage.getItem(k))]));
 const same = (a, b) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
 
-if (scenario === "skriv-över") {
-  win.localStorage.setItem("ffv-terms", JSON.stringify({ version: 1, accepted: "2026-01-01T00:00:00.000Z" }));
+if (scenario === "skriv-över" || scenario === "radera") {
+  win.localStorage.setItem("ffv-terms", JSON.stringify({ version: 2, accepted: "2026-01-01T00:00:00.000Z" }));
   win.localStorage.setItem("ffv", JSON.stringify({ age: "50", weight: "110", height: "190", goal: "100", sex: "m" }));
   win.localStorage.setItem("ffv-log", JSON.stringify({ entries: [{ date: "2025-01-01", weight: 112 }] }));
   win.localStorage.setItem("ffv-shop-999", JSON.stringify(["agg"]));
@@ -54,7 +55,7 @@ if (scenario === "guide") {
   fire($("wz-paste-go"), "click"); await tick();
   check("Ingen varning när enheten är tom", !$("confirm").hasAttribute("open"));
   check("Allt i exporten sparas i localStorage", same(withoutDevice(stored()), expected));
-  check("Godkända villkor sparas vid import i guiden", stored()["ffv-terms"]?.version === 1);
+  check("Godkända villkor sparas vid import i guiden", stored()["ffv-terms"]?.version === 2);
   check("Sidan laddas om efter importen", reloaded);
 }
 
@@ -69,8 +70,21 @@ if (scenario === "skriv-över") {
   fire($("confirm").querySelector('[data-answer="yes"]'), "click"); await tick();
   const rest = withoutDevice(stored());
   check("Ja ersätter allt med exporten (gammal data och inköpslistor borta)", same(rest, expected) && !("ffv-shop-999" in rest));
-  check("Inställningar som bara gäller enheten ligger kvar (svep-tips, godkända villkor)", stored()["ffv-swipe-hint"] === true && stored()["ffv-terms"]?.version === 1);
+  check("Inställningar som bara gäller enheten ligger kvar (svep-tips, godkända villkor)", stored()["ffv-swipe-hint"] === true && stored()["ffv-terms"]?.version === 2);
   check("Sidan laddas om efter importen", reloaded);
+}
+
+if (scenario === "radera") {
+  win.localStorage.setItem("other-app", "behålls");
+  fire($("erase-all"), "click"); await tick();
+  check("Radera frågar i en modal och nämner godkännandet", $("confirm").hasAttribute("open") && text("confirm-text").includes("radera all data och dra tillbaka ditt godkännande"));
+  fire($("confirm").querySelector('[data-answer="no"]'), "click"); await tick();
+  check("Nej raderar inget", win.localStorage.getItem("ffv") != null && win.localStorage.getItem("ffv-terms") != null && !reloaded);
+  fire($("erase-all"), "click"); await tick();
+  fire($("confirm").querySelector('[data-answer="yes"]'), "click"); await tick();
+  check("Ja raderar allt appen sparat, även godkända villkor och enhetens inställningar", !Object.keys(win.localStorage).some((k) => k === "ffv" || k.startsWith("ffv-")));
+  check("Annat i webbläsaren rörs inte", win.localStorage.getItem("other-app") === "behålls");
+  check("Sidan börjar om", reloaded);
 }
 
 if (scenario === "äldre") {

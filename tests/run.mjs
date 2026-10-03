@@ -195,7 +195,7 @@ check("Steg 4: träning, med gymdagar", text("wz-progress") === "Steg 4 av 5" &&
 next(); check("Steg 5: mat och allergier, inga förvalda", text("wz-progress") === "Steg 5 av 5" && text("wz-next") === "Klar" && $("wz-allergens").querySelectorAll("input").length > 10 && !$("wz-allergens").querySelector(":checked"));
 check("Fortfarande inget sparat innan Klar", win.localStorage.length === 0);
 next();
-check("Klar sparar profil och godkända villkor och stänger guiden", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv")).weight === "95" && JSON.parse(win.localStorage.getItem("ffv-terms")).version === 1 && $("f").closest("[data-view]").dataset.view === "profil");
+check("Klar sparar profil och godkända villkor och stänger guiden", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv")).weight === "95" && JSON.parse(win.localStorage.getItem("ffv-terms")).version === 2 && $("f").closest("[data-view]").dataset.view === "profil");
 check("Målviktsrutan visas också under Profil", !$("goal-info").hidden && $("goal-info").closest("[data-view]").dataset.view === "profil");
 
 
@@ -412,6 +412,9 @@ go("om");
 check("Om appen är en egen sida", visible() === "om" && text("om").includes("ExRx") && text("om").includes("rekommendationer"));
 check("Om appen länkar till GitHub-repot och MIT-licensen", !!$("om").querySelector('a[href="https://github.com/zolodev/MyNutrition"]') && text("om").includes("MIT-licensen") && !!$("om").querySelector('a[href$="/LICENSE"]'));
 go("villkor");
+check("Ingen koppling till Claude någonstans i appen", !win.document.documentElement.innerHTML.toLowerCase().includes("claude"));
+check("Villkoren förklarar hur man drar tillbaka godkännandet och att appen inte har någon koppling till ExRx", text("terms-text").includes("Dra tillbaka ditt godkännande") && text("terms-text").includes("Inställningar → Radera all data") && text("terms-text").includes("Varken appen eller utvecklaren är anknuten till"));
+check("Inställningar har Radera all data", $("erase-all").closest("[data-view]").dataset.view === "installningar");
 check("Villkoren går att läsa igen och är samma text som i guiden", visible() === "om" && text("villkor").includes("befintligt skick") && text("terms-text") === text("wz-terms"));
 check("Varje flik har en rad om rekommendationer och länk till villkoren", !!win.document.querySelector('.app-note a[href="#villkor"]') && !win.document.querySelector(".app-note").closest("[data-view]"));
 go("installningar");
@@ -458,7 +461,7 @@ const importScenario = (scenario) => {
   fs.rmSync(file, { force: true });
   if (r.status !== 0) process.exitCode = 1;
 };
-for (const scenario of ["guide", "skriv-över", "äldre"]) importScenario(scenario);
+for (const scenario of ["guide", "skriv-över", "äldre", "radera"]) importScenario(scenario);
 
 console.log("\n# Uppdatering: appen startas om med sparad data");
 reload("första start", {});

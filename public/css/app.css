@@ -84,6 +84,8 @@ input:user-invalid { border-color: var(--warn); }
 .btn:hover { background: var(--accent-soft); }
 .btn.primary { background: var(--accent); color: var(--accent-ink); }
 .btn.small { padding: 6px 10px; font-size: 0.82rem; }
+.btn.danger { border-color: var(--warn); color: var(--warn); }
+.btn.danger:hover { background: var(--warn-soft); }
 .linkbtn { font: inherit; font-size: 0.82rem; font-weight: 600; background: none; border: 0; padding: 4px 0; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .linkbtn:hover { color: var(--warn); }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }

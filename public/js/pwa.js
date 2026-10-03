@@ -2,7 +2,7 @@
 
 import { $, load, save } from "./util.js";
 
-// Service workern registreras bara när sidan körs som egen webbplats (inte inbäddad i claude.ai och inte från disk).
+// Service workern registreras bara när sidan körs som egen webbplats (inte inbäddad i en annan sida och inte från disk).
 
 if ("serviceWorker" in navigator && window.self === window.top && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));

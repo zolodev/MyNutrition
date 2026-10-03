@@ -264,7 +264,7 @@
                 <textarea class="backup-text" id="l-paste" rows="6" placeholder="Klistra in hela exporten här" spellcheck="false" autocomplete="off" aria-label="Exporten att importera"></textarea>
                 <button type="button" class="btn primary" id="l-paste-go">Importera texten</button>
               </details>
-              <p class="hint" id="l-where">Loggen sparas i den här webbläsaren. Exportera då och då som säkerhetskopia.</p>
+              <p class="hint">Loggen sparas bara i den här webbläsaren. Exportera då och då som säkerhetskopia.</p>
             </div>
           </form>
           <div class="log-stats">
@@ -570,6 +570,15 @@
         <div class="chips" id="supps"></div>
       </section>
 
+      <section id="radera">
+        <div class="sec-head">
+          <span class="eyebrow">Dina uppgifter</span>
+          <h2>Radera all data</h2>
+          <p>Raderar allt som appen har sparat i den här webbläsaren: profil, logg, plankod, allergier, egna livsmedel och recept, inställningar och ditt godkännande av villkoren. Därmed drar du också tillbaka ditt godkännande. Appen börjar sedan om med villkoren. Exportera först under <a href="#logg">Logg</a> om du vill behålla något.</p>
+        </div>
+        <button type="button" class="btn danger" id="erase-all">Radera all data och dra tillbaka godkännandet</button>
+      </section>
+
       <section id="om-appen">
         <div class="sec-head"><span class="eyebrow">Appen</span><h2>Om appen</h2></div>
         <p>Vad appen bygger på, hur dina uppgifter hanteras, villkoren och källkoden: <a href="#om">Om appen och villkor</a>.</p>
@@ -586,7 +595,7 @@
           <p>Ett verktyg som gör materialet från <a href="https://exrx.net/" target="_blank" rel="noopener">ExRx.net</a> lätt att använda i vardagen: kalorimål, målvikt, veckomeny, inköpslista, träningsprogram, fasta 16:8 och en logg att följa upp med.</p>
         </div>
         <div class="rules">
-          <div class="rule"><h3>Byggd på ExRx</h3><p>Beräkningarna och träningen bygger på ExRx som bakgrund och analys: formlerna för energibehov, BMI-gränserna, övningskatalogen och råden om fettförbränning. Källorna länkas i appen och i <a href="guide.html">förklaringarna</a>.</p></div>
+          <div class="rule"><h3>Byggd på ExRx</h3><p>Beräkningarna och träningen bygger på ExRx som bakgrund och analys: formlerna för energibehov, BMI-gränserna, övningskatalogen och råden om fettförbränning. Källorna länkas i appen och i <a href="guide.html">förklaringarna</a>. Appen och utvecklaren har ingen koppling till ExRx.net.</p></div>
           <div class="rule"><h3>Rekommendationer</h3><p>Allt i appen är generella rekommendationer, inte medicinsk rådgivning. Rådgör med vården innan du ändrar kost eller träning om du har sjukdomar, mediciner eller är osäker.</p></div>
           <div class="rule"><h3>Dina uppgifter</h3><p>Allt sparas bara i webbläsaren på den här enheten (localStorage). Inget skickas till någon server. Du flyttar och säkerhetskopierar själv med <a href="#logg">Exportera allt</a>.</p></div>
           <div class="rule"><h3>Öppen källkod</h3><p>Källkoden finns på <a href="https://github.com/zolodev/MyNutrition" target="_blank" rel="noopener">GitHub: zolodev/MyNutrition</a> och är licensierad under <a href="https://github.com/zolodev/MyNutrition/blob/main/LICENSE" target="_blank" rel="noopener">MIT-licensen</a>. Licensen gäller källkoden; texter och fakta från ExRx tillhör ExRx.net.</p></div>
@@ -602,11 +611,13 @@
           <h3>Ditt eget ansvar</h3>
           <p>Du ansvarar själv för hur du använder informationen: att kontrollera allergier och ingredienser, att anpassa träningen efter din hälsa och förmåga och att avbryta om något känns fel.</p>
           <h3>Dina uppgifter</h3>
-          <p>Allt du fyller i sparas endast i webbläsarens lokala lagring (localStorage) på den här enheten. Inga uppgifter skickas till någon server, och utvecklaren kan inte se dem. Typsnitten hämtas från Google Fonts, men utan dina uppgifter. Öppnas appen inuti claude.ai kan loggen även sparas i ditt eget claude-konto. Du kan exportera och importera uppgifterna som säkerhetskopia eller för att flytta dem till en annan enhet; filen eller texten hanteras då av dig, och du ansvarar för var den sparas och vem som får den. Rensar du webbläsarens data eller tar bort appen försvinner uppgifterna.</p>
+          <p>Allt du fyller i sparas endast i webbläsarens lokala lagring (localStorage) på den här enheten. Inga uppgifter skickas till någon server, och utvecklaren kan inte se dem. Typsnitten hämtas från Google Fonts, men utan dina uppgifter. Du kan exportera och importera uppgifterna som säkerhetskopia eller för att flytta dem till en annan enhet; filen eller texten hanteras då av dig, och du ansvarar för var den sparas och vem som får den. Rensar du webbläsarens data eller tar bort appen försvinner uppgifterna.</p>
+          <h3>Dra tillbaka ditt godkännande</h3>
+          <p>Du kan när som helst dra tillbaka ditt godkännande genom att radera alla uppgifter: under <b>Inställningar → Radera all data</b>, genom att rensa webbläsarens data för sidan eller genom att ta bort appen från enheten. Då raderas allt som är sparat, även godkännandet, och appen börjar om med villkoren nästa gång den öppnas. Exportera först om du vill behålla något.</p>
           <h3>I befintligt skick</h3>
           <p>Appen tillhandahålls i befintligt skick (”as is”), utan garantier av något slag om att innehållet är riktigt, fullständigt eller lämpligt för dig. Utvecklaren ansvarar inte för skador eller följder av hur någon använder appen, informationen eller innehållet, i den utsträckning lagen tillåter.</p>
-          <h3>ExRx</h3>
-          <p>Appen är inte knuten till, granskad eller godkänd av ExRx.net. Källorna anges i appen och i förklaringarna, så att du kan läsa originalet.</p>
+          <h3>Ingen koppling till ExRx</h3>
+          <p>Varken appen eller utvecklaren är anknuten till, samarbetar med, sponsras av eller är granskad eller godkänd av ExRx.net. Namnet ExRx används bara för att ange var underlaget kommer ifrån. Källorna anges i appen och i förklaringarna, så att du kan läsa originalet.</p>
         </div>
         </div>
       </section>

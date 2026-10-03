@@ -40,7 +40,7 @@ public/js/fasting.js         Fastan: ätfönster, nästa måltid och läget just
 public/js/myrecipes.js       Egna recept
 public/js/supplements.js     Tips om PWO, vassle och kreatin
 public/js/training.js        Träningsprogram och vilka dagar passen läggs
-public/js/log.js             Loggposter, statistik och synk till claude-kontot
+public/js/log.js             Loggposter och statistik
 public/js/pwa.js             Offline, beständig lagring och förslaget att installera appen
 public/js/wizard.js          Guiden första gången: profilen steg för steg innan något sparas
 public/js/data/foods.js      Livsmedel, butiksavdelningar, allergener och ersättare
@@ -124,7 +124,7 @@ Lagringen hör till webbadressen. `gym.jonzzon.nu`, en `*.workers.dev`-adress oc
 - Inställningar, allergival, egna livsmedel, avbockningar, logg och omslumpade veckor sparas i webbläsarens `localStorage` på varje enhet.
 - **Exportera allt** (fil) och **Kopiera allt** (text) tar med allt sparat: profil, logg, plankod och frön, allergier och bortval, egna livsmedel och recept, tillskott och avbockningar (`public/js/backup.js`). Bara det som gäller enheten (svep-tipset, avböjd installation) stannar kvar.
 - **Import** av fil eller inklistrad text ersätter allt som är sparat på enheten, efter en varning om det redan finns data. Sidan laddas sedan om. Äldre exporter (version 1) läses också. Guiden erbjuder import som första steg.
-- I versionen som publiceras på claude.ai sparas loggen även privat i användarens claude-konto.
+- **Radera all data** under Inställningar raderar allt appen har sparat, även godkännandet av villkoren, efter en bekräftelse. Appen börjar sedan om med villkoren.
 
 ## Källor
 
