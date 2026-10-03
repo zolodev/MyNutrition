@@ -59,7 +59,9 @@ unit("Fel antal gymdagar behåller senaste giltiga val", parseTrainingDays("1,3"
 const { encodePlan, decodePlan } = await import("../public/js/plancode.js");
 const sample = { seed: 123456789, salts: { 143: 98765 }, equipment: "db", days: [1, 3, 5], breakfast: "F2" };
 const decoded = decodePlan(encodePlan(sample));
-unit("Plankoden går att läsa tillbaka", JSON.stringify(decoded) === JSON.stringify({ ...sample, salts: { 143: 98765 }, swapPeriod: 1 }));
+unit("Plankoden går att läsa tillbaka", JSON.stringify(decoded) === JSON.stringify({ ...sample, salts: { 143: 98765 }, swapPeriod: 1, trainingSeed: sample.seed }));
+unit("Plankoden bär med ett eget träningsfrö", (() => { const c = encodePlan({ ...sample, trainingSeed: 4242 }); return c.includes("+") && decodePlan(c).trainingSeed === 4242 && decodePlan(c).seed === sample.seed && JSON.stringify(decodePlan(c).salts) === '{"143":98765}'; })());
+unit("Kod utan träningsfrö ger träningen samma frö som recepten", decodePlan("00ABCD-H1A0").trainingSeed === decodePlan("00ABCD-H1A0").seed);
 unit("Plankoden bär med hur ofta övningarna byts", decodePlan(encodePlan({ ...sample, swapPeriod: 4 })).swapPeriod === 4);
 unit("Äldre plankod utan bytesintervall läses som varje vecka", decodePlan("00ABCD-H1A0").swapPeriod === 1);
 
@@ -272,7 +274,7 @@ swipe(-120); check("Svep vänster från Idag öppnar Mat → Veckan", visible() 
 swipe(-120, 200, $("vecka")); check("Svep vänster igen öppnar Recept", !win.document.querySelector('[data-subview="recept"]').hidden);
 swipe(120, 200, $("recept")); check("Svep höger går tillbaka till Veckan", !win.document.querySelector('[data-subview="vecka"]').hidden);
 swipe(-30, 200, $("vecka")); check("Kort rörelse byter inte flik", !win.document.querySelector('[data-subview="vecka"]').hidden);
-swipe(-120, 200, $("week")); check("Svep i veckoschemat (scrollar i sidled) byter inte flik", !win.document.querySelector('[data-subview="vecka"]').hidden);
+swipe(-120, 200, $("cheat-table")); check("Svep i en tabell som scrollar i sidled byter inte flik", !win.document.querySelector('[data-subview="vecka"]').hidden);
 go("profil"); swipe(-120, 200, $("profil").querySelector(".sec-head")); check("Svep vänster från Profil (sista) stannar kvar", visible() === "profil");
 go("idag");
 
@@ -286,6 +288,28 @@ fire($("wk-today"), "click");
 $("exswap").value = "4"; fire($("f"), "change");
 check("Bytesintervallet syns i plankoden", text("pc-code").replace(" ", "").split(".")[0].endsWith("4") && text("prog-week").includes("var fjärde vecka"));
 $("exswap").value = "1"; fire($("f"), "change");
+// Slumpa om mat och träning under Inställningar
+check("Mat har ingen slumpknapp och veckan ligger inte i en karusell", !$("wk-reroll") && !$("week").closest(".scroll-x") && $("pc-new").closest("[data-view]").dataset.view === "installningar");
+const exercises = () => [...$("sessions").querySelectorAll("a.row.exercise b")].map((b) => b.textContent).join("|");
+const dinners = () => [...$("week").querySelectorAll('.day li:not(:first-child) a[href^="#rc-"]')].map((a) => a.getAttribute("href")).join();
+const reshuffle = (scope) => { $("pc-scope").value = scope; if (!$("pc-new").classList.contains("armed")) fire($("pc-new"), "click"); fire($("pc-new"), "click"); };
+check("Recept och träning är förvalt", $("pc-scope").value === "both");
+const codeBefore = text("pc-code"), exBefore = exercises(), dinnersBefore2 = dinners();
+fire($("pc-new"), "click");
+check("Första trycket ber om bekräftelse och ändrar inget", text("pc-code") === codeBefore && text("pc-msg").includes("Bekräfta"));
+fire($("pc-new"), "click");
+check("Slumpa om båda ger nytt frö, nya rätter och nya övningar", text("pc-code") !== codeBefore && dinners() !== dinnersBefore2 && exercises() !== exBefore);
+let ex0 = exercises(), d0 = dinners();
+reshuffle("menu");
+check("Bara recepten: nya rätter, samma övningar", dinners() !== d0 && exercises() === ex0 && text("pc-code").includes("+"));
+ex0 = exercises(); d0 = dinners();
+reshuffle("training");
+check("Bara träningen: nya övningar, samma rätter", exercises() !== ex0 && dinners() === d0);
+const sharedCode = text("pc-code"), sharedEx = exercises(), sharedD = dinners();
+reshuffle("both");
+$("pc-input").value = sharedCode; fire($("pc-form"), "submit");
+check("En kod med eget träningsfrö ger tillbaka samma rätter och övningar", exercises() === sharedEx && dinners() === sharedD && text("pc-code") === sharedCode);
+check("Passindelningen är densamma efter omslumpning", [...$("sessions").querySelectorAll(".session h3")].map((h) => h.textContent).join() === "Helkropp,Överkropp,Ben");
 check("Inga JS-fel", errors.length === 0);
 if (errors.length) console.log(errors);
 

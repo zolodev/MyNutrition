@@ -96,19 +96,15 @@
           <div class="sec-head">
             <span class="eyebrow">Översikt</span>
             <h2>Veckan dag för dag</h2>
-            <p>Två måltider om dagen: frukost och en eftermiddagsmåltid med efterrätt. Menyn roterar varje vecka och följer säsongen i Norrland, och två veckor i följd delar aldrig rätt. Samma vecka visar alltid samma meny, så du kan planera och handla i förväg. Slumpar du om en vecka ändras också veckorna efter den.</p>
+            <p>Två måltider om dagen: frukost och en eftermiddagsmåltid med efterrätt. Menyn roterar varje vecka och följer säsongen i Norrland, och två veckor i följd delar aldrig rätt. Samma vecka visar alltid samma meny, så du kan planera och handla i förväg. Vill du ha nya rätter och nya övningar slumpar du om planen under <a href="#installningar">Inställningar</a>.</p>
           </div>
           <div class="weeknav">
             <button type="button" class="weeknav-arrow" id="wk-prev" aria-label="Föregående vecka">‹</button>
             <div class="weeknav-label"><span class="weeknav-title" id="wk-title">Vecka</span><span class="num" id="wk-range"></span></div>
             <button type="button" class="weeknav-arrow" id="wk-next" aria-label="Nästa vecka">›</button>
-            <div class="actions weeknav-actions">
-              <button type="button" class="btn primary" id="wk-reroll">Slumpa om veckan</button>
-              <button type="button" class="btn" id="wk-reset" hidden>Återställ</button>
-              <button type="button" class="btn" id="wk-today" hidden>Till denna vecka</button>
-            </div>
+            <button type="button" class="btn small weeknav-today" id="wk-today" hidden>Till denna vecka</button>
           </div>
-          <div class="scroll-x"><div class="week" id="week"></div></div>
+          <div class="week" id="week"></div>
         </section>
 
         <section id="fusk">
@@ -456,7 +452,7 @@
         <div class="sec-head">
           <span class="eyebrow">Dela planen</span>
           <h2>Plankod</h2>
-          <p>Allt som slumpas fram, alltså veckornas recept, och ditt träningsupplägg sparas i en kod. Ger du koden till en vän får ni exakt samma rätter vecka för vecka och samma träningsprogram.</p>
+          <p>Allt som slumpas fram, alltså veckornas recept och träningsprogrammets övningar, sparas i en kod tillsammans med ditt träningsupplägg. <b>Slumpa om</b> skapar ett nytt frö för recepten, för träningen eller för båda: nya rätter för alla veckor och nya övningar i träningspassen. Ger du koden till en vän får ni exakt samma rätter vecka för vecka och samma träningsprogram.</p>
         </div>
         <div class="card plancode">
           <span class="eyebrow">Din kod</span>
@@ -464,7 +460,17 @@
           <p class="hint" id="pc-what"></p>
           <div class="actions">
             <button type="button" class="btn primary" id="pc-copy">Kopiera koden</button>
-            <button type="button" class="btn" id="pc-new">Ny plankod</button>
+          </div>
+          <div class="field">
+            <label for="pc-scope">Slumpa om</label>
+            <div class="input-row">
+              <select id="pc-scope">
+                <option value="both" selected>Recept och träning</option>
+                <option value="menu">Bara recepten</option>
+                <option value="training">Bara träningen</option>
+              </select>
+              <button type="button" class="btn" id="pc-new">Slumpa om</button>
+            </div>
           </div>
         </div>
         <form class="card form" id="pc-form" autocomplete="off">

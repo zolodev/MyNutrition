@@ -10,3 +10,4 @@ fettforbranning-logg-*.json
 
 # Beroenden för testerna
 node_modules/
+bun.lockb*

@@ -29,7 +29,7 @@ public/js/util.js            Hjälpfunktioner: DOM, talformat, lagring, datum, s
 public/js/nutrition.js       Energibehov, makromål och skalning av portioner
 public/js/preferences.js     Allergier, bortvalda ingredienser och egna livsmedel
 public/js/menu.js            Säsong, anpassning efter allergier, veckorotation, skalade recept, inköpslista
-public/js/plancode.js        Plankoden som gör planen delbar (frö, omslumpade veckor, träningsupplägg)
+public/js/plancode.js        Plankoden som gör planen delbar (receptfrö, träningsfrö, träningsupplägg)
 public/js/day.js             Dagens tider (måltider, träning) räknat från frukost
 public/js/fasting.js         Fastan: ätfönster, nästa måltid och läget just nu från verkliga måltidstider
 public/js/myrecipes.js       Egna recept

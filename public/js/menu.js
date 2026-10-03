@@ -8,6 +8,7 @@ import { DAY_MS, DAYS, mondayOf, seededRandom, shuffle, load, save } from "./uti
 
 const SALTS_KEY = "ffv-salt";
 const SEED_KEY = "ffv-seed";
+const TRAINING_SEED_KEY = "ffv-tseed"; // eget frö för övningarna; saknas det följer träningen receptfröet
 const SEED_MIX = 1000003; // fröet blandas in i alla slumptal; frö 0 ger samma menyer som innan plankoden fanns
 const SATURDAY = 5;
 const MAIN_SHARE_LIMIT = 0.3; // en ingrediens med minst så stor andel av protein eller kalorier är huvudingrediens
@@ -90,6 +91,7 @@ export const allDinnersIn = (season) => Object.keys(RECIPES).filter((id) => RECI
 
 let salts = load(SALTS_KEY, {}) || {};
 let seed = load(SEED_KEY, null);
+let trainingSeed = load(TRAINING_SEED_KEY, null);
 
 /** Planens slumpfrö. Nya användare får ett eget; den som redan har en plan får 0, så att den inte ändras. */
 export function initSeed(newUser, random) {
@@ -98,21 +100,14 @@ export function initSeed(newUser, random) {
     save(SEED_KEY, seed);
   }
 }
-export const planRandomness = () => ({ seed, salts: { ...salts } });
-/** Byt frö och omslumpade veckor, t.ex. från en delad plankod. */
-export function setPlanRandomness(newSeed, newSalts = {}) {
+export const planRandomness = () => ({ seed, salts: { ...salts }, trainingSeed: trainingSeed ?? seed });
+/** Byt frö, omslumpade veckor och träningens frö, t.ex. från en delad plankod. */
+export function setPlanRandomness(newSeed, newSalts = {}, newTrainingSeed = newSeed) {
   seed = newSeed;
   salts = { ...newSalts };
+  trainingSeed = newTrainingSeed;
   save(SEED_KEY, seed);
-  saveSalts();
-}
-export const isRerolled = (week) => !!salts[week];
-export function rerollWeek(week) {
-  salts[week] = 1 + Math.floor(Math.random() * 1e6);
-  saveSalts();
-}
-export function resetWeek(week) {
-  delete salts[week];
+  save(TRAINING_SEED_KEY, trainingSeed);
   saveSalts();
 }
 function saveSalts() {

@@ -5,7 +5,7 @@ import { computeTargets, kgPerWeek } from "./nutrition.js";
 import {
   loadPreferences, exclusions, saveExclusions, setExclusions, migrateExclusions, exclusionsAsJson, myFoods, addMyFood, removeMyFood, mergeMyFoods, cleanMyFood,
 } from "./preferences.js";
-import { buildWeek, invalidateMenu, isRerolled, rerollWeek, resetWeek, initSeed, planRandomness, setPlanRandomness } from "./menu.js";
+import { buildWeek, invalidateMenu, initSeed, planRandomness, setPlanRandomness } from "./menu.js";
 import { encodePlan, decodePlan, prettyCode, randomSeed } from "./plancode.js";
 import { SEASONS } from "./data/recipes.js";
 import { parseTrainingDays, buildProgram } from "./training.js";
@@ -97,7 +97,7 @@ function update() {
   const profile = readProfile();
   showTrainingDaysMessage(profile.days);
   const targets = computeTargets(profile);
-  const program = buildProgram(profile.equipment, profile.days.days, { seed: planRandomness().seed || 0, week: state.week, period: profile.swapPeriod });
+  const program = buildProgram(profile.equipment, profile.days.days, { seed: planRandomness().trainingSeed || 0, week: state.week, period: profile.swapPeriod });
   const week = buildWeek(state.week, targets, profile.breakfastChoice);
   const label = weekLabel(state.week);
 
@@ -109,7 +109,6 @@ function update() {
   $("wk-title").textContent = `${label.title} · ${SEASONS[week.season].n}`;
   $("wk-range").textContent = label.range + (state.week === TODAY_WEEK ? " · denna vecka" : state.week === TODAY_WEEK + 1 ? " · nästa vecka" : "");
   $("wk-today").hidden = state.week === TODAY_WEEK;
-  $("wk-reset").hidden = !isRerolled(state.week);
   renderWeekGrid(week, program.schedule, profile.breakfastHour);
   renderCheatTable(week, targets);
   renderRecipes(week, targets, profile.breakfastHour, label.title);
@@ -195,6 +194,11 @@ function renderPlanCode(profile) {
     (rerolled ? ` · ${rerolled} omslumpad${rerolled > 1 ? "e" : ""} vecka${rerolled > 1 ? "or" : ""}` : "");
 }
 
+const RESHUFFLE = {
+  both: "Alla veckor får nya rätter och träningspassen nya övningar",
+  menu: "Alla veckor får nya rätter; träningen behålls",
+  training: "Träningspassen får nya övningar; recepten behålls",
+};
 const planMessage = (text) => ($("pc-msg").textContent = text);
 $("pc-copy").addEventListener("click", async () => {
   const code = currentPlanCode(readProfile());
@@ -207,17 +211,30 @@ $("pc-copy").addEventListener("click", async () => {
   }
 });
 $("pc-new").addEventListener("click", (ev) => {
-  if (!confirmClick(ev.currentTarget)) return planMessage("Alla veckor får nya rätter. Tryck på Bekräfta för att fortsätta.");
-  setPlanRandomness(randomSeed(), {});
+  const scope = $("pc-scope").value;
+  const what = RESHUFFLE[scope];
+  if (!confirmClick(ev.currentTarget)) return planMessage(`${what}. Tryck på Bekräfta för att fortsätta.`);
+  const { seed, salts, trainingSeed } = planRandomness();
+  const fresh = (old) => {
+    let next = randomSeed();
+    while (next === old || next === seed || next === trainingSeed) next = randomSeed();
+    return next;
+  };
+  if (scope === "menu") setPlanRandomness(fresh(seed), {}, trainingSeed);
+  else if (scope === "training") setPlanRandomness(seed, salts, fresh(trainingSeed));
+  else {
+    const next = fresh(seed);
+    setPlanRandomness(next, {}, next);
+  }
   invalidateMenu();
   update();
-  planMessage("Du har fått en ny plankod med nya rätter för alla veckor.");
+  planMessage(`Klart: ${what.charAt(0).toLowerCase() + what.slice(1)}. Plankoden ovan är uppdaterad.`);
 });
 $("pc-form").addEventListener("submit", (ev) => {
   ev.preventDefault();
   const plan = decodePlan($("pc-input").value);
   if (!plan) return planMessage("Koden gick inte att läsa. Den ser ut ungefär som 7K2Q XM-G150.");
-  setPlanRandomness(plan.seed, plan.salts);
+  setPlanRandomness(plan.seed, plan.salts, plan.trainingSeed);
   setRadio("eq", plan.equipment);
   $("tdays-val").value = plan.days.join(",");
   $("bmeal").value = plan.breakfast;
@@ -235,14 +252,6 @@ $("pc-form").addEventListener("submit", (ev) => {
 $("wk-prev").addEventListener("click", () => showWeek(state.week - 1));
 $("wk-next").addEventListener("click", () => showWeek(state.week + 1));
 $("wk-today").addEventListener("click", () => showWeek(TODAY_WEEK));
-$("wk-reroll").addEventListener("click", () => {
-  rerollWeek(state.week);
-  update();
-});
-$("wk-reset").addEventListener("click", () => {
-  resetWeek(state.week);
-  update();
-});
 $("shop").addEventListener("change", (ev) => {
   const food = ev.target.dataset.shop;
   if (!food) return;
@@ -473,7 +482,7 @@ $("l-import").addEventListener("change", async (ev) => {
     syncBreakfastOptions();
     if (data.settings?.bmeal) $("bmeal").value = data.settings.bmeal;
   }
-  if (data.plan && Number.isInteger(data.plan.seed)) setPlanRandomness(data.plan.seed, data.plan.salts || {});
+  if (data.plan && Number.isInteger(data.plan.seed)) setPlanRandomness(data.plan.seed, data.plan.salts || {}, Number.isInteger(data.plan.trainingSeed) ? data.plan.trainingSeed : data.plan.seed);
   invalidateMenu();
   update();
   logMessage(`Importerade ${count} dagar${data.settings ? " och dina inställningar" : ""}.`);
