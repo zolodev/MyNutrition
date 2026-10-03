@@ -431,6 +431,35 @@ check("Varje flik har en rad om rekommendationer och länk till villkoren", !!wi
 go("installningar");
 check("Inställningar länkar till Om appen", !!$("om-appen").querySelector('a[href="#om"]'));
 
+// Inköpslistan: avbockningar sparas per vecka, även när man byter vecka
+go("inkop");
+const shopBox = win.document.querySelector("[data-shop]");
+const shopFood = shopBox.dataset.shop;
+shopBox.checked = true; fire(shopBox, "change");
+const shopKey = Object.keys(win.localStorage).find((k) => k.startsWith("ffv-shop-") && win.localStorage.getItem(k).includes(shopFood));
+check("Avbockning sparas för veckan", !!shopKey);
+fire($("wk-next"), "click");
+check("Nästa vecka har en egen lista", !win.document.querySelector(`[data-shop="${shopFood}"]:checked`));
+fire($("wk-prev"), "click");
+check("Tillbaka till veckan: avbockningen finns kvar", win.document.querySelector(`[data-shop="${shopFood}"]`).checked);
+
+// Svenska format: 24-timmarsklocka och datum som ÅÅÅÅ-MM-DD
+check("Inga inbyggda tidsfält (de visar AM/PM i engelska webbläsare)", !win.document.querySelector('input[type="time"], input[type="date"], input[type="datetime-local"]'));
+go("fastan");
+$("fs-first").value = "730"; fire($("fs-first"), "input"); fire($("fs-first"), "change");
+check("Klockslag skrivs som HH:MM: 730 blir 07:30", $("fs-first").value === "07:30");
+$("fs-last").value = "1945"; fire($("fs-last"), "input");
+check("1945 blir 19:45 medan man skriver", $("fs-last").value === "19:45");
+fire($("fs-last"), "change");
+check("Måltidstiderna sparas i 24-timmarsformat", JSON.parse(win.localStorage.getItem("ffv-log")).entries.some((e) => e.firstMeal === "07:30" && e.lastMeal === "19:45"));
+$("fs-last").value = "2500"; fire($("fs-last"), "input"); fire($("fs-last"), "change");
+check("Ogiltigt klockslag sparas inte", !$("fs-last").validity.valid && JSON.parse(win.localStorage.getItem("ffv-log")).entries.some((e) => e.lastMeal === "19:45"));
+$("fs-last").value = "19:45"; fire($("fs-last"), "input"); fire($("fs-last"), "change");
+check("Veckans datum visas som ÅÅÅÅ-MM-DD", /^\d{4}-\d{2}-\d{2} – \d{4}-\d{2}-\d{2}/.test(text("wk-range")));
+check("Prognosen visar datum som ÅÅÅÅ-MM-DD", /\(\d{4}-\d{2}-\d{2}\)/.test(text("goal-info")) && /\(\d{4}-\d{2}-\d{2}\)/.test(text("projection")));
+check("Inga AM/PM någonstans", !/\b(AM|PM)\b/.test(win.document.body.textContent));
+fire($("fs-reset"), "click");
+
 // Rensa mina uppgifter: bekräfta, guiden startar igen, loggen finns kvar
 const logBefore = win.localStorage.getItem("ffv-log");
 go("profil"); fire($("clear"), "click");

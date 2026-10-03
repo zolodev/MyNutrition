@@ -14,8 +14,8 @@ const MEALS = ["Frukost", "Eftermiddagsmåltid", "Efterrätt", "Lördagsgodis"];
 export function weekLabel(week) {
   const monday = mondayOf(week);
   const sunday = new Date(monday.getTime() + 6 * DAY_MS);
-  const d = (x) => x.toLocaleDateString("sv-SE", { day: "numeric", month: "short", timeZone: "UTC" });
-  return { title: `Vecka ${isoWeekNumber(monday)}`, range: `${d(monday)} – ${d(sunday)} ${sunday.getUTCFullYear()}` };
+  const d = (x) => x.toISOString().slice(0, 10); // måndag och söndag är UTC-midnatt
+  return { title: `Vecka ${isoWeekNumber(monday)}`, range: `${d(monday)} – ${d(sunday)}` };
 }
 
 // ---------- Veckan ----------

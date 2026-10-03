@@ -76,11 +76,19 @@ export function isoWeekNumber(dateUtc) {
   return 1 + Math.round(((d - jan4) / DAY_MS - 3 + ((jan4.getUTCDay() + 6) % 7)) / 7);
 }
 
+/** Ett datum som "ÅÅÅÅ-MM-DD" i lokal tid (svensk standard för datum). */
+export const isoDate = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
 /** Dagens datum som "ÅÅÅÅ-MM-DD" i lokal tid. */
-export const todayStr = () => {
-  const d = new Date();
-  return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-};
+export const todayStr = () => isoDate(new Date());
+
+/** Skriv ett klockslag som HH:MM (24 timmar) medan man knappar in siffror, t.ex. "730" → "07:30" när fältet lämnas. */
+export function formatClockInput(value, { final = false } = {}) {
+  const d = value.replace(/\D/g, "").slice(0, 4);
+  if (final && d.length === 3) return `0${d[0]}:${d.slice(1)}`;
+  if (final && d.length <= 2 && d) return `${d.padStart(2, "0")}:00`;
+  return d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d;
+}
+export const isClockText = (s) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
 /** "ÅÅÅÅ-MM-DD" ↔ dagnummer, för att räkna med datum. */
 export const dateToDay = (s) => Date.parse(s + "T00:00:00Z") / DAY_MS;
 export const dayToDate = (n) => new Date(n * DAY_MS).toISOString().slice(0, 10);

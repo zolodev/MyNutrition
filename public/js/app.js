@@ -1,6 +1,6 @@
 // Appens styrning: läser profilen, räknar om och ritar alla vyer, kopplar knappar och formulär och sköter flikarna.
 
-import { $, $$, num, radioValue, setRadio, load, save, remove, todayStr, dayToDate, dateToDay, svDate, weekIndexOf, confirmDialog, toast, checkDecimal, DAYS_SHORT } from "./util.js";
+import { $, $$, num, radioValue, setRadio, load, save, remove, todayStr, dayToDate, dateToDay, svDate, weekIndexOf, confirmDialog, toast, checkDecimal, formatClockInput, isClockText, DAYS_SHORT } from "./util.js";
 import { computeTargets, kgPerWeek, recommendedGoal } from "./nutrition.js";
 import { loadPreferences, exclusions, saveExclusions, setExclusions, myFoods, addMyFood, removeMyFood, cleanMyFood } from "./preferences.js";
 import { buildWeek, invalidateMenu, initSeed, planRandomness, setPlanRandomness } from "./menu.js";
@@ -128,6 +128,20 @@ document.addEventListener("input", (ev) => {
   if (ev.target.matches?.("input[data-decimal]")) checkDecimal(ev.target);
 }, true);
 
+// Klockslag (data-clock) skrivs alltid som HH:MM, 24 timmar, oavsett webbläsarens språk
+document.addEventListener("input", (ev) => {
+  if (!ev.target.matches?.("input[data-clock]")) return;
+  const formatted = formatClockInput(ev.target.value);
+  if (formatted !== ev.target.value) ev.target.value = formatted;
+  ev.target.setCustomValidity("");
+}, true);
+document.addEventListener("change", (ev) => {
+  if (!ev.target.matches?.("input[data-clock]")) return;
+  const el = ev.target;
+  if (el.value) el.value = formatClockInput(el.value, { final: true });
+  el.setCustomValidity(!el.value || isClockText(el.value) ? "" : "Skriv klockslaget som HH:MM, t.ex. 07:30 eller 19:45");
+}, true);
+
 // Informationsikoner (data-info): visa eller dölj förklaringen som knappen pekar på med aria-controls
 document.addEventListener("click", (ev) => {
   const button = ev.target.closest?.("[data-info]");
@@ -232,6 +246,8 @@ $("fs-reset").addEventListener("click", () => {
   update();
 });
 function saveMealTimes() {
+  const invalid = [$("fs-first"), $("fs-last")].find((el) => el.value && !isClockText(el.value));
+  if (invalid) return invalid.reportValidity();
   setMealTimes(todayStr(), { firstMeal: $("fs-first").value, lastMeal: $("fs-last").value });
   update();
 }

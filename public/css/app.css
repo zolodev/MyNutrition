@@ -381,3 +381,36 @@ textarea { width: 100%; font: inherit; font-size: 0.95rem; padding: 9px 10px; bo
 .my-food small { display: block; color: var(--muted); font-family: var(--font-data); font-size: 0.78rem; }
 .plan-steps { display: grid; gap: 8px; }
 .plan-steps ol { padding-left: 1.2em; display: grid; gap: 4px; }
+
+/* ---------- Datorskärm (från 960 px) ----------
+   Flikraden blir en sidomeny till vänster, innehållet får bli bredare och Profil visar formuläret och målen
+   sida vid sida. Under 960 px gäller mobillayouten ovan oförändrad. */
+@media (min-width: 960px) {
+  .app {
+    display: grid;
+    grid-template-columns: 236px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "bar bar" "nav main" "nav banner";
+  }
+  .appbar { grid-area: bar; padding-inline: 24px; }
+  .views { grid-area: main; }
+  .install-banner { grid-area: banner; }
+  .tabbar {
+    grid-area: nav; display: flex; flex-direction: column; gap: 4px; overflow-y: auto;
+    padding: 18px 14px; border-top: 0; border-right: 1px solid var(--line); box-shadow: none;
+  }
+  .tab { grid-auto-flow: column; justify-content: start; align-items: center; gap: 12px; min-height: 46px; padding: 0 14px; font-size: 0.95rem; }
+  .tab svg { width: 22px; height: 22px; }
+  .tab:hover { background: var(--sunken); color: var(--fg); }
+  .tab[aria-current="page"]:hover { background: var(--accent-soft); color: var(--accent); }
+  .view { max-width: 1200px; padding-inline: 32px; padding-block: 28px 48px; }
+  .app-note { max-width: 1200px; padding-inline: 32px; }
+  .week { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+
+  /* Profil: formuläret till vänster, målen till höger (följer med när man skrollar) */
+  [data-view="profil"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 32px; align-items: start; }
+  [data-view="profil"] > section { grid-column: 1 / -1; }
+  [data-view="profil"] > #profil { grid-column: 1; }
+  [data-view="profil"] > #mal { grid-column: 2; grid-row: 1; position: sticky; top: 0; }
+  [data-view="profil"] #mal .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
