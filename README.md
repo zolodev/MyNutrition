@@ -18,6 +18,10 @@ En personlig veckoplan för viktnedgång som fungerar som installerbar webbapp (
 
 Allt körs i webbläsaren. Inga uppgifter skickas till någon server.
 
+Appen ger **rekommendationer baserade på ExRx.net, inte medicinsk rådgivning**. Första gången visas villkoren (rekommendationer, eget ansvar, hur data hanteras, i befintligt skick) och måste godkännas; de finns sedan under **Om appen** (`#om`, `#villkor`). Godkännandet sparas per enhet i `ffv-terms`; höj `TERMS_VERSION` i `public/js/app.js` när villkoren ändras, så får alla godkänna dem igen.
+
+Källkoden är licensierad under MIT-licensen (se `LICENSE`). Licensen gäller koden, inte material från ExRx.net.
+
 ## Filer
 
 ```

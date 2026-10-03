@@ -220,8 +220,8 @@
               </div>
             </div>
             <div class="row2">
-              <div class="field"><label for="l-weight">Vikt (kg)</label><input type="number" id="l-weight" min="30" max="300" step="0.1" placeholder="t.ex. 94,2"></div>
-              <div class="field"><label for="l-waist">Midja (cm) <small>valfritt</small></label><input type="number" id="l-waist" min="40" max="200" step="0.5"></div>
+              <div class="field"><label for="l-weight">Vikt (kg)</label><input type="text" inputmode="decimal" data-decimal id="l-weight" min="30" max="300" placeholder="t.ex. 94,2"></div>
+              <div class="field"><label for="l-waist">Midja (cm) <small>valfritt</small></label><input type="text" inputmode="decimal" data-decimal id="l-waist" min="40" max="200"></div>
             </div>
             <div class="field"><label for="l-test">Testtid (mm:ss) <small>valfritt</small></label><input type="text" id="l-test" inputmode="numeric" placeholder="t.ex. 18:45"></div>
             <div class="field">
@@ -303,7 +303,7 @@
           <p>Snabbast möjliga viktnedgång som du faktiskt behåller är <strong>cirka 1&nbsp;% av kroppsvikten per vecka</strong>. Fyll i dina uppgifter så räknas kalorimål, träningspass och recept om efter dig. Allt sparas i telefonen.</p>
         </div>
         <form class="card form" id="f" autocomplete="off">
-          <div class="field" data-step="1">
+          <div class="field" data-step="2">
             <span class="label">Kön</span>
             <div class="seg" role="radiogroup" aria-label="Kön">
               <label><input type="radio" name="sex" value="m" checked><span>Man</span></label>
@@ -311,17 +311,23 @@
             </div>
             <small>Rätterna och övningarna är desamma för båda; kalorier, protein och portioner räknas om.</small>
           </div>
-          <div class="row2" data-step="1">
-            <div class="field"><label for="age">Ålder</label><input type="number" id="age" min="18" max="90" value="40"></div>
-            <div class="field"><label for="weight">Vikt (kg)</label><input type="number" id="weight" min="40" max="250" step="0.1" value="95"></div>
+          <div class="row2" data-step="2">
+            <div class="field"><label for="age">Ålder</label><input type="text" inputmode="numeric" data-decimal id="age" min="18" max="90" value="40"></div>
+            <div class="field"><label for="weight">Vikt (kg)</label><input type="text" inputmode="decimal" data-decimal id="weight" min="40" max="250" value="95"></div>
           </div>
-          <div class="row2" data-step="1">
-            <div class="field"><label for="height">Längd (cm)</label><input type="number" id="height" min="130" max="220" value="180"></div>
-            <div class="field"><label for="bf">Fett % <small>valfritt</small></label><input type="number" id="bf" min="5" max="60" step="0.1" placeholder="t.ex. 28"></div>
+          <div class="row2" data-step="2">
+            <div class="field"><label for="height">Längd (cm)</label><input type="text" inputmode="decimal" data-decimal id="height" min="130" max="220" value="180"></div>
+            <div class="field">
+              <div class="label-row"><label for="bf">Kroppsfett (%)</label><button type="button" class="info-btn" data-info aria-expanded="false" aria-controls="bf-info" aria-label="Vad är kroppsfett?">i</button></div>
+              <input type="text" inputmode="decimal" data-decimal id="bf" min="5" max="60" placeholder="Valfritt, t.ex. 28">
+            </div>
+            <p class="info-text" id="bf-info" hidden>Hur stor del av din kroppsvikt som är fett, i procent. Fyller du i det räknar appen ditt energibehov med Katch-McArdle, som utgår från den fettfria massan och blir noggrannare. Lämna fältet tomt om du inte har ett bra mått, till exempel från en kroppsanalysvåg eller ett DEXA-test; då används Harris-Benedict, som bara räknar på kön, ålder, vikt och längd. En gissning gör beräkningen sämre, inte bättre.</p>
           </div>
-          <div class="field" data-step="2"><label for="goal">Målvikt (kg)</label><input type="number" id="goal" min="35" max="250" step="0.5" value="85"></div>
-          <div class="field" data-step="2">
-            <label for="act">Vardagsaktivitet <a class="help" href="guide.html#aktivitet">Vad betyder valen?</a></label>
+          <div class="field" data-step="3"><label for="goal">Målvikt (kg)</label><input type="text" inputmode="decimal" data-decimal id="goal" min="35" max="250" value="85">
+            <div class="goal-info" id="goal-info" aria-live="polite" hidden></div>
+          </div>
+          <div class="field" data-step="3">
+            <label for="act">Vardagsaktivitet <a class="help" href="guide.html#aktivitet" target="_blank" rel="noopener">Vad betyder valen?</a></label>
             <select id="act">
               <option value="1.2">Stillasittande (kontor, lite promenader)</option>
               <option value="1.375" selected>Lätt aktiv (promenader, lätt jobb)</option>
@@ -330,7 +336,7 @@
             </select>
             <small>Räkna inte med träningen här. ExRx påpekar att de flesta överskattar sin aktivitetsnivå.</small>
           </div>
-          <div class="field" data-step="2">
+          <div class="field" data-step="3">
             <span class="label">Takt</span>
             <div class="seg" role="radiogroup" aria-label="Takt">
               <label><input type="radio" name="rate" value="0.5"><span>0,5 %/v</span></label>
@@ -338,7 +344,7 @@
               <label><input type="radio" name="rate" value="1" checked><span>1 %/v max</span></label>
             </div>
           </div>
-          <div class="field" data-step="3">
+          <div class="field" data-step="4">
             <span class="label">Utrustning</span>
             <div class="seg" role="radiogroup" aria-label="Utrustning">
               <label><input type="radio" name="eq" value="gym" checked><span>Gym</span></label>
@@ -346,7 +352,7 @@
               <label><input type="radio" name="eq" value="bw"><span>Kroppsvikt</span></label>
             </div>
           </div>
-          <div class="field" data-step="3">
+          <div class="field" data-step="4">
             <span class="label">Gymdagar</span>
             <div class="daypick" id="tdays" role="group" aria-label="Gymdagar">
               <label><input type="checkbox" data-day="0"><span>Mån</span></label><label><input type="checkbox" data-day="1"><span>Tis</span></label>
@@ -357,7 +363,7 @@
             <input type="hidden" id="tdays-val" value="0,2,4">
             <small id="tdays-msg">Välj 3 eller 4 dagar. 3 dagar ger helkropp, överkropp och ben; 4 dagar ger över- och underkropp två gånger var.</small>
           </div>
-          <div class="field" data-step="3">
+          <div class="field" data-step="4">
             <label for="exswap">Byt övningar</label>
             <select id="exswap">
               <option value="1" selected>Varje vecka</option>
@@ -366,7 +372,7 @@
             </select>
             <small>Passen är alltid desamma (helkropp, överkropp, ben), men övningarna i dem växlar. Byter du mer sällan är det lättare att öka vikten steg för steg i samma övning.</small>
           </div>
-          <div class="field" data-step="4">
+          <div class="field" data-step="5">
             <label for="bmeal">Frukost</label>
             <select id="bmeal">
               <option value="F0" selected>Samma varje dag: ägg och kvarg med bär</option>
@@ -378,7 +384,7 @@
             </select>
             <small>Samma frukost varje dag gör det lätt att handla och följa planen.</small>
           </div>
-          <div class="field" data-step="4">
+          <div class="field" data-step="5">
             <label for="bfast">Frukost klockan</label>
             <select id="bfast">
               <option value="6">06:00</option><option value="6.5">06:30</option><option value="7" selected>07:00</option><option value="7.5">07:30</option>
@@ -516,10 +522,10 @@
             <div class="field"><label for="mf-cat">Kategori</label><select id="mf-cat"></select></div>
           </div>
           <div class="row4">
-            <div class="field"><label for="mf-k">kcal</label><input type="number" id="mf-k" min="0" max="900" step="1" required></div>
-            <div class="field"><label for="mf-p">Protein g</label><input type="number" id="mf-p" min="0" max="100" step="0.1"></div>
-            <div class="field"><label for="mf-c">Kolhydr. g</label><input type="number" id="mf-c" min="0" max="100" step="0.1"></div>
-            <div class="field"><label for="mf-f">Fett g</label><input type="number" id="mf-f" min="0" max="100" step="0.1"></div>
+            <div class="field"><label for="mf-k">kcal</label><input type="text" inputmode="numeric" data-decimal id="mf-k" min="0" max="900" required></div>
+            <div class="field"><label for="mf-p">Protein g</label><input type="text" inputmode="decimal" data-decimal id="mf-p" min="0" max="100"></div>
+            <div class="field"><label for="mf-c">Kolhydr. g</label><input type="text" inputmode="decimal" data-decimal id="mf-c" min="0" max="100"></div>
+            <div class="field"><label for="mf-f">Fett g</label><input type="text" inputmode="decimal" data-decimal id="mf-f" min="0" max="100"></div>
           </div>
           <div class="row2">
             <div class="field"><label for="mf-rep">Ersätter i recepten</label><select id="mf-rep"></select></div>
@@ -566,10 +572,47 @@
 
       <section id="om-appen">
         <div class="sec-head"><span class="eyebrow">Appen</span><h2>Om appen</h2></div>
+        <p>Vad appen bygger på, hur dina uppgifter hanteras, villkoren och källkoden: <a href="#om">Om appen och villkor</a>.</p>
         <p><a href="guide.html">Förklaringar till alla val och beräkningar</a></p>
-        <p class="note">Allt du fyller i sparas bara i den här enheten. Säkerhetskopiera och flytta data med <a href="#logg">Exportera allt</a> under Logg.</p>
       </section>
     </div>
+
+    <!-- ============ Om appen ============ -->
+    <div class="view" data-view="om" hidden>
+      <section id="om">
+        <div class="sec-head">
+          <span class="eyebrow">Om appen</span>
+          <h2>Fettförbränningsveckan</h2>
+          <p>Ett verktyg som gör materialet från <a href="https://exrx.net/" target="_blank" rel="noopener">ExRx.net</a> lätt att använda i vardagen: kalorimål, målvikt, veckomeny, inköpslista, träningsprogram, fasta 16:8 och en logg att följa upp med.</p>
+        </div>
+        <div class="rules">
+          <div class="rule"><h3>Byggd på ExRx</h3><p>Beräkningarna och träningen bygger på ExRx som bakgrund och analys: formlerna för energibehov, BMI-gränserna, övningskatalogen och råden om fettförbränning. Källorna länkas i appen och i <a href="guide.html">förklaringarna</a>.</p></div>
+          <div class="rule"><h3>Rekommendationer</h3><p>Allt i appen är generella rekommendationer, inte medicinsk rådgivning. Rådgör med vården innan du ändrar kost eller träning om du har sjukdomar, mediciner eller är osäker.</p></div>
+          <div class="rule"><h3>Dina uppgifter</h3><p>Allt sparas bara i webbläsaren på den här enheten (localStorage). Inget skickas till någon server. Du flyttar och säkerhetskopierar själv med <a href="#logg">Exportera allt</a>.</p></div>
+          <div class="rule"><h3>Öppen källkod</h3><p>Källkoden finns på <a href="https://github.com/zolodev/MyNutrition" target="_blank" rel="noopener">GitHub: zolodev/MyNutrition</a> och är licensierad under <a href="https://github.com/zolodev/MyNutrition/blob/main/LICENSE" target="_blank" rel="noopener">MIT-licensen</a>. Licensen gäller källkoden; texter och fakta från ExRx tillhör ExRx.net.</p></div>
+        </div>
+      </section>
+
+      <section id="villkor">
+        <div class="sec-head"><span class="eyebrow">Villkor</span><h2>Villkor och dataskydd</h2><p>Samma villkor som du godkände när du började använda appen.</p></div>
+        <div class="card">
+        <div class="terms" id="terms-text">
+          <h3>Rekommendationer, inte medicinsk rådgivning</h3>
+          <p>Appen är ett verktyg som sammanställer och räknar på material från <a href="https://exrx.net/" target="_blank" rel="noopener">ExRx.net</a>. Allt i appen, till exempel kalorimål, målvikt, BMI, prognoser, recept, träningsprogram, fasta och tips om tillskott, är generella rekommendationer med ExRx som bakgrund och underlag. Det är inte medicinsk rådgivning, diagnos eller behandling och ersätter inte kontakt med läkare, dietist eller annan vårdpersonal. Rådgör med vården innan du ändrar kost eller träning, särskilt vid sjukdom, medicinering, graviditet, amning, ätstörning eller om du är under 18 år.</p>
+          <h3>Ditt eget ansvar</h3>
+          <p>Du ansvarar själv för hur du använder informationen: att kontrollera allergier och ingredienser, att anpassa träningen efter din hälsa och förmåga och att avbryta om något känns fel.</p>
+          <h3>Dina uppgifter</h3>
+          <p>Allt du fyller i sparas endast i webbläsarens lokala lagring (localStorage) på den här enheten. Inga uppgifter skickas till någon server, och utvecklaren kan inte se dem. Typsnitten hämtas från Google Fonts, men utan dina uppgifter. Öppnas appen inuti claude.ai kan loggen även sparas i ditt eget claude-konto. Du kan exportera och importera uppgifterna som säkerhetskopia eller för att flytta dem till en annan enhet; filen eller texten hanteras då av dig, och du ansvarar för var den sparas och vem som får den. Rensar du webbläsarens data eller tar bort appen försvinner uppgifterna.</p>
+          <h3>I befintligt skick</h3>
+          <p>Appen tillhandahålls i befintligt skick (”as is”), utan garantier av något slag om att innehållet är riktigt, fullständigt eller lämpligt för dig. Utvecklaren ansvarar inte för skador eller följder av hur någon använder appen, informationen eller innehållet, i den utsträckning lagen tillåter.</p>
+          <h3>ExRx</h3>
+          <p>Appen är inte knuten till, granskad eller godkänd av ExRx.net. Källorna anges i appen och i förklaringarna, så att du kan läsa originalet.</p>
+        </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="app-note">Rekommendationer baserade på ExRx, inte medicinsk rådgivning. <a href="#om">Om appen</a> · <a href="#villkor">Villkor och dataskydd</a></p>
   </main>
 
   <aside class="install-banner" id="install-banner" aria-label="Installera appen" hidden>
@@ -585,7 +628,11 @@
       <span class="eyebrow" id="wz-progress"></span>
       <h2 id="wz-title"></h2>
       <p class="wizard-intro" id="wz-intro"></p>
-      <div class="card wizard-import" data-step="1">
+      <div class="card wizard-terms" data-step="1">
+        <div class="terms" id="wz-terms"></div>
+        <label class="terms-accept"><input type="checkbox" id="wz-accept" required><span>Jag har läst och förstår villkoren, och att appen ger rekommendationer baserade på ExRx, inte medicinsk rådgivning.</span></label>
+      </div>
+      <div class="card wizard-import" data-step="2">
         <p><b>Har du redan använt appen?</b> Importera en export från en annan enhet eller webbläsare, så hoppar du över guiden.</p>
         <div class="actions">
           <label class="btn small" for="wz-import">Importera fil</label>
@@ -598,7 +645,7 @@
         </div>
       </div>
       <div id="wz-body"></div>
-      <div class="field" data-step="4">
+      <div class="field" data-step="5">
         <span class="label">Allergier <small>valfritt</small></span>
         <div class="chips" id="wz-allergens"></div>
         <small>Kryssa i det du inte tål, så byts eller stryks det i recepten. Enskilda ingredienser väljer du bort under Inställningar.</small>

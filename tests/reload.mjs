@@ -24,9 +24,10 @@ if (!Object.keys(stored).length) {
   // Första start: guiden visas och inget sparas förrän den är klar; sedan finns profil och ett eget frö
   check("Guiden visas och localStorage är tom", !$("wizard").hidden && win.localStorage.length === 0);
   const next = () => $("wz-next").dispatchEvent(new win.Event("click"));
+  $("wz-accept").checked = true; next();
   win.document.querySelector('input[name="sex"][value="k"]').checked = true;
   Object.assign($("age"), { value: "35" }); $("weight").value = "70"; $("height").value = "168";
-  next(); $("goal").value = "64"; next(); next();
+  next(); $("goal").value = "64"; next(); next(); // BMI 24,8: ingen föreslagen målvikt, så den fylls i här
   win.document.querySelector('[data-wz-allergen="sesam"]').checked = true;
   check("Inget sparat före Klar", win.localStorage.length === 0);
   next();
@@ -36,6 +37,14 @@ if (!Object.keys(stored).length) {
   check("Allergin från guiden sparas", JSON.parse(win.localStorage.getItem("ffv-excl")).allergens.join() === "sesam");
   check("Inga JS-fel", errors.length === 0);
   process.exit(process.exitCode ?? 0);
+}
+
+// Befintlig profil utan godkända villkor: bara villkoren visas, profilen ligger kvar på sin plats
+if (!("ffv-terms" in stored)) {
+  check("Utan godkända villkor visas villkoren först", !$("wizard").hidden && $("wz-progress").textContent === "Villkor" && $("f").closest("[data-view]").dataset.view === "profil");
+  $("wz-accept").checked = true;
+  $("wz-next").dispatchEvent(new win.Event("click"));
+  check("Godkännandet sparas och appen startar", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv-terms")).version === 1);
 }
 
 const after = (k) => win.localStorage.getItem(k);
@@ -51,7 +60,7 @@ const lost = Object.keys(stored).filter((k) => after(k) == null);
 check("Inga sparade nycklar försvinner", lost.length === 0);
 const changed = ["ffv-seed", "ffv-tseed", "ffv-salt", "ffv-excl", "ffv-myfoods", "ffv-myrecipes", "ffv-supps", "ffv-log"].filter((k) => k in stored && after(k) !== stored[k]);
 check("Plan, allergier, egna recept och logg skrivs inte om vid start", changed.length === 0);
-check("Ingen guide när profilen finns", $("wizard").hidden);
+check("Ingen guide när profilen finns och villkoren är godkända", $("wizard").hidden);
 check("Inga JS-fel", errors.length === 0);
 if (lost.length || changed.length || errors.length) console.log({ lost, changed, errors });
 process.exit(process.exitCode ?? 0);

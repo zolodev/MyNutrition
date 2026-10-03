@@ -1,54 +1,72 @@
-// Guide första gången (och efter "Rensa mina uppgifter"): profilformuläret flyttas in i en helskärmsvy och visas
-// ett steg i taget. Fälten markeras med data-step i index.html. Guiden sparar inget själv; när användaren är klar
+// Guide första gången (och efter "Rensa mina uppgifter"): först villkoren, sedan profilformuläret ett steg i taget
+// i en helskärmsvy. Fälten markeras med data-step i index.html. Guiden sparar inget själv; när användaren är klar
 // flyttas formuläret tillbaka och `onDone` får de valda allergierna, så att app.js sparar allt på en gång.
+// Med `termsOnly` visas bara villkoren, för den som redan har en profil men inte har godkänt dem.
 
-import { $, $$, esc } from "./util.js";
+import { $, $$, esc, checkDecimal } from "./util.js";
 import { ALLERGENS } from "./data/foods.js";
 import { parseTrainingDays } from "./training.js";
 
 const STEPS = [
-  { title: "Välkommen! Börja med dig", intro: "Kalorier, protein och portioner räknas efter dina uppgifter. De sparas bara på den här enheten." },
-  { title: "Ditt mål", intro: "Målvikten och takten avgör hur stort kaloriunderskottet blir." },
-  { title: "Träning", intro: "Utrustningen och dagarna styr träningsprogrammet." },
-  { title: "Mat", intro: "Frukosten och tiderna styr veckans meny och fastan. Recepten anpassas efter det du inte tål." },
+  { key: "terms", title: "Innan du börjar", intro: "Läs igenom villkoren. De gäller hela appen." },
+  { key: "you", title: "Börja med dig", intro: "Kalorier, protein och portioner räknas efter dina uppgifter. De sparas bara på den här enheten." },
+  { key: "goal", title: "Ditt mål", intro: "Målvikten och takten avgör hur stort kaloriunderskottet blir." },
+  { key: "training", title: "Träning", intro: "Utrustningen och dagarna styr träningsprogrammet." },
+  { key: "food", title: "Mat", intro: "Frukosten och tiderna styr veckans meny och fastan. Recepten anpassas efter det du inte tål." },
 ];
 const REQUIRED = ["age", "weight", "height", "goal"];
 
-/** Öppna guiden. `allergens` är de allergier som redan är valda (en Set). */
-export function openWizard(allergens, onDone) {
+/**
+ * Öppna guiden. `allergens` är de allergier som redan är valda (en Set). `onStep(key)` anropas när ett steg visas.
+ * `onDone({ allergens })` anropas när användaren är klar.
+ */
+export function openWizard({ allergens = new Set(), termsOnly = false, onStep = () => {} }, onDone) {
+  const steps = termsOnly ? STEPS.slice(0, 1) : STEPS;
   const form = $("f");
   const home = { parent: form.parentNode, next: form.nextSibling };
-  $("wz-body").append(form);
-
-  // Egna värden krävs: töm exempelvärdena och låt användaren välja kön
-  for (const id of REQUIRED) Object.assign($(id), { value: "", required: true });
   const sex = $$('input[name="sex"]');
-  for (const el of sex) el.checked = false;
-  sex[0].required = true;
-  $("wz-allergens").innerHTML = ALLERGENS.map((a) =>
-    `<label class="chip-check"><input type="checkbox" data-wz-allergen="${a.id}"${allergens.has(a.id) ? " checked" : ""}><span>${esc(a.n)}</span></label>`).join("");
+  $("wz-terms").innerHTML = $("terms-text").innerHTML;
+  $("wz-accept").checked = false;
+
+  if (!termsOnly) {
+    $("wz-body").append(form);
+    // Egna värden krävs: töm exempelvärdena och låt användaren välja kön
+    for (const id of REQUIRED) Object.assign($(id), { value: "", required: true });
+    for (const el of sex) el.checked = false;
+    sex[0].required = true;
+    $("wz-allergens").innerHTML = ALLERGENS.map((a) =>
+      `<label class="chip-check"><input type="checkbox" data-wz-allergen="${a.id}"${allergens.has(a.id) ? " checked" : ""}><span>${esc(a.n)}</span></label>`).join("");
+  }
 
   let step = 0;
   const show = () => {
     for (const el of $$("#wizard [data-step]")) el.hidden = Number(el.dataset.step) !== step + 1;
-    $("wz-progress").textContent = `Steg ${step + 1} av ${STEPS.length}`;
-    $("wz-title").textContent = STEPS[step].title;
-    $("wz-intro").textContent = STEPS[step].intro;
+    $("wz-body").hidden = steps[step].key === "terms"; // profilformuläret har inga fält i villkorssteget
+    $("wz-progress").textContent = termsOnly ? "Villkor" : `Steg ${step + 1} av ${steps.length}`;
+    $("wz-title").textContent = steps[step].title;
+    $("wz-intro").textContent = steps[step].intro;
     $("wz-msg").textContent = "";
     $("wz-back").hidden = step === 0;
-    $("wz-next").textContent = step === STEPS.length - 1 ? "Klar" : "Nästa";
+    $("wz-next").textContent = termsOnly ? "Godkänn och fortsätt" : step === steps.length - 1 ? "Klar" : "Nästa";
     $("wizard").scrollTop = 0;
+    onStep(steps[step].key);
   };
 
   const stepIsValid = () => {
-    const invalid = $$(`#wizard [data-step="${step + 1}"] :is(input, select)`).find((el) => !el.checkValidity());
+    const fields = $$(`#wizard [data-step="${step + 1}"] :is(input, select)`);
+    for (const el of fields) if (el.matches("[data-decimal]")) checkDecimal(el);
+    const invalid = fields.find((el) => !el.checkValidity());
+    if (invalid === $("wz-accept")) {
+      $("wz-msg").textContent = "Kryssa i att du har läst och förstår villkoren för att fortsätta.";
+      return false;
+    }
     if (invalid) {
       const label = invalid.name === "sex" ? "Kön" : invalid.labels?.[0]?.firstChild.textContent.trim();
       $("wz-msg").textContent = `Fyll i ${label?.toLowerCase() || "alla fält"}${invalid.validationMessage && invalid.name !== "sex" ? ": " + invalid.validationMessage : ""}.`;
       invalid.focus();
       return false;
     }
-    if (step === 2 && !parseTrainingDays($("tdays-val").value, []).valid) {
+    if (steps[step].key === "training" && !parseTrainingDays($("tdays-val").value, []).valid) {
       $("wz-msg").textContent = "Välj 3 eller 4 gymdagar.";
       return false;
     }
@@ -58,19 +76,23 @@ export function openWizard(allergens, onDone) {
   const finish = () => {
     $("wizard").hidden = true;
     for (const el of $$("#wizard [data-step]")) el.hidden = false;
-    for (const el of [...REQUIRED.map($), sex[0]]) el.required = false;
-    home.parent.insertBefore(form, home.next);
+    $("wz-body").hidden = false;
+    if (!termsOnly) {
+      for (const el of [...REQUIRED.map($), sex[0]]) el.required = false;
+      home.parent.insertBefore(form, home.next);
+    }
     $("wz-back").onclick = $("wz-next").onclick = null;
     onDone({ allergens: $$("[data-wz-allergen]:checked").map((el) => el.dataset.wzAllergen) });
   };
 
   $("wz-back").onclick = () => {
+    if (step === 0) return;
     step--;
     show();
   };
   $("wz-next").onclick = () => {
     if (!stepIsValid()) return;
-    if (step === STEPS.length - 1) return finish();
+    if (step === steps.length - 1) return finish();
     step++;
     show();
   };

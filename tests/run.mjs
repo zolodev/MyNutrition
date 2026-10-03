@@ -55,6 +55,15 @@ const inARow = buildProgram("gym", [0, 1, 2]);
 unit("Tre dagar i rad varnar för samma muskler två dagar i rad", inARow.clash);
 unit("Fel antal gymdagar behåller senaste giltiga val", parseTrainingDays("1,3", [0, 2, 4]).days.join() === "0,2,4");
 
+// BMI och föreslagen målvikt (ExRx/WHO: normalvikt 18,5–24,9)
+const nutrition = await import("../public/js/nutrition.js");
+unit("BMI räknas som vikt / längd²", Math.abs(nutrition.bmiOf(95, 180) - 29.32) < 0.01);
+unit("Över BMI 25: målvikt vid BMI 24,9, avrundad nedåt till halvt kilo", nutrition.recommendedGoal(95, 180) === 80.5 && nutrition.bmiOf(80.5, 180) <= 24.9 && nutrition.recommendedGoal(110, 165) === 67.5);
+unit("BMI 25 eller lägre: ingen föreslagen målvikt", nutrition.recommendedGoal(70, 180) === null && nutrition.recommendedGoal(81, 180) === null);
+const forecastTargets = computeTargets({ sex: "m", age: 40, weight: 95, height: 180, bodyFat: NaN, activity: 1.375, rate: 1 });
+const forecast = nutrition.goalForecast(forecastTargets, 85);
+unit("Prognosen räknar veckor med appens underskott", Math.abs(forecast.weeks - 10 / nutrition.kgPerWeek(forecastTargets.deficit)) < 1e-9 && nutrition.goalForecast(forecastTargets, 96) === null);
+
 // Plankod
 const { encodePlan, decodePlan } = await import("../public/js/plancode.js");
 const sample = { seed: 123456789, salts: { 143: 98765 }, equipment: "db", days: [1, 3, 5], breakfast: "F2" };
@@ -152,23 +161,42 @@ const visible = () => [...win.document.querySelectorAll("[data-view]")].filter((
 const check = (label, cond) => { console.log((cond ? "OK   " : "FEL  ") + label); if (!cond) process.exitCode = 1; };
 console.log("\n# Appen i en simulerad webbläsare (jsdom)");
 
-// Guiden första gången
+// Guiden första gången: villkor, dig, mål, träning, mat
 const next = () => fire($("wz-next"), "click");
-check("Första gången startar guiden och inget sparas", !$("wizard").hidden && win.localStorage.length === 0 && text("wz-progress") === "Steg 1 av 4");
+const typeIn = (id, value) => { $(id).value = value; fire($(id), "input"); };
+check("Första gången startar guiden med villkoren och inget sparas", !$("wizard").hidden && win.localStorage.length === 0 && text("wz-progress") === "Steg 1 av 5" && text("wz-title") === "Innan du börjar");
+check("Villkoren visas: rekommendationer, ExRx, localStorage, export, i befintligt skick", ["inte medicinsk rådgivning", "ExRx", "localStorage", "exportera", "befintligt skick"].every((t) => text("wz-terms").includes(t)));
+check("Formuläret och importen visas inte förrän villkoren är godkända", $("wz-import").closest("[data-step]").hidden && $("age").closest("[data-step]").hidden);
+next();
+check("Utan kryss går det inte vidare", text("wz-progress") === "Steg 1 av 5" && text("wz-msg").startsWith("Kryssa i"));
+fire($("wz-back"), "click"); check("Tillbaka på första steget gör inget", text("wz-progress") === "Steg 1 av 5");
+$("wz-accept").checked = true; next();
+check("Steg 2: dig, med import överst", text("wz-progress") === "Steg 2 av 5" && !$("wz-import").closest("[data-step]").hidden && !$("age").closest("[data-step]").hidden);
 check("Guiden kräver egna värden: exemplen är tömda och kön är inte valt", $("age").value === "" && $("weight").value === "" && !win.document.querySelector('input[name="sex"]:checked'));
 next();
-check("Nästa utan ifyllda fält stannar på steget och förklarar", text("wz-progress") === "Steg 1 av 4" && text("wz-msg").startsWith("Fyll i"));
+check("Nästa utan ifyllda fält stannar på steget och förklarar", text("wz-progress") === "Steg 2 av 5" && text("wz-msg").startsWith("Fyll i"));
 win.document.querySelector('input[name="sex"][value="m"]').checked = true;
 $("age").value = "40"; $("weight").value = "95"; $("height").value = "180";
-next(); check("Steg 2: målet", text("wz-progress") === "Steg 2 av 4" && !$("goal").closest("[data-step]").hidden && $("age").closest("[data-step]").hidden);
-fire($("wz-back"), "click"); check("Tillbaka går till steg 1 och behåller värdena", text("wz-progress") === "Steg 1 av 4" && $("weight").value === "95");
-next(); next(); check("Målvikt krävs", text("wz-progress") === "Steg 2 av 4");
-$("goal").value = "85"; next();
-check("Steg 3: träning, med gymdagar", text("wz-progress") === "Steg 3 av 4" && !$("tdays").closest("[data-step]").hidden);
-next(); check("Steg 4: mat och allergier, inga förvalda", text("wz-progress") === "Steg 4 av 4" && text("wz-next") === "Klar" && $("wz-allergens").querySelectorAll("input").length > 10 && !$("wz-allergens").querySelector(":checked"));
+next();
+check("Steg 3: målet", text("wz-progress") === "Steg 3 av 5" && !$("goal").closest("[data-step]").hidden && $("age").closest("[data-step]").hidden);
+check("BMI över 25: målvikten fylls i vid BMI 24,9 (80,5 kg för 180 cm)", $("goal").value === "80,5");
+check("Rutan visar BMI, uträkningen och att det är ett förslag", !$("goal-info").hidden && text("goal-info").includes("Ditt BMI är 29,3") && text("goal-info").includes("Rekommenderad målvikt: 80,5 kg") && text("goal-info").includes("24,9 × 1,80²") && text("goal-info").includes("ifylld som förslag"));
+check("Rutan visar en prognos med appens kalorimål", /Prognos: med appens kalorimål, [\d\s ]+ kcal per dag .* om ungefär \d+ veckor/.test(text("goal-info")));
+check("Rutan säger att det är en rekommendation baserad på ExRx", text("goal-info").includes("rekommendation baserad på ExRx") && text("goal-info").includes("inte medicinsk rådgivning") && $("goal-info").querySelector('a[href="https://exrx.net/Calculators/BMI"]'));
+typeIn("goal", "85");
+check("Eget mål: inte längre markerat som förslag, prognosen räknas om", !text("goal-info").includes("ifylld som förslag") && text("goal-info").includes("når du 85,0 kg"));
+fire($("wz-back"), "click"); next();
+check("Ett eget mål skrivs inte över när man går tillbaka och fram", $("goal").value === "85");
+typeIn("goal", "55");
+check("Varnar för mål under BMI 18,5", text("goal-info").includes("under 18,5 (undervikt)"));
+typeIn("goal", ""); next(); check("Målvikt krävs", text("wz-progress") === "Steg 3 av 5");
+typeIn("goal", "85"); next();
+check("Steg 4: träning, med gymdagar", text("wz-progress") === "Steg 4 av 5" && !$("tdays").closest("[data-step]").hidden);
+next(); check("Steg 5: mat och allergier, inga förvalda", text("wz-progress") === "Steg 5 av 5" && text("wz-next") === "Klar" && $("wz-allergens").querySelectorAll("input").length > 10 && !$("wz-allergens").querySelector(":checked"));
 check("Fortfarande inget sparat innan Klar", win.localStorage.length === 0);
 next();
-check("Klar sparar profil och frö och stänger guiden", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv")).weight === "95" && $("f").closest("[data-view]").dataset.view === "profil");
+check("Klar sparar profil och godkända villkor och stänger guiden", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv")).weight === "95" && JSON.parse(win.localStorage.getItem("ffv-terms")).version === 1 && $("f").closest("[data-view]").dataset.view === "profil");
+check("Målviktsrutan visas också under Profil", !$("goal-info").hidden && $("goal-info").closest("[data-view]").dataset.view === "profil");
 
 
 check("Idag har titel, dagens recept och tidslinje", text("td-title").length > 3 && $("td-food").querySelectorAll("details.recipe").length >= 3 && $("td-timeline").querySelectorAll(".tl-label").length === 4);
@@ -349,12 +377,53 @@ await answer(false);
 check("Nej behåller posten", !!win.document.querySelector(`[data-del="${delDate}"]`));
 fire(win.document.querySelector(`[data-del="${delDate}"]`), "click"); await answer(true);
 check("Ja tar bort posten", !win.document.querySelector(`[data-del="${delDate}"]`) && text("l-msg") === "Posten är borttagen.");
+// Decimaler: både komma och punkt fungerar i alla sifferfält
+const type = (id, value) => { $(id).value = value; fire($(id), "input"); };
+const weightBefore = $("weight").value;
+type("weight", "85,5"); const withComma = text("targets");
+type("weight", "85.5"); const withDot = text("targets");
+type("weight", "85"); const whole = text("targets");
+check("Vikt 85,5 och 85.5 ger samma mål, skilt från 85", withComma === withDot && withComma !== whole && $("weight").validity.valid);
+type("bf", "28,5"); const bfComma = text("targets"); type("bf", "28.5");
+check("Kroppsfett med komma räknas (inte avrundat till 28)", text("targets") === bfComma && (type("bf", "28"), text("targets")) !== bfComma);
+type("bf", "");
+type("weight", "8x"); check("Text som inte är ett tal markeras som fel", !$("weight").validity.valid && $("weight").validationMessage.startsWith("Skriv ett tal"));
+type("weight", "500"); check("Värde utanför intervallet markeras som fel", !$("weight").validity.valid && $("weight").validationMessage === "Ange ett värde mellan 40 och 250");
+type("weight", weightBefore);
+check("Etiketten säger kroppsfett", text("f").includes("Kroppsfett (%)"));
+const infoBtn = $("f").querySelector('[aria-controls="bf-info"]');
+check("Förklaringen om kroppsfett är dold tills man trycker på i-ikonen", $("bf-info").hidden && infoBtn.getAttribute("aria-expanded") === "false");
+fire(infoBtn, "click");
+check("i-ikonen visar förklaringen", !$("bf-info").hidden && infoBtn.getAttribute("aria-expanded") === "true" && text("bf-info").includes("Katch-McArdle") && text("bf-info").includes("Lämna fältet tomt"));
+fire(infoBtn, "click"); check("Ett tryck till döljer den igen", $("bf-info").hidden);
+go("logg");
+$("l-date").value = "2026-09-20"; type("l-weight", "94,2"); type("l-waist", "101.5"); fire($("logf"), "submit");
+const decimalEntry = JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === "2026-09-20");
+check("Loggen tar vikt med komma och midja med punkt", decimalEntry?.weight === 94.2 && decimalEntry?.waist === 101.5);
+fire($("mr-add"), "click");
+const mrRow = $("mr-items").lastElementChild;
+mrRow.querySelector("[data-mr-food]").value = mrRow.querySelector("[data-mr-food] option:nth-child(2)").value;
+mrRow.querySelector("[data-mr-grams]").value = "150,5"; fire(mrRow.querySelector("[data-mr-grams]"), "input");
+check("Gram i egna recept tar komma", text("mr-sum").length > 0 && mrRow.querySelector("[data-mr-grams]").validity.valid);
+mrRow.remove(); fire($("mr-items"), "input");
+
+// Om appen och villkoren
+go("om");
+check("Om appen är en egen sida", visible() === "om" && text("om").includes("ExRx") && text("om").includes("rekommendationer"));
+check("Om appen länkar till GitHub-repot och MIT-licensen", !!$("om").querySelector('a[href="https://github.com/zolodev/MyNutrition"]') && text("om").includes("MIT-licensen") && !!$("om").querySelector('a[href$="/LICENSE"]'));
+go("villkor");
+check("Villkoren går att läsa igen och är samma text som i guiden", visible() === "om" && text("villkor").includes("befintligt skick") && text("terms-text") === text("wz-terms"));
+check("Varje flik har en rad om rekommendationer och länk till villkoren", !!win.document.querySelector('.app-note a[href="#villkor"]') && !win.document.querySelector(".app-note").closest("[data-view]"));
+go("installningar");
+check("Inställningar länkar till Om appen", !!$("om-appen").querySelector('a[href="#om"]'));
+
 // Rensa mina uppgifter: bekräfta, guiden startar igen, loggen finns kvar
 const logBefore = win.localStorage.getItem("ffv-log");
 go("profil"); fire($("clear"), "click");
 check("Rensa frågar först", $("confirm").hasAttribute("open"));
 await answer(true);
 check("Rensa öppnar guiden och tar bort profilen", !$("wizard").hidden && win.localStorage.getItem("ffv") == null && win.localStorage.getItem("ffv-log") === logBefore);
+$("wz-accept").checked = true; next();
 win.document.querySelector('input[name="sex"][value="m"]').checked = true;
 $("age").value = "41"; $("weight").value = "92"; $("height").value = "180"; next(); $("goal").value = "84"; next(); next(); next();
 check("Guiden sparar den nya profilen", $("wizard").hidden && JSON.parse(win.localStorage.getItem("ffv")).weight === "92" && $("f").closest("[data-view]").dataset.view === "profil");
@@ -377,7 +446,7 @@ const exportedText = $("l-copytext").value;
 const exportedData = JSON.parse(exportedText).data;
 check("Kopiera allt visar texten när urklipp nekas", !$("l-copytext").hidden && text("l-msg").startsWith("Kopieringen nekades"));
 check("Exporten innehåller profil, logg, plan, allergier och tillskott", ["ffv", "ffv-log", "ffv-seed", "ffv-excl"].every((k) => k in exportedData) && exportedData["ffv-log"].entries.length > 0 && exportedData.ffv.weight === "92");
-check("Exporten innehåller allt sparat utom det som bara gäller enheten", Object.keys(win.localStorage).filter((k) => k.startsWith("ffv") && k !== "ffv-swipe-hint" && k !== "ffv-install-declined").every((k) => k in exportedData) && !("ffv-swipe-hint" in exportedData));
+check("Exporten innehåller allt sparat utom det som bara gäller enheten", Object.keys(win.localStorage).filter((k) => k.startsWith("ffv") && k !== "ffv-swipe-hint" && k !== "ffv-install-declined" && k !== "ffv-terms").every((k) => k in exportedData) && !("ffv-swipe-hint" in exportedData));
 $("l-paste").value = "{ trasig"; fire($("l-paste-go"), "click"); await tick();
 check("Trasig importtext avvisas utan att något ändras", text("l-msg").startsWith("Texten är inte en giltig export") && win.localStorage.getItem("ffv-log") === JSON.stringify(exportedData["ffv-log"]));
 

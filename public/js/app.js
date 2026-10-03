@@ -1,14 +1,14 @@
 // Appens styrning: läser profilen, räknar om och ritar alla vyer, kopplar knappar och formulär och sköter flikarna.
 
-import { $, $$, num, radioValue, setRadio, load, save, remove, todayStr, dayToDate, dateToDay, svDate, weekIndexOf, confirmDialog, toast, DAYS_SHORT } from "./util.js";
-import { computeTargets, kgPerWeek } from "./nutrition.js";
+import { $, $$, num, radioValue, setRadio, load, save, remove, todayStr, dayToDate, dateToDay, svDate, weekIndexOf, confirmDialog, toast, checkDecimal, DAYS_SHORT } from "./util.js";
+import { computeTargets, kgPerWeek, recommendedGoal } from "./nutrition.js";
 import { loadPreferences, exclusions, saveExclusions, setExclusions, myFoods, addMyFood, removeMyFood, cleanMyFood } from "./preferences.js";
 import { buildWeek, invalidateMenu, initSeed, planRandomness, setPlanRandomness } from "./menu.js";
 import { encodePlan, decodePlan, prettyCode, randomSeed } from "./plancode.js";
 import { SEASONS } from "./data/recipes.js";
 import { parseTrainingDays, buildProgram, SWAP_TEXT } from "./training.js";
 import { loadLog, entryFor, upsertEntry, removeEntry, cleanEntry, isIsoDate, parseTestTime, formatTestTime, connectCloud, setMealTimes } from "./log.js";
-import { renderTargets } from "./views/profile.js";
+import { renderTargets, renderGoalAdvice } from "./views/profile.js";
 import { renderToday, renderFasting } from "./views/today.js";
 import { renderFastingToday, renderFastingNow, todaysFasting } from "./views/fasting-view.js";
 import { weekLabel, renderWeekGrid, renderCheatTable, renderRecipes, renderShopping, updateShoppingProgress } from "./views/food.js";
@@ -42,10 +42,10 @@ function readProfile() {
   state.trainingDays = days.days;
   return {
     sex: radioValue("sex"),
-    age: +$("age").value || 40,
-    weight: +$("weight").value || 80,
-    height: +$("height").value || 175,
-    bodyFat: parseFloat($("bf").value),
+    age: num($("age").value) || 40,
+    weight: num($("weight").value) || 80,
+    height: num($("height").value) || 175,
+    bodyFat: num($("bf").value),
     activity: +$("act").value,
     rate: +radioValue("rate"),
     equipment: radioValue("eq"),
@@ -80,6 +80,31 @@ function saveProfile() {
     : "Webbläsaren tillåter inte att uppgifterna sparas (t.ex. privat läge).");
 }
 
+// ---------- Målvikt och villkor ----------
+
+let suggestedGoal = null; // senaste förslaget, så att det följer med om vikten ändras men aldrig skriver över ett eget val
+
+/** Fyll i målvikten vid BMI 24,9 som förslag när BMI är över 25 och användaren inte har valt en egen. */
+function suggestGoal() {
+  const recommended = recommendedGoal(num($("weight").value), num($("height").value));
+  const current = num($("goal").value);
+  if (recommended != null && (current == null || current === suggestedGoal)) {
+    $("goal").value = String(recommended).replace(".", ",");
+    suggestedGoal = recommended;
+  }
+}
+
+function showGoalAdvice() {
+  const profile = readProfile();
+  renderGoalAdvice({ weight: num($("weight").value), height: num($("height").value), goal: num($("goal").value), targets: computeTargets(profile) });
+}
+
+// Godkända villkor gäller enheten (följer inte med i exporten). Höj versionen när villkoren ändras.
+const TERMS_KEY = "ffv-terms";
+const TERMS_VERSION = 1;
+const termsAccepted = () => load(TERMS_KEY, null)?.version === TERMS_VERSION;
+const acceptTerms = () => save(TERMS_KEY, { version: TERMS_VERSION, accepted: new Date().toISOString() });
+
 function syncDayButtons() {
   const chosen = new Set(String($("tdays-val").value).split(","));
   for (const el of $$("[data-day]")) el.checked = chosen.has(el.dataset.day);
@@ -92,6 +117,20 @@ function showTrainingDaysMessage({ valid, picked }) {
     ? `${picked.length} dagar: ${picked.length === 3 ? "helkropp, överkropp och ben" : "över- och underkropp två gånger var"}.`
     : `Välj 3 eller 4 dagar (nu ${picked.length}). Planen använder ${state.trainingDays.map((d) => DAYS_SHORT[d]).join(", ")} så länge.`;
 }
+
+// Sifferfält tar både 85,5 och 85.5; kontrollera talet medan man skriver (före formulärens egna lyssnare)
+document.addEventListener("input", (ev) => {
+  if (ev.target.matches?.("input[data-decimal]")) checkDecimal(ev.target);
+}, true);
+
+// Informationsikoner (data-info): visa eller dölj förklaringen som knappen pekar på med aria-controls
+document.addEventListener("click", (ev) => {
+  const button = ev.target.closest?.("[data-info]");
+  if (!button) return;
+  const text = $(button.getAttribute("aria-controls"));
+  text.hidden = !text.hidden;
+  button.setAttribute("aria-expanded", String(!text.hidden));
+});
 
 // ---------- Rita om allt ----------
 
@@ -124,6 +163,7 @@ function update() {
   renderLog(kgPerWeek(targets.deficit), profile.goal, profile.weight);
   renderSettings(state.week);
   renderPlanCode(profile);
+  showGoalAdvice();
 }
 
 function showWeek(week) {
@@ -145,7 +185,7 @@ $("tdays").addEventListener("change", () => {
 });
 for (const type of ["input", "change"]) {
   $("f").addEventListener(type, () => {
-    if (!$("wizard").hidden) return; // guiden sparar allt när den är klar
+    if (!$("wizard").hidden) return showGoalAdvice(); // guiden sparar allt när den är klar
     saveProfile();
     update();
   });
@@ -160,7 +200,10 @@ $("clear").addEventListener("click", async () => {
 
 /** Guiden fyller i profilen och allergierna; allt sparas först när användaren är klar. */
 function runWizard(then) {
-  openWizard(exclusions.allergens, ({ allergens }) => {
+  suggestedGoal = null;
+  const onStep = (key) => key === "goal" && (suggestGoal(), showGoalAdvice());
+  openWizard({ allergens: exclusions.allergens, onStep }, ({ allergens }) => {
+    acceptTerms();
     setExclusions({ allergens, foods: [...exclusions.foods] });
     saveExclusions();
     invalidateMenu();
@@ -440,6 +483,7 @@ async function importBackup(text, say) {
     `Importen ersätter ${replaced} med: ${what}. Det går inte att ångra; exportera först om du vill behålla det som finns.`,
   ))) return say("Importen avbröts. Inget har ändrats.");
   try {
+    if (!$("wizard").hidden) acceptTerms(); // importen i guiden kommer efter villkorssteget
     restore(backup);
   } catch {
     return say("Webbläsaren tillåter inte att uppgifterna sparas (t.ex. privat läge).");
@@ -509,7 +553,7 @@ $("wz-paste-go").addEventListener("click", () => importBackup($("wz-paste-text")
 // ---------- Flikar ----------
 // Varje flik är en vy (#idag, #mat, ...). En länk till en sektion eller ett recept öppnar fliken den ligger i.
 
-const VIEWS = ["idag", "mat", "traning", "logg", "profil", "installningar"];
+const VIEWS = ["idag", "mat", "traning", "logg", "profil", "installningar", "om"];
 const markCurrent = (el, on) => (on ? el.setAttribute("aria-current", "page") : el.removeAttribute("aria-current"));
 
 function route() {
@@ -547,7 +591,7 @@ const SWIPE_HINT_KEY = "ffv-swipe-hint";
 function currentStep() {
   const view = $$("[data-view]").find((el) => !el.hidden)?.dataset.view;
   if (view === "mat") return SWIPE_ORDER.indexOf(state.subview);
-  if (view === "installningar") return SWIPE_ORDER.indexOf("profil");
+  if (view === "installningar" || view === "om") return SWIPE_ORDER.indexOf("profil");
   return SWIPE_ORDER.indexOf(view);
 }
 
@@ -619,7 +663,12 @@ const savedProfile = load(PROFILE_KEY, null);
 if (savedProfile) {
   applyProfile(savedProfile);
   showSaved("Dina sparade uppgifter är inlästa");
-  start();
+  if (termsAccepted()) start();
+  // Har en profil men har inte godkänt (nuvarande) villkor: visa bara villkoren först
+  else openWizard({ termsOnly: true }, () => {
+    acceptTerms();
+    start();
+  });
 } else {
   runWizard(() => start(true)); // första gången: inget sparas och inget frö skapas förrän guiden är klar
 }

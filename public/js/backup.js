@@ -5,7 +5,7 @@
 const APP = "fettforbranningsveckan";
 const VERSION = 2;
 // Gäller bara den här enheten och flyttas inte med
-const DEVICE_ONLY = new Set(["ffv-install-declined", "ffv-swipe-hint"]);
+const DEVICE_ONLY = new Set(["ffv-install-declined", "ffv-swipe-hint", "ffv-terms"]);
 const isDataKey = (k) => (k === "ffv" || k.startsWith("ffv-")) && !DEVICE_ONLY.has(k);
 
 function storedKeys() {

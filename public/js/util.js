@@ -26,6 +26,23 @@ export const num = (v) => {
   return Number.isFinite(x) ? x : null;
 };
 
+/**
+ * Sifferfält (data-decimal i index.html) är textfält, så att både 85,5 och 85.5 fungerar på alla tangentbord.
+ * Här kontrolleras att värdet är ett tal inom min–max; tomt fält hanteras av required.
+ */
+export function checkDecimal(el) {
+  const text = el.value.trim();
+  const x = num(text);
+  const min = el.min === "" ? -Infinity : Number(el.min);
+  const max = el.max === "" ? Infinity : Number(el.max);
+  el.setCustomValidity(
+    !text ? "" :
+    !/^\d+([.,]\d+)?$/.test(text) || x == null ? "Skriv ett tal, t.ex. 85,5 eller 85.5" :
+    x < min || x > max ? `Ange ett värde mellan ${String(min).replace(".", ",")} och ${String(max).replace(".", ",")}` : "",
+  );
+  return el.validity.valid;
+}
+
 export const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
 /** Klockslag från timmar, t.ex. 7.5 → "07:30". Appen använder bara hela och halva timmar. */

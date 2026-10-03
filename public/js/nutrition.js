@@ -1,7 +1,7 @@
 // Energibehov, makromål och skalning av portioner. Inga beroenden till sidan, så allt här går att testa fristående.
 
 import { FOOD, scaleGroupOf } from "./data/foods.js";
-import { fmt, clamp } from "./util.js";
+import { fmt, clamp, DAY_MS } from "./util.js";
 
 const KCAL_PER_KG_FAT = 7700;
 const MAX_DEFICIT = 1000; // kcal/dag
@@ -74,6 +74,27 @@ export function computeTargets(p) {
 
 /** Förväntad viktnedgång i kg per vecka för ett dagligt underskott. */
 export const kgPerWeek = (deficit) => (deficit * 7) / KCAL_PER_KG_FAT;
+
+// ---------- BMI och målvikt ----------
+// Gränser enligt ExRx BMI-kalkylator (WHO 1997): under 18,5 undervikt, 18,5–24,9 normalvikt, 25–29,9 övervikt.
+
+export const BMI = { under: 18.5, normalMax: 24.9, over: 25 };
+export const bmiOf = (weight, heightCm) => weight / (heightCm / 100) ** 2;
+export const weightAtBmi = (bmi, heightCm) => bmi * (heightCm / 100) ** 2;
+
+/** Föreslagen målvikt när BMI är över 25: vikten vid BMI 24,9, avrundad nedåt till halvt kilo. Annars null. */
+export function recommendedGoal(weight, heightCm) {
+  if (!(weight > 0 && heightCm > 0) || bmiOf(weight, heightCm) <= BMI.over) return null;
+  return Math.floor(weightAtBmi(BMI.normalMax, heightCm) * 2) / 2;
+}
+
+/** Hur lång tid till målvikten med appens kalorimål: { weeks, date } eller null om målet inte är lägre än vikten. */
+export function goalForecast(targets, goal) {
+  const perWeek = kgPerWeek(targets.deficit);
+  if (!(goal > 0 && goal < targets.weight && perWeek > 0)) return null;
+  const weeks = (targets.weight - goal) / perWeek;
+  return { weeks, perWeek, date: new Date(Date.now() + weeks * 7 * DAY_MS) };
+}
 
 /** Summera kalorier och makron för en lista [livsmedel, gram]. */
 export function macros(items) {

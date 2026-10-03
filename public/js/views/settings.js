@@ -1,6 +1,6 @@
 // Inställningar: allergier, ingredienser att ta bort och egna livsmedel.
 
-import { $, esc, fmt } from "../util.js";
+import { $, esc, fmt, num } from "../util.js";
 import { FOOD, CATEGORIES, SUBSTITUTES, ALLERGENS, EXTRA_PRODUCTS, categoryOf } from "../data/foods.js";
 import { RECIPES, SEASONAL, SEASONS } from "../data/recipes.js";
 import { exclusions, myFoods, isExcluded } from "../preferences.js";
@@ -40,14 +40,14 @@ export function recipeItemRow(food = "", grams = "") {
   const options = Object.keys(FOOD).sort((a, b) => FOOD[a].n.localeCompare(FOOD[b].n, "sv"))
     .map((id) => `<option value="${id}"${id === food ? " selected" : ""}>${esc(FOOD[id].n)}</option>`).join("");
   return `<div class="mr-item"><select data-mr-food aria-label="Livsmedel"><option value="">Välj livsmedel</option>${options}</select>` +
-    `<input type="number" data-mr-grams min="1" max="2000" step="5" placeholder="gram" value="${grams}" aria-label="Gram">` +
+    `<input type="text" inputmode="decimal" data-decimal data-mr-grams min="1" max="2000" placeholder="gram" value="${grams}" aria-label="Gram">` +
     `<button type="button" class="linkbtn" data-mr-remove>Ta bort</button></div>`;
 }
 
 /** Ingredienserna som står i formuläret just nu. */
 export function readRecipeItems() {
   return [...document.querySelectorAll("#mr-items .mr-item")]
-    .map((row) => [row.querySelector("[data-mr-food]").value, Number(row.querySelector("[data-mr-grams]").value)])
+    .map((row) => [row.querySelector("[data-mr-food]").value, num(row.querySelector("[data-mr-grams]").value)])
     .filter(([food, grams]) => food && grams > 0);
 }
 

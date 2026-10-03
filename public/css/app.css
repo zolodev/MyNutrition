@@ -139,6 +139,21 @@ body { overflow: hidden; }
 .backup-paste summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--accent); }
 .backup-paste[open] { gap: 8px; }
 .wizard-import { display: grid; gap: 10px; background: var(--accent-soft); }
+.label-row { display: flex; align-items: center; gap: 6px; }
+.info-btn { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; margin-block: -2px; padding: 0; border-radius: 50%; border: 1.5px solid var(--accent); background: transparent; color: var(--accent); font: italic 700 0.8rem/1 Georgia, serif; cursor: pointer; }
+.info-btn[aria-expanded="true"] { background: var(--accent); color: var(--accent-ink); }
+.info-text { grid-column: 1 / -1; margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); font-size: 0.85rem; line-height: 1.45; }
+.terms h3 { font-size: 0.95rem; margin: 14px 0 4px; }
+.terms h3:first-child { margin-top: 0; }
+.terms p { font-size: 0.88rem; line-height: 1.5; margin: 0; }
+.wizard-terms { display: grid; gap: 14px; }
+.wizard-terms .terms { max-height: 50vh; overflow-y: auto; padding-right: 4px; }
+.terms-accept { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+.terms-accept input { width: 20px; height: 20px; flex: none; margin-top: 1px; accent-color: var(--accent); }
+.goal-info { display: grid; gap: 8px; margin-top: 4px; padding: 12px; border-radius: 8px; background: var(--accent-soft); font-size: 0.86rem; line-height: 1.5; }
+.goal-info p { margin: 0; }
+.goal-info .goal-source { font-size: 0.78rem; color: var(--muted); }
+.app-note { max-width: 980px; margin: 0 auto; padding: 0 16px 24px; font-size: 0.78rem; color: var(--muted); text-align: center; }
 .modal { width: min(420px, calc(100% - 32px)); margin: auto; padding: 20px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--fg); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25); }
 .modal::backdrop { background: rgba(0, 0, 0, 0.45); }
 .modal-q { margin: 0 0 6px; font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; line-height: 1.3; }

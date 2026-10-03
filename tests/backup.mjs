@@ -29,6 +29,7 @@ const stored = () => Object.fromEntries(Object.keys(win.localStorage).map((k) =>
 const same = (a, b) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
 
 if (scenario === "skriv-över") {
+  win.localStorage.setItem("ffv-terms", JSON.stringify({ version: 1, accepted: "2026-01-01T00:00:00.000Z" }));
   win.localStorage.setItem("ffv", JSON.stringify({ age: "50", weight: "110", height: "190", goal: "100", sex: "m" }));
   win.localStorage.setItem("ffv-log", JSON.stringify({ entries: [{ date: "2025-01-01", weight: 112 }] }));
   win.localStorage.setItem("ffv-shop-999", JSON.stringify(["agg"]));
@@ -37,8 +38,14 @@ if (scenario === "skriv-över") {
 
 await import("../public/js/app.js");
 
+// Guidens villkor kommer först; importen finns i steg 2. Godkännandet gäller enheten och ingår inte i exporten.
+const acceptTerms = () => { $("wz-accept").checked = true; fire($("wz-next"), "click"); };
+const withoutDevice = ({ "ffv-terms": _t, "ffv-swipe-hint": _h, ...rest }) => rest;
+
 if (scenario === "guide") {
-  check("Guiden visar import i första steget", !$("wizard").hidden && !$("wz-import").closest("[data-step]").hidden);
+  check("Importen syns först när villkoren är godkända", !$("wizard").hidden && $("wz-import").closest("[data-step]").hidden);
+  acceptTerms();
+  check("Guiden visar import överst i steg 2", !$("wz-import").closest("[data-step]").hidden);
   fire($("wz-paste-toggle"), "click");
   $("wz-paste-text").value = "inte json";
   fire($("wz-paste-go"), "click"); await tick();
@@ -46,7 +53,8 @@ if (scenario === "guide") {
   $("wz-paste-text").value = exported;
   fire($("wz-paste-go"), "click"); await tick();
   check("Ingen varning när enheten är tom", !$("confirm").hasAttribute("open"));
-  check("Allt i exporten sparas i localStorage", same(stored(), expected));
+  check("Allt i exporten sparas i localStorage", same(withoutDevice(stored()), expected));
+  check("Godkända villkor sparas vid import i guiden", stored()["ffv-terms"]?.version === 1);
   check("Sidan laddas om efter importen", reloaded);
 }
 
@@ -59,13 +67,14 @@ if (scenario === "skriv-över") {
   check("Nej ändrar inget", JSON.parse(win.localStorage.getItem("ffv")).weight === "110" && text("l-msg").startsWith("Importen avbröts") && !reloaded);
   fire($("l-paste-go"), "click"); await tick();
   fire($("confirm").querySelector('[data-answer="yes"]'), "click"); await tick();
-  const { "ffv-swipe-hint": hint, ...rest } = stored();
+  const rest = withoutDevice(stored());
   check("Ja ersätter allt med exporten (gammal data och inköpslistor borta)", same(rest, expected) && !("ffv-shop-999" in rest));
-  check("Inställningar som bara gäller enheten ligger kvar", hint === true);
+  check("Inställningar som bara gäller enheten ligger kvar (svep-tips, godkända villkor)", stored()["ffv-swipe-hint"] === true && stored()["ffv-terms"]?.version === 1);
   check("Sidan laddas om efter importen", reloaded);
 }
 
 if (scenario === "äldre") {
+  acceptTerms();
   const old = { app: "fettforbranningsveckan", version: 1, goal: 80, settings: { age: "33", weight: "90", height: "185", sex: "m" },
     plan: { seed: 4242, salts: {}, trainingSeed: 77 }, exclusions: { v: 2, allergens: ["sesam"], foods: [] }, myFoods: [], myRecipes: [],
     entries: [{ date: "2026-09-01", weight: 91.2 }] };
