@@ -162,6 +162,8 @@ const visible = () => [...win.document.querySelectorAll("[data-view]")].filter((
 const check = (label, cond) => { console.log((cond ? "OK   " : "FEL  ") + label); if (!cond) process.exitCode = 1; };
 console.log("\n# Appen i en simulerad webbläsare (jsdom)");
 
+check("Laddningsskärmen finns och döljs när appen har startat", !!win.document.querySelector(".loading-screen") && !win.document.documentElement.classList.contains("booting") && !win.document.documentElement.classList.contains("boot-failed"));
+
 // Guiden första gången: villkor, dig, mål, träning, mat
 const next = () => fire($("wz-next"), "click");
 const typeIn = (id, value) => { $(id).value = value; fire($(id), "input"); };
