@@ -3,6 +3,7 @@
 // automatiskt. En import ersätter allt sparat på enheten; äldre exportfiler (version 1) och rena logglistor läses också.
 
 import { load, save, remove, keys, clearAll, flush } from "./storage.js";
+import { DAYS, hhmm } from "./util.js";
 
 const APP = "fettforbranningsveckan";
 const VERSION = 2;
@@ -15,10 +16,30 @@ const storedKeys = () => keys().filter(isDataKey);
 /** Finns det sparad data på enheten som en import skulle skriva över? */
 export const hasStoredData = () => storedKeys().length > 0;
 
+/**
+ * Profilen i klartext högst upp i exporten, så att den går att läsa (t.ex. gymdagarna, som sparas som "1,3,5").
+ * Bara för människor: importen läser `data`.
+ */
+function overview(data) {
+  const p = data.ffv || {};
+  const days = String(p["tdays-val"] || "").split(",").filter(Boolean).map((d) => DAYS[Number(d)]?.toLowerCase()).filter(Boolean);
+  return {
+    "Kön": p.sex === "k" ? "Kvinna" : p.sex === "m" ? "Man" : "–",
+    "Ålder": p.age || "–",
+    "Vikt (kg)": p.weight || "–",
+    "Längd (cm)": p.height || "–",
+    "Målvikt (kg)": p.goal || "–",
+    "Gymdagar": days.join(", ") || "–",
+    "Utrustning": { gym: "Gym", db: "Hantlar", bw: "Kroppsvikt" }[p.eq] || "–",
+    "Frukost klockan": p.bfast ? hhmm(Number(p.bfast)) : "–",
+    "Loggade dagar": data["ffv-log"]?.entries?.length ?? 0,
+  };
+}
+
 /** Allt sparat som JSON-text, för fil eller urklipp. */
 export function exportText() {
   const data = Object.fromEntries(storedKeys().sort().map((k) => [k, load(k)]));
-  return JSON.stringify({ app: APP, version: VERSION, exported: new Date().toISOString(), data }, null, 2);
+  return JSON.stringify({ app: APP, version: VERSION, exported: new Date().toISOString(), oversikt: overview(data), data }, null, 2);
 }
 
 /**
@@ -68,7 +89,22 @@ export function describe(data) {
 }
 
 /** Radera allt appen har sparat, även det som bara gäller enheten (som godkända villkor). Ger ett löfte. */
-export const eraseAll = () => clearAll();
+/**
+ * Radera all data: allt sparat (IndexedDB och localStorage), webbappens cache och service workern, så att nästa
+ * start är helt ny. Samma som "Radera all data och börja om" på laddningsskärmen (ffvRecover i index.html).
+ */
+export async function eraseAll() {
+  await clearAll();
+  try {
+    for (const k of Object.keys(sessionStorage)) if (k === "ffv" || k.startsWith("ffv-")) sessionStorage.removeItem(k);
+  } catch {
+    /* ingen sessionStorage */
+  }
+  const tasks = [];
+  if (navigator.serviceWorker) tasks.push(navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.map((r) => r.unregister()))));
+  if (globalThis.caches) tasks.push(caches.keys().then((ks) => Promise.all(ks.map((k) => caches.delete(k)))));
+  await Promise.allSettled(tasks);
+}
 
 /** Spara en export. Vid replaceAll tas allt annat sparat bort först. Ger ett löfte som är klart när allt är skrivet. */
 export function restore({ data, replaceAll }) {

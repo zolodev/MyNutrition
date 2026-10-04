@@ -92,6 +92,28 @@
       cursor: pointer;
     }
 
+    .loading-error p {
+      margin: 0;
+    }
+
+    .loading-error button.secondary {
+      background: transparent;
+      color: #1d5c4c;
+      border: 1px solid #1d5c4c;
+    }
+
+    .loading-error button.danger {
+      background: transparent;
+      color: #9a3b22;
+      border: 1px solid #9a3b22;
+    }
+
+    .loading-help {
+      margin-top: 18px !important;
+      font-size: 0.85rem;
+      color: #56645e;
+    }
+
     .boot-failed .loading-bar {
       display: none;
     }
@@ -138,15 +160,93 @@
     }
   </style>
   <script>
-    // Hänger starten (t.ex. om en fil inte går att ladda) visas ett fel med knapp för att ladda om
-    setTimeout(function () { if (document.documentElement.classList.contains("booting")) document.documentElement.classList.add("boot-failed"); }, 15000);
+    // Laddningsskärmen visar bara ikon, namn och laddningsindikator. Går något inte att ladda försöker sidan själv:
+    //   1:a försöket: laddar om.
+    //   2:a och 3:e försöket: avregistrerar service workern och tömmer dess cache, så att alla filer hämtas på nytt
+    //   från servern, och laddar sedan om. Användarens uppgifter (IndexedDB och localStorage) rörs inte.
+    // Först när det har misslyckats tre gånger, eller när laddningen har pågått i mer än en minut, visas felet med
+    // knappar för att ladda om eller rensa.
+    var BOOT_RETRIES_KEY = "ffv-boot-retries", MAX_BOOT_RETRIES = 3;
+    function ffvShowBootError() {
+      if (document.documentElement.classList.contains("booting")) document.documentElement.classList.add("boot-failed");
+    }
+
+    /** Avregistrera service workern och töm dess cache. Uppgifterna finns kvar. Ger ett löfte. */
+    function ffvClearCache() {
+      var tasks = [];
+      if (navigator.serviceWorker) tasks.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+      if (window.caches) tasks.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+      return Promise.all(tasks.map(function (t) { return t.catch(function () {}); }));
+    }
+
+    /**
+     * Töm databasen och ta bort den. Den töms först, eftersom borttagningen kan blockeras (Safari på iPhone när
+     * databasen är öppen någon annanstans) och då annars ligger kvar. Samma som clearAll() i js/storage.js.
+     */
+    function ffvEraseDatabase() {
+      function remove(done) {
+        try {
+          var del = indexedDB.deleteDatabase("fettforbranning");
+          del.onsuccess = del.onerror = function () { done(); };
+          del.onblocked = function () { setTimeout(done, 3000); };
+        } catch (e) { done(); }
+      }
+      return new Promise(function (done) {
+        try {
+          var open = indexedDB.open("fettforbranning");
+          open.onerror = function () { remove(done); };
+          open.onsuccess = function () {
+            var db = open.result;
+            try {
+              var tx = db.transaction("data", "readwrite");
+              tx.objectStore("data").clear();
+              tx.oncomplete = tx.onerror = tx.onabort = function () { db.close(); remove(done); };
+            } catch (e) { db.close(); remove(done); }
+          };
+        } catch (e) { remove(done); }
+      });
+    }
+
+    function ffvBootFailed() {
+      var tries;
+      try {
+        tries = Number(sessionStorage.getItem(BOOT_RETRIES_KEY)) || 0;
+        if (tries >= MAX_BOOT_RETRIES) return ffvShowBootError();
+        sessionStorage.setItem(BOOT_RETRIES_KEY, String(tries + 1));
+      } catch (e) {
+        return ffvShowBootError(); // försöken går inte att räkna: visa felet i stället för att ladda om i det oändliga
+      }
+      var cleared = tries === 0 ? Promise.resolve() : ffvClearCache();
+      cleared.then(function () { setTimeout(function () { location.reload(); }, 1000 * (tries + 1)); });
+    }
+    setTimeout(ffvShowBootError, 60000);
+
+    /**
+     * Knapparna på felskärmen: töm cachen (uppgifterna finns kvar), eller med `all` även radera allt sparat
+     * (IndexedDB och appens nycklar i localStorage). Skrivet utan moduler, så att det fungerar även när appens
+     * JavaScript inte går att ladda.
+     */
+    function ffvRecover(all) {
+      if (all && !confirm("Är du säker? All data som appen har sparat i den här webbläsaren raderas: profil, logg, plankod, egna recept och inställningar. Det går inte att ångra.")) return;
+      var tasks = [ffvClearCache()];
+      if (all) {
+        try {
+          Object.keys(localStorage).forEach(function (k) { if (k === "ffv" || k.indexOf("ffv-") === 0) localStorage.removeItem(k); });
+        } catch (e) { /* ingen lagring */ }
+        if (window.indexedDB) tasks.push(ffvEraseDatabase());
+      }
+      try {
+        sessionStorage.removeItem(BOOT_RETRIES_KEY); // ny start efter rensningen
+      } catch (e) { /* ingen sessionStorage */ }
+      Promise.all(tasks).then(function () { location.replace(location.pathname); });
+    }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="css/app.css">
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js" onerror="ffvBootFailed()"></script>
   <link rel="modulepreload" href="js/app.js">
 </head>
 
@@ -158,8 +258,14 @@
     <img src="icons/icon-192.png" alt="">
     <span>Fettförbränning</span>
     <div class="loading-bar"></div>
-    <p class="loading-error">Appen kunde inte laddas. Kontrollera anslutningen och försök igen.<br><button type="button"
-        onclick="location.reload()">Ladda om</button></p>
+    <div class="loading-error">
+      <p>Appen kunde inte laddas. Kontrollera anslutningen och försök igen.</p>
+      <button type="button" onclick="location.reload()">Ladda om</button>
+      <p class="loading-help">Fastnar den ändå? Rensa appens cache. Dina uppgifter finns kvar.</p>
+      <button type="button" class="secondary" onclick="ffvRecover(false)">Rensa cache och ladda om</button>
+      <p class="loading-help">Hjälper inte det kan du radera all data som appen har sparat och börja om. Det går inte att ångra.</p>
+      <button type="button" class="danger" onclick="ffvRecover(true)">Radera all data och börja om</button>
+    </div>
   </div>
   <div class="app">
     <header class="appbar">
@@ -195,6 +301,17 @@
           </div>
           <div class="tiles three" id="td-targets"></div>
           <div class="timeline" id="td-timeline" role="img"></div>
+        </section>
+
+        <section id="dagens-vikt">
+          <form class="card weigh-in" id="qw-form" autocomplete="off">
+            <label for="qw-weight">Dagens vikt (kg)</label>
+            <div class="input-row">
+              <input type="text" inputmode="decimal" data-decimal id="qw-weight" min="30" max="300" placeholder="t.ex. 94,2">
+              <button type="submit" class="btn primary">Spara</button>
+            </div>
+            <small id="qw-msg">Väg dig helst samma tid varje dag, till exempel på morgonen före frukost.</small>
+          </form>
         </section>
 
         <section id="fastan">
@@ -246,7 +363,7 @@
           </div>
         </section>
 
-        <div class="actions"><a class="btn primary" href="#logg">Logga dagens vikt</a><a class="btn"
+        <div class="actions"><a class="btn primary" href="#logg">Hela loggen</a><a class="btn"
             href="#inkop">Inköpslistan</a><a class="btn" href="#vecka">Hela veckan</a></div>
 
       </div>
@@ -624,7 +741,7 @@
               sparas i webbläsaren på den här enheten.</p>
           </div>
           <form class="card form" id="f" autocomplete="off">
-            <div class="field" data-step="2">
+            <div class="field" data-step="3">
               <span class="label">Kön</span>
               <div class="seg" role="radiogroup" aria-label="Kön">
                 <label><input type="radio" name="sex" value="m" checked><span>Man</span></label>
@@ -632,13 +749,13 @@
               </div>
               <small>Rätterna och övningarna är desamma för båda; kalorier, protein och portioner räknas om.</small>
             </div>
-            <div class="row2" data-step="2">
+            <div class="row2" data-step="3">
               <div class="field"><label for="age">Ålder</label><input type="text" inputmode="numeric" data-decimal
                   id="age" min="18" max="90" value="40"></div>
               <div class="field"><label for="weight">Vikt (kg)</label><input type="text" inputmode="decimal"
                   data-decimal id="weight" min="40" max="250" value="95"></div>
             </div>
-            <div class="row2" data-step="2">
+            <div class="row2" data-step="3">
               <div class="field"><label for="height">Längd (cm)</label><input type="text" inputmode="decimal"
                   data-decimal id="height" min="130" max="220" value="180"></div>
               <div class="field">
@@ -654,11 +771,11 @@
                 ett DEXA-test; då används Harris-Benedict, som bara räknar på kön, ålder, vikt och längd. En gissning
                 gör beräkningen sämre, inte bättre.</p>
             </div>
-            <div class="field" data-step="3"><label for="goal">Målvikt (kg)</label><input type="text"
+            <div class="field" data-step="4"><label for="goal">Målvikt (kg)</label><input type="text"
                 inputmode="decimal" data-decimal id="goal" min="35" max="250" value="85">
               <div class="goal-info" id="goal-info" aria-live="polite" hidden></div>
             </div>
-            <div class="field" data-step="3">
+            <div class="field" data-step="4">
               <label for="act">Vardagsaktivitet <a class="help" href="guide.html#aktivitet" target="_blank"
                   rel="noopener">Vad betyder valen?</a></label>
               <select id="act">
@@ -669,7 +786,7 @@
               </select>
               <small>Räkna inte med träningen här. ExRx påpekar att de flesta överskattar sin aktivitetsnivå.</small>
             </div>
-            <div class="field" data-step="3">
+            <div class="field" data-step="4">
               <span class="label">Takt</span>
               <div class="seg" role="radiogroup" aria-label="Takt">
                 <label><input type="radio" name="rate" value="0.5"><span>0,5 %/v</span></label>
@@ -677,7 +794,7 @@
                 <label><input type="radio" name="rate" value="1" checked><span>1 %/v max</span></label>
               </div>
             </div>
-            <div class="field" data-step="4">
+            <div class="field" data-step="5">
               <span class="label">Utrustning</span>
               <div class="seg" role="radiogroup" aria-label="Utrustning">
                 <label><input type="radio" name="eq" value="gym" checked><span>Gym</span></label>
@@ -685,7 +802,7 @@
                 <label><input type="radio" name="eq" value="bw"><span>Kroppsvikt</span></label>
               </div>
             </div>
-            <div class="field" data-step="4">
+            <div class="field" data-step="5">
               <span class="label">Gymdagar</span>
               <div class="daypick" id="tdays" role="group" aria-label="Gymdagar">
                 <label><input type="checkbox" data-day="0"><span>Mån</span></label><label><input type="checkbox"
@@ -700,7 +817,7 @@
               <small id="tdays-msg">Välj 3 eller 4 dagar. 3 dagar ger helkropp, överkropp och ben; 4 dagar ger över- och
                 underkropp två gånger var.</small>
             </div>
-            <div class="field" data-step="4">
+            <div class="field" data-step="5">
               <label for="exswap">Byt övningar</label>
               <select id="exswap">
                 <option value="1" selected>Varje vecka</option>
@@ -710,7 +827,7 @@
               <small>Passen är alltid desamma (helkropp, överkropp, ben), men övningarna i dem växlar. Byter du mer
                 sällan är det lättare att öka vikten steg för steg i samma övning.</small>
             </div>
-            <div class="field" data-step="5">
+            <div class="field" data-step="6">
               <label for="bmeal">Frukost</label>
               <select id="bmeal">
                 <option value="F0" selected>Samma varje dag: ägg och kvarg med bär</option>
@@ -722,7 +839,7 @@
               </select>
               <small>Samma frukost varje dag gör det lätt att handla och följa planen.</small>
             </div>
-            <div class="field" data-step="5">
+            <div class="field" data-step="6">
               <label for="bfast">Frukost klockan</label>
               <select id="bfast">
                 <option value="6">06:00</option>
@@ -841,44 +958,151 @@
 
       <!-- ============ Inställningar ============ -->
       <div class="view" data-view="installningar" hidden>
-        <section id="backup">
-        <div class="sec-head">
-          <span class="eyebrow">Dina uppgifter</span>
-          <h2>Säkerhetskopia och flytt</h2>
-          <p>Exporten innehåller allt: profil, logg, plankod, allergier, egna livsmedel och recept och inköpslistan. Spara den som fil, eller kopiera den som text och klistra in den på en annan enhet. En import ersätter det som är sparat på enheten.</p>
-        </div>
-        <div class="card backup">
-          <div class="actions">
-                  <button type="button" class="btn" id="l-export">Exportera allt</button>
-                  <button type="button" class="btn" id="l-copy">Kopiera allt</button>
-                  <label class="btn" for="l-import">Importera fil</label>
-                  <input type="file" id="l-import" accept="application/json,.json,text/plain" hidden>
-                </div>
-                <textarea class="backup-text" id="l-copytext" rows="6" readonly hidden
-                  aria-label="Exporten som text"></textarea>
-                <details class="backup-paste">
-                  <summary>Importera genom att klistra in text</summary>
-                  <textarea class="backup-text" id="l-paste" rows="6" placeholder="Klistra in hela exporten här"
-                    spellcheck="false" autocomplete="off" aria-label="Exporten att importera"></textarea>
-                  <button type="button" class="btn primary" id="l-paste-go">Importera texten</button>
-                </details>
-          <span class="status" id="backup-msg" role="status"></span>
-        </div>
-      </section>
+        <section id="installningar-meny">
+          <div class="sec-head">
+            <span class="eyebrow">Inställningar</span>
+            <h2>Inställningar</h2>
+            <p>Anpassa appen efter dig. Dina uppgifter, ditt mål och dina träningsdagar ändrar du under <a href="#profil">Profil</a>.</p>
+          </div>
+          <nav class="settings-menu" aria-label="Inställningar">
+            <a href="#anpassa"><span><b>Allergier och livsmedel</b><small>Allergener, ingredienser du inte äter och egna livsmedel</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#mina-recept"><span><b>Mina recept</b><small>Egna recept, i valfria mått, som kan komma med i menyn</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#tillskott"><span><b>Tillskott</b><small>Vilka tillskott du tar, och egna tillskott som BCAA</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#sakerhetskopia"><span><b>Säkerhetskopia och delning</b><small>Dela din plan med vänner, spara och flytta allt, radera all data</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#installera"><span><b>Installera appen</b><small>Öppna appen som en egen app, även offline</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#om"><span><b>Om appen och villkor</b><small>Vad appen bygger på, villkor, dataskydd och källkod</small></span><span class="chev" aria-hidden="true">›</span></a>
+          </nav>
+        </section>
 
-      <section id="installera">
-        <div class="sec-head">
-          <span class="eyebrow">Appen</span>
-          <h2>Installera appen</h2>
-          <p id="install-status">Installera appen lokalt, så öppnas den som en egen app från skrivbordet, aktivitetsfältet eller hemskärmen och fungerar offline.</p>
-        </div>
-        <button type="button" class="btn primary" id="install-settings">Installera appen lokalt</button>
-      </section>
+        <div class="settings-page" data-page="anpassa" hidden>
+          <a class="back-link" href="#installningar">‹ Inställningar</a>
+        <section id="anpassa">
+          <div class="sec-head">
+            <span class="eyebrow">Anpassa</span>
+            <h2>Allergier och livsmedel du inte äter</h2>
+            <p>Kryssa i det du inte vill eller kan äta. Recepten byter då ut det mot något likvärdigt, stryker det om
+              det är en liten ingrediens, eller tar bort rätten om huvudingrediensen saknar ersättare. Valen sparas i
+              webbläsaren.</p>
+          </div>
+          <p class="highlight" id="ex-sum"></p>
+          <h3>Allergener</h3>
+          <div class="chips" id="ex-allergens"></div>
+          <h3>Ingredienser jag inte äter</h3>
+          <p class="note">Kryssa i de ingredienser du vill ta bort ur recepten. Ikryssade ingredienser byts ut eller
+            stryks och kommer aldrig med i inköpslistan.</p>
+          <input type="search" id="ex-search" class="search" placeholder="Sök ingrediens, t.ex. bönor eller tonfisk"
+            aria-label="Sök ingrediens att ta bort">
+          <div class="ex-foods" id="ex-foods"></div>
 
-      <section id="plankod">
+          <h3>Annat jag inte äter</h3>
+          <p class="note">Saknas något i listan? Skriv det här, t.ex. lax, koriander eller svamp. Allt med ordet i namnet
+            väljs bort, även dina egna livsmedel. Vid varje ord ser du vilka livsmedel det träffar.</p>
+          <form class="input-row" id="ex-word-form" autocomplete="off">
+            <input type="text" id="ex-word" maxlength="40" placeholder="t.ex. lax" aria-label="Livsmedel att välja bort">
+            <button type="submit" class="btn">Lägg till</button>
+          </form>
+          <div class="chips" id="ex-words"></div>
+
+          <h3 id="mina-livsmedel">Mina livsmedel</h3>
+          <p class="note">Lägg till ett eget livsmedel med näringsvärden per 100 g (står på förpackningen). Välj om det
+            ska ersätta något i recepten, alltid eller bara när originalet är bortvalt.</p>
+          <form class="card form" id="mf" autocomplete="off">
+            <div class="row2">
+              <div class="field"><label for="mf-name">Namn</label><input type="text" id="mf-name" maxlength="60"
+                  placeholder="t.ex. Kycklinglårfilé" required></div>
+              <div class="field"><label for="mf-cat">Kategori</label><select id="mf-cat"></select></div>
+            </div>
+            <div class="row4">
+              <div class="field"><label for="mf-k">kcal</label><input type="text" inputmode="numeric" data-decimal
+                  id="mf-k" min="0" max="900" required></div>
+              <div class="field"><label for="mf-p">Protein g</label><input type="text" inputmode="decimal" data-decimal
+                  id="mf-p" min="0" max="100"></div>
+              <div class="field"><label for="mf-c">Kolhydr. g</label><input type="text" inputmode="decimal" data-decimal
+                  id="mf-c" min="0" max="100"></div>
+              <div class="field"><label for="mf-f">Fett g</label><input type="text" inputmode="decimal" data-decimal
+                  id="mf-f" min="0" max="100"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label for="mf-rep">Ersätter i recepten</label><select id="mf-rep"></select></div>
+              <div class="field"><label for="mf-mode">När</label><select id="mf-mode">
+                  <option value="excl">Bara när originalet är bortvalt</option>
+                  <option value="always">Alltid</option>
+                </select></div>
+            </div>
+            <div class="field"><span class="label">Innehåller allergener</span>
+              <div class="chips small" id="mf-allergens"></div>
+            </div>
+            <div class="actions"><button type="submit" class="btn primary">Lägg till livsmedel</button><span
+                class="status" id="mf-msg" role="status"></span></div>
+          </form>
+          <div class="list" id="mf-list"></div>
+        </section>
+        </div>
+
+        <div class="settings-page" data-page="mina-recept" hidden>
+          <a class="back-link" href="#installningar">‹ Inställningar</a>
+        <section id="mina-recept">
+          <div class="sec-head">
+            <span class="eyebrow">Egna recept</span>
+            <h2>Mina recept</h2>
+            <p>Bygg ett eget recept av livsmedel och gram per portion. Ett eget frukostrecept kan du sedan välja som
+              frukost varje dag under Profil. Mängderna skalas efter dina mål precis som i de andra recepten, och
+              ingredienserna hamnar i inköpslistan.</p>
+          </div>
+          <form class="card form" id="mr" autocomplete="off">
+            <div class="row2">
+              <div class="field"><label for="mr-name">Namn</label><input type="text" id="mr-name" maxlength="60"
+                  placeholder="t.ex. Min proteinfrukost"></div>
+              <div class="field"><label for="mr-type">Måltid</label><select id="mr-type"></select></div>
+            </div>
+            <div class="field">
+              <span class="label">Ingredienser per portion</span>
+              <div class="mr-items" id="mr-items"></div>
+              <button type="button" class="btn small" id="mr-add">+ Lägg till ingrediens</button>
+              <small>Ange mängden i det mått du vill: g, kg, st, krm, tsk, msk, dl, ml eller l. Måtten som går att räkna om visas för varje livsmedel, t.ex. st för ägg och dl för äggvita. Kryddor som salt och peppar lägger du till som Egen ingrediens längst ner i listan; de räknas inte i näringen. Saknas ett livsmedel med kalorier lägger du till det under <a href="#mina-livsmedel">Mina livsmedel</a>.</small>
+            </div>
+            <div class="field"><label for="mr-how">Så gör du <small>valfritt</small></label><textarea id="mr-how" rows="8" placeholder="Steg för steg, t.ex. Vispa ägg, äggvita och mjölk. Stek på medelvärme och strö över osten."></textarea></div>
+            <p class="hint" id="mr-sum"></p>
+            <div class="actions"><button type="submit" class="btn primary" id="mr-save">Spara recept</button><button type="button" class="btn" id="mr-cancel" hidden>Avbryt</button><span class="status" id="mr-msg" role="status"></span></div>
+          </form>
+          <div class="list" id="mr-list"></div>
+        </section>
+        </div>
+
+        <div class="settings-page" data-page="tillskott" hidden>
+          <a class="back-link" href="#installningar">‹ Inställningar</a>
+        <section id="tillskott">
+          <div class="sec-head">
+            <span class="eyebrow">Kosttillskott</span>
+            <h2>Tillskott jag använder</h2>
+            <p>Kryssa i det du använder, eller lägg till egna tillskott som BCAA, så får du tips om när du ska ta det på Idag, utifrån fastan och dagens pass.
+            </p>
+          </div>
+          <div class="chips" id="supps"></div>
+          <form class="card form" id="ms-form" autocomplete="off">
+            <span class="label">Eget tillskott, t.ex. BCAA</span>
+            <div class="row2">
+              <div class="field"><label for="ms-name">Namn</label><input type="text" id="ms-name" maxlength="40" placeholder="t.ex. BCAA"></div>
+              <div class="field"><label for="ms-dose">Dos <small>valfritt</small></label><input type="text" id="ms-dose" maxlength="40" placeholder="t.ex. 5 g"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label for="ms-when">När</label><select id="ms-when"></select></div>
+              <div class="field" id="ms-at-field" hidden><label for="ms-at">Klockslag</label><input type="text" id="ms-at" inputmode="numeric" maxlength="5" placeholder="HH:MM" pattern="([01]\d|2[0-3]):[0-5]\d" autocomplete="off" data-clock></div>
+            </div>
+            <label class="terms-accept"><input type="checkbox" id="ms-kcal"><span>Innehåller kalorier eller aminosyror (t.ex. BCAA eller protein), så det ska tas inom ätfönstret</span></label>
+            <div class="actions"><button type="submit" class="btn primary">Lägg till tillskott</button><span class="status" id="ms-msg" role="status"></span></div>
+          </form>
+          <div id="ms-list"></div>
+        </section>
+        </div>
+
+
+        <div class="settings-page" data-page="sakerhetskopia" hidden>
+          <a class="back-link" href="#installningar">‹ Inställningar</a>
+        <section id="plankod">
           <div class="sec-head">
             <span class="eyebrow">Dela planen</span>
-            <h2>Plankod</h2>
+            <h2>Dela recept och träning med vänner</h2>
             <p>Allt som slumpas fram, alltså veckornas recept och träningsprogrammets övningar, sparas i en kod
               tillsammans med ditt träningsupplägg. <b>Slumpa om</b> skapar ett nytt frö för recepten, för träningen
               eller för båda: nya rätter för alla veckor och nya övningar i träningspassen. Ger du koden till en vän får
@@ -921,124 +1145,34 @@
             sin styrka. Har ni olika allergival kan enstaka rätter skilja.</p>
         </section>
 
-        <section id="anpassa">
-          <div class="sec-head">
-            <span class="eyebrow">Anpassa</span>
-            <h2>Allergier och livsmedel du inte äter</h2>
-            <p>Kryssa i det du inte vill eller kan äta. Recepten byter då ut det mot något likvärdigt, stryker det om
-              det är en liten ingrediens, eller tar bort rätten om huvudingrediensen saknar ersättare. Valen sparas i
-              webbläsaren.</p>
-          </div>
-          <p class="highlight" id="ex-sum"></p>
-          <h3>Allergener</h3>
-          <div class="chips" id="ex-allergens"></div>
-          <h3>Ingredienser jag inte äter</h3>
-          <p class="note">Kryssa i de ingredienser du vill ta bort ur recepten. Ikryssade ingredienser byts ut eller
-            stryks och kommer aldrig med i inköpslistan.</p>
-          <input type="search" id="ex-search" class="search" placeholder="Sök ingrediens, t.ex. bönor eller tonfisk"
-            aria-label="Sök ingrediens att ta bort">
-          <div class="ex-foods" id="ex-foods"></div>
-
-          <h3>Annat jag inte äter</h3>
-          <p class="note">Saknas något i listan? Skriv det här, t.ex. lax, koriander eller svamp. Allt med ordet i namnet
-            väljs bort, även dina egna livsmedel. Vid varje ord ser du vilka livsmedel det träffar.</p>
-          <form class="input-row" id="ex-word-form" autocomplete="off">
-            <input type="text" id="ex-word" maxlength="40" placeholder="t.ex. lax" aria-label="Livsmedel att välja bort">
-            <button type="submit" class="btn">Lägg till</button>
-          </form>
-          <div class="chips" id="ex-words"></div>
-
-          <h3>Mina livsmedel</h3>
-          <p class="note">Lägg till ett eget livsmedel med näringsvärden per 100 g (står på förpackningen). Välj om det
-            ska ersätta något i recepten, alltid eller bara när originalet är bortvalt.</p>
-          <form class="card form" id="mf" autocomplete="off">
-            <div class="row2">
-              <div class="field"><label for="mf-name">Namn</label><input type="text" id="mf-name" maxlength="60"
-                  placeholder="t.ex. Kycklinglårfilé" required></div>
-              <div class="field"><label for="mf-cat">Kategori</label><select id="mf-cat"></select></div>
-            </div>
-            <div class="row4">
-              <div class="field"><label for="mf-k">kcal</label><input type="text" inputmode="numeric" data-decimal
-                  id="mf-k" min="0" max="900" required></div>
-              <div class="field"><label for="mf-p">Protein g</label><input type="text" inputmode="decimal" data-decimal
-                  id="mf-p" min="0" max="100"></div>
-              <div class="field"><label for="mf-c">Kolhydr. g</label><input type="text" inputmode="decimal" data-decimal
-                  id="mf-c" min="0" max="100"></div>
-              <div class="field"><label for="mf-f">Fett g</label><input type="text" inputmode="decimal" data-decimal
-                  id="mf-f" min="0" max="100"></div>
-            </div>
-            <div class="row2">
-              <div class="field"><label for="mf-rep">Ersätter i recepten</label><select id="mf-rep"></select></div>
-              <div class="field"><label for="mf-mode">När</label><select id="mf-mode">
-                  <option value="excl">Bara när originalet är bortvalt</option>
-                  <option value="always">Alltid</option>
-                </select></div>
-            </div>
-            <div class="field"><span class="label">Innehåller allergener</span>
-              <div class="chips small" id="mf-allergens"></div>
-            </div>
-            <div class="actions"><button type="submit" class="btn primary">Lägg till livsmedel</button><span
-                class="status" id="mf-msg" role="status"></span></div>
-          </form>
-          <div class="list" id="mf-list"></div>
-        </section>
-
-        <section id="mina-recept">
-          <div class="sec-head">
-            <span class="eyebrow">Egna recept</span>
-            <h2>Mina recept</h2>
-            <p>Bygg ett eget recept av livsmedel och gram per portion. Ett eget frukostrecept kan du sedan välja som
-              frukost varje dag under Profil. Mängderna skalas efter dina mål precis som i de andra recepten, och
-              ingredienserna hamnar i inköpslistan.</p>
-          </div>
-          <form class="card form" id="mr" autocomplete="off">
-            <div class="row2">
-              <div class="field"><label for="mr-name">Namn</label><input type="text" id="mr-name" maxlength="60"
-                  placeholder="t.ex. Min proteinfrukost"></div>
-              <div class="field"><label for="mr-type">Måltid</label><select id="mr-type"></select></div>
-            </div>
-            <div class="field">
-              <span class="label">Ingredienser per portion</span>
-              <div class="mr-items" id="mr-items"></div>
-              <button type="button" class="btn small" id="mr-add">+ Lägg till ingrediens</button>
-              <small>Saknas ett livsmedel kan du lägga till det under Mina livsmedel nedan.</small>
-            </div>
-            <div class="field"><label for="mr-how">Så gör du <small>valfritt</small></label><textarea id="mr-how"
-                rows="3" maxlength="500"></textarea></div>
-            <p class="hint" id="mr-sum"></p>
-            <div class="actions"><button type="submit" class="btn primary">Spara recept</button><span class="status"
-                id="mr-msg" role="status"></span></div>
-          </form>
-          <div class="list" id="mr-list"></div>
-        </section>
-
-        <section id="tillskott">
-          <div class="sec-head">
-            <span class="eyebrow">Kosttillskott</span>
-            <h2>Tillskott jag använder</h2>
-            <p>Kryssa i det du använder, eller lägg till egna tillskott som BCAA, så får du tips om när du ska ta det på Idag, utifrån fastan och dagens pass.
-            </p>
-          </div>
-          <div class="chips" id="supps"></div>
-          <form class="card form" id="ms-form" autocomplete="off">
-            <span class="label">Eget tillskott, t.ex. BCAA</span>
-            <div class="row2">
-              <div class="field"><label for="ms-name">Namn</label><input type="text" id="ms-name" maxlength="40" placeholder="t.ex. BCAA"></div>
-              <div class="field"><label for="ms-dose">Dos <small>valfritt</small></label><input type="text" id="ms-dose" maxlength="40" placeholder="t.ex. 5 g"></div>
-            </div>
-            <div class="row2">
-              <div class="field"><label for="ms-when">När</label><select id="ms-when"></select></div>
-              <div class="field" id="ms-at-field" hidden><label for="ms-at">Klockslag</label><input type="text" id="ms-at" inputmode="numeric" maxlength="5" placeholder="HH:MM" pattern="([01]\d|2[0-3]):[0-5]\d" autocomplete="off" data-clock></div>
-            </div>
-            <label class="terms-accept"><input type="checkbox" id="ms-kcal"><span>Innehåller kalorier eller aminosyror (t.ex. BCAA eller protein), så det ska tas inom ätfönstret</span></label>
-            <div class="actions"><button type="submit" class="btn primary">Lägg till tillskott</button><span class="status" id="ms-msg" role="status"></span></div>
-          </form>
-          <div id="ms-list"></div>
-        </section>
+        <section id="backup">
+        <div class="sec-head">
+          <span class="eyebrow">Säkerhetskopia och delning</span>
+          <h2>Säkerhetskopia och flytt</h2>
+          <p>Exporten innehåller allt: profil, logg, plankod, allergier, egna livsmedel och recept och inköpslistan. Spara den som fil, eller kopiera den som text och klistra in den på en annan enhet. En import ersätter det som är sparat på enheten.</p>
+        </div>
+        <div class="card backup">
+          <div class="actions">
+                  <button type="button" class="btn" id="l-export">Exportera allt</button>
+                  <button type="button" class="btn" id="l-copy">Kopiera allt</button>
+                  <label class="btn" for="l-import">Importera fil</label>
+                  <input type="file" id="l-import" accept="application/json,.json,text/plain" hidden>
+                </div>
+                <textarea class="backup-text" id="l-copytext" rows="6" readonly hidden
+                  aria-label="Exporten som text"></textarea>
+                <details class="backup-paste">
+                  <summary>Importera genom att klistra in text</summary>
+                  <textarea class="backup-text" id="l-paste" rows="6" placeholder="Klistra in hela exporten här"
+                    spellcheck="false" autocomplete="off" aria-label="Exporten att importera"></textarea>
+                  <button type="button" class="btn primary" id="l-paste-go">Importera texten</button>
+                </details>
+          <span class="status" id="backup-msg" role="status"></span>
+        </div>
+      </section>
 
         <section id="radera">
           <div class="sec-head">
-            <span class="eyebrow">Dina uppgifter</span>
+            <span class="eyebrow">Säkerhetskopia och delning</span>
             <h2>Radera all data</h2>
             <p>Raderar allt som appen har sparat i den här webbläsaren: profil, logg, plankod, allergier, egna livsmedel
               och recept, inställningar och ditt godkännande av villkoren. Därmed drar du också tillbaka ditt
@@ -1047,19 +1181,22 @@
           </div>
           <button type="button" class="btn danger" id="erase-all">Radera all data och dra tillbaka godkännandet</button>
         </section>
+        </div>
 
-        <section id="om-appen">
-          <div class="sec-head"><span class="eyebrow">Appen</span>
-            <h2>Om appen</h2>
-          </div>
-          <p>Vad appen bygger på, hur dina uppgifter hanteras, villkoren och källkoden: <a href="#om">Om appen och
-              villkor</a>.</p>
-          <p><a href="guide.html">Förklaringar till alla val och beräkningar</a></p>
-        </section>
+        <div class="settings-page" data-page="installera" hidden>
+          <a class="back-link" href="#installningar">‹ Inställningar</a>
+      <section id="installera">
+        <div class="sec-head">
+          <span class="eyebrow">Appen</span>
+          <h2>Installera appen</h2>
+          <p id="install-status">Installera appen lokalt, så öppnas den som en egen app från skrivbordet, aktivitetsfältet eller hemskärmen och fungerar offline.</p>
+        </div>
+        <button type="button" class="btn primary" id="install-settings">Installera appen lokalt</button>
+      </section>
+        </div>
       </div>
 
-      <!-- ============ Om appen ============ -->
-      <div class="view" data-view="om" hidden>
+<div class="view" data-view="om" hidden>
         <section id="om">
           <div class="sec-head">
             <span class="eyebrow">Om appen</span>
@@ -1130,7 +1267,7 @@
                 webbläsarens data eller tar bort appen försvinner uppgifterna.</p>
               <h3>Dra tillbaka ditt godkännande</h3>
               <p>Du kan när som helst dra tillbaka ditt godkännande genom att radera alla uppgifter: under
-                <b>Inställningar → Radera all data</b>, genom att rensa webbläsarens data för sidan eller genom att ta
+                <b>Inställningar → Säkerhetskopia och delning → Radera all data</b>, genom att rensa webbläsarens data för sidan eller genom att ta
                 bort appen från enheten. Då raderas allt som är sparat, även godkännandet, och appen börjar om med
                 villkoren nästa gång den öppnas. Exportera först om du vill behålla något.</p>
               <h3>I befintligt skick</h3>
@@ -1176,8 +1313,9 @@
           </div>
         </div>
         <div class="card wizard-import" data-step="2">
-          <p><b>Har du redan använt appen?</b> Importera en export från en annan enhet eller webbläsare, så hoppar du
-            över guiden.</p>
+          <h3>Importera dina uppgifter</h3>
+          <p>Har du använt appen på en annan enhet eller i en annan webbläsare? Importera exporten därifrån, så hoppar du
+            över resten av guiden.</p>
           <div class="actions">
             <label class="btn small" for="wz-import">Importera fil</label>
             <input type="file" id="wz-import" accept="application/json,.json,text/plain" hidden>
@@ -1190,19 +1328,30 @@
             <button type="button" class="btn primary small" id="wz-paste-go">Importera texten</button>
           </div>
         </div>
+        <div class="card wizard-import" data-step="2">
+          <h3>Använd en plankod</h3>
+          <p>Har du fått en plankod av någon? Då får du samma rätter och samma träningsprogram, med portioner efter dina
+            egna uppgifter, som du fyller i i nästa steg.</p>
+          <div class="input-row">
+            <input type="text" id="wz-code" autocapitalize="characters" spellcheck="false" autocomplete="off"
+              placeholder="t.ex. 7K2Q XM-G150" aria-label="Plankod">
+            <button type="button" class="btn primary small" id="wz-code-go">Använd koden</button>
+          </div>
+          <p class="status" id="wz-code-msg" role="status"></p>
+        </div>
         <div id="wz-body"></div>
-        <div class="field" data-step="5">
+        <div class="field" data-step="6">
           <span class="label">Allergier <small>valfritt</small></span>
           <div class="chips" id="wz-allergens"></div>
           <small>Kryssa i det du inte tål, så byts eller stryks det i recepten. Enskilda ingredienser väljer du bort
             under Inställningar.</small>
         </div>
-        <div class="card wizard-yours" data-step="6">
+        <div class="card wizard-yours" data-step="7">
           <ul class="yours-list">
             <li><b>Lägg in det du äter.</b> Egna recept och egna livsmedel lägger du till under Inställningar, där du också väljer bort det du inte äter. Då passar veckomenyn och inköpslistan dig.</li>
             <li><b>Logga så mycket du kan.</b> Vikt och midja, mående, konditionspass med distans, tid och puls, intensitetsminuter och när du äter. Ju mer du loggar, desto tydligare ser du dina framsteg.</li>
             <li><b>Följ upp med rapporten.</b> Under Logg → Rapport får du en sammanställning av allt du har loggat. Skriv ut den eller spara den som PDF och diskutera den med en personlig tränare, dietist eller läkare.</li>
-            <li><b>Spara en kopia.</b> Exportera allt då och då under Inställningar → Säkerhetskopia och flytt.</li>
+            <li><b>Spara en kopia.</b> Exportera allt då och då under Inställningar → Säkerhetskopia och delning.</li>
           </ul>
         </div>
         <p class="status bad" id="wz-msg" role="alert"></p>

@@ -108,6 +108,16 @@ const CARB = new Set(["havre", "ris", "pasta", "bulgur", "potatis", "farskpotati
 const FAT = new Set(["olja", "ost"]);
 export const scaleGroupOf = (id) => (PROTEIN.has(id) ? "p" : CARB.has(id) ? "c" : FAT.has(id) ? "f" : "o");
 
+/**
+ * Ungefärlig vikt i gram för 1 dl, för livsmedel som brukar mätas i volym (vanliga hushållsmått). Används när ett
+ * eget recept anger dl, msk, tsk, krm, ml eller l. Livsmedel som saknas här kan bara anges i gram (eller st).
+ */
+export const GRAMS_PER_DL = {
+  havre: 35, havreGF: 35, mjolk: 103, filmjolk: 103, havredryck: 103, kvarg: 110, keso: 100, sojayoghurt: 105,
+  aggvita: 103, ost: 40, olja: 92, ris: 85, linser: 85, bulgur: 80, pasta: 40, popcorn: 75,
+  blabar: 60, blabarF: 60, lingon: 60, jordgubbar: 60, brunabonor: 75, gulaartor: 75, rakor: 60,
+};
+
 /** Livsmedel som ger gaser eller svavel (ägg, kål, baljväxter); måltider med dem får en frukt ur DIGESTIVE_FRUITS (se menu.js). */
 export const GASSY = new Set(["agg", "aggvita", "vitkal", "kalmix", "gronkal", "blomkal", "hostgron", "broccoli", "sommargron", "brunabonor", "gulaartor", "linser"]);
 

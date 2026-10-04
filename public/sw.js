@@ -1,7 +1,7 @@
 // Service worker för Fettförbränningsveckan: gör appen installerbar och användbar offline.
 // Höj VERSION när filerna ändras, så hämtas de nya och den gamla cachen rensas.
 // Lägger du till en fil i js/ eller css/ ska den också in i CORE, annars fungerar den inte offline.
-const VERSION = "ffv-v63";
+const VERSION = "ffv-v76";
 const CORE = [
   "./",
   "./index.html",
@@ -10,6 +10,11 @@ const CORE = [
   "./css/app.css",
   "./js/app.js",
   "./js/backup.js",
+  "./js/controllers/backup-form.js",
+  "./js/controllers/inputs.js",
+  "./js/controllers/log-form.js",
+  "./js/controllers/navigation.js",
+  "./js/controllers/settings-forms.js",
   "./js/data/exercises.js",
   "./js/data/foods.js",
   "./js/data/recipes.js",
@@ -49,7 +54,8 @@ const CORE = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(VERSION)
-      .then((c) => Promise.allSettled(CORE.map((url) => c.add(url))))
+      // "reload": hämta från servern, inte från webbläsarens cache, så att den nya versionen inte får gamla filer
+      .then((c) => Promise.allSettled(CORE.map((url) => c.add(new Request(url, { cache: "reload" })))))
       .then(() => self.skipWaiting())
   );
 });

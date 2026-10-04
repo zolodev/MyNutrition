@@ -67,7 +67,7 @@ export function formatHms(seconds) {
 }
 
 /** Kort form för tempo: sekunder → "7:51" eller "1:05:30". */
-export function formatWorkoutTime(seconds) {
+function formatWorkoutTime(seconds) {
   if (seconds == null) return "–";
   const s = Math.round(seconds);
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = String(s % 60).padStart(2, "0");
@@ -88,7 +88,7 @@ export function paceText(c) {
 const pulseText = (c) => (c.hrMax ? `maxpuls ${c.hrMax}` : "");
 
 /** Distansen i den enhet den skrevs in: "1,14 km" eller "1 122 m". */
-export const distanceText = (c) => (c.u === "m" ? `${fmt(Math.round(c.km * 1000))} m` : `${fmt(c.km, c.km % 1 ? 2 : 0)} km`);
+const distanceText = (c) => (c.u === "m" ? `${fmt(Math.round(c.km * 1000))} m` : `${fmt(c.km, c.km % 1 ? 2 : 0)} km`);
 
 /** "Löpning 1,14 km på 00:08:57 (7:51/km) · maxpuls 171" */
 export const cardioText = (c) =>

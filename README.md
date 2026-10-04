@@ -31,7 +31,9 @@ public/css/app.css           Stilmall (färger, komponenter, vyer)
 public/js/backup.js          Export och import av allt sparat (fil eller text), även äldre exporter
 public/js/main.js            Startpunkt: läser in lagringen och startar appen
 public/js/storage.js         Lagring: IndexedDB, med localStorage som reserv
-public/js/app.js             Styrning: läser profilen, ritar om, kopplar knappar och formulär, flikar, PWA
+public/js/app.js             Styrning: profilen, update() som ritar om allt, plankod, Mat, fastan och starten
+public/js/controllers/       Knappar och formulär per område: navigation (flikar, undersidor, svep), inputs
+                             (sifferfält, klockslag, info-ikoner), log-form, backup-form, settings-forms
 public/js/util.js            Hjälpfunktioner: DOM, talformat, lagring, datum, slump som går att upprepa
 public/js/nutrition.js       Energibehov, makromål och skalning av portioner
 public/js/preferences.js     Allergier, bortvalda ingredienser och egna livsmedel
@@ -60,13 +62,16 @@ tests/backup.mjs             Importtest: guiden, skriva över med varning och ä
 wrangler.jsonc               Cloudflare-konfiguration: publicerar public/ som statisk sida
 ```
 
-Beräkningarna (`nutrition.js`, `menu.js`, `training.js`, `log.js`) läser aldrig från sidan, så de går att testa och ändra utan att röra vyerna. Vyerna i `public/js/views/` tar färdiga data och ritar HTML. `app.js` binder ihop dem.
+Beräkningarna (`nutrition.js`, `menu.js`, `training.js`, `log.js`) läser aldrig från sidan, så de går att testa och ändra utan att röra vyerna. Vyerna i `public/js/views/` tar färdiga data och ritar HTML. `app.js` och `public/js/controllers/` binder ihop dem.
+
+Mer om hur appen hänger ihop (start, lagring, dataflöde, hur man lägger till en vy eller inställning) finns i [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ### Vanliga ändringar
 
 - **Nytt recept:** lägg till det i `public/js/data/recipes.js`. Ingredienser som ska följa säsongen skrivs som `@plats` (se `SEASONAL`).
 - **Nytt livsmedel:** lägg till det i `FOOD` i `public/js/data/foods.js` och i rätt butiksavdelning i samma fil.
 - **Ny övning:** lägg till den i `public/js/data/exercises.js` och använd den i `buildSessions` i `public/js/training.js`.
+- **Ny undersida under Inställningar:** se [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#ny-undersida-under-inställningar).
 - **Ny fil i `public/js/` eller `public/css/`:** lägg till den i listan `CORE` i `public/sw.js`, annars fungerar den inte offline.
 - **Efter varje ändring:** höj `VERSION` i `public/sw.js` och kör testerna.
 
@@ -127,7 +132,7 @@ Lagringen hör till webbadressen. `gym.jonzzon.nu`, en `*.workers.dev`-adress oc
 **iPhone:** En app som lagts på hemskärmen har egen lagring, skild från Safari. Uppgifter som fyllts i i Safari följer inte med; fyll i profilen i appen, eller flytta dem med **Kopiera allt** i Safari och klistra in texten i guidens första steg i appen. Safari kan radera data för webbplatser som inte besökts på 7 dagar, men det gäller inte appar på hemskärmen.
 
 - Inställningar, allergival, egna livsmedel, avbockningar, logg och omslumpade veckor sparas i webbläsarens IndexedDB (localStorage som reserv) på varje enhet.
-- Under **Inställningar → Säkerhetskopia och flytt**: **Exportera allt** (fil) och **Kopiera allt** (text) tar med allt sparat: profil, logg, plankod och frön, allergier och bortval, egna livsmedel och recept, tillskott och avbockningar (`public/js/backup.js`). Bara det som gäller enheten (svep-tipset, avböjd installation) stannar kvar.
+- Under **Inställningar → Säkerhetskopia och delning**: **Exportera allt** (fil) och **Kopiera allt** (text) tar med allt sparat: profil, logg, plankod och frön, allergier och bortval, egna livsmedel och recept, tillskott och avbockningar (`public/js/backup.js`). Bara det som gäller enheten (svep-tipset, avböjd installation) stannar kvar.
 - **Import** av fil eller inklistrad text ersätter allt som är sparat på enheten, efter en varning om det redan finns data. Sidan laddas sedan om. Äldre exporter (version 1) läses också. Guiden erbjuder import som första steg.
 - **Radera all data** under Inställningar raderar allt appen har sparat, även godkännandet av villkoren, efter en bekräftelse. Appen börjar sedan om med villkoren.
 

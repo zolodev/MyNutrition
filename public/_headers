@@ -1,3 +1,9 @@
+# Cloudflare: alla filer ska kontrolleras mot servern innan en sparad kopia används (304 om de inte har ändrats).
+# Utan detta gissar mobilens webbläsare hur länge en JS-fil får återanvändas, och då kan ny index.html blandas med
+# gamla moduler (t.ex. undersidorna under Inställningar fungerade inte).
+/*
+  Cache-Control: no-cache
+
 # Cloudflare: skicka teckenkodningen för alla textfiler, så att å, ä och ö visas rätt
 # även när en fil öppnas direkt i webbläsaren (t.ex. /js/data/foods.js).
 /*.html

@@ -30,12 +30,19 @@ async function appStyles() {
 /** Typsnitten är inte nödvändiga (reservtypsnitt fungerar), så vänta på dem högst två sekunder. */
 const fontsReady = () => Promise.race([document.fonts?.ready, new Promise((resolve) => setTimeout(resolve, 2000))]);
 
-// Laddningsskärmen (index.html) visas tills appen har startat. Går något inte att ladda visas ett fel i stället.
+// Laddningsskärmen (index.html) visas tills appen har startat.
 try {
   await Promise.all([initStorage(), appStyles(), fontsReady()]);
   await import("./app.js");
   document.documentElement.classList.remove("booting", "boot-failed");
+  try {
+    sessionStorage.removeItem("ffv-boot-retries"); // starten lyckades: nollställ försöken
+  } catch {
+    /* ingen sessionStorage */
+  }
 } catch (error) {
-  document.documentElement.classList.add("boot-failed");
+  // Ladda om automatiskt några gånger (se index.html); visa felet först om det inte hjälper
+  if (typeof window.ffvBootFailed === "function") window.ffvBootFailed();
+  else document.documentElement.classList.add("boot-failed");
   throw error;
 }

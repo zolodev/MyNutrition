@@ -82,7 +82,8 @@ if (scenario === "radera") {
   fire($("confirm").querySelector('[data-answer="no"]'), "click"); await tick();
   check("Nej raderar inget", win.localStorage.getItem("ffv") != null && win.localStorage.getItem("ffv-terms") != null && !reloaded);
   fire($("erase-all"), "click"); await tick();
-  fire($("confirm").querySelector('[data-answer="yes"]'), "click"); await tick();
+  fire($("confirm").querySelector('[data-answer="yes"]'), "click");
+  for (let i = 0; i < 100 && !reloaded; i++) await new Promise((r) => setTimeout(r, 20)); // raderingen är asynkron
   check("Ja raderar allt appen sparat, även godkända villkor och enhetens inställningar", !Object.keys(win.localStorage).some((k) => k === "ffv" || k.startsWith("ffv-")));
   check("Annat i webbläsaren rörs inte", win.localStorage.getItem("other-app") === "behålls");
   check("Sidan börjar om", reloaded);

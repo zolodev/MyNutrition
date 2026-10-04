@@ -75,7 +75,8 @@ section { display: grid; gap: 16px; min-width: 0; scroll-margin-top: 64px; }
 .row4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 520px) { .row4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 input[type="number"], input[type="text"], input[type="search"], select {
-  width: 100%; font: inherit; font-size: 0.95rem; padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--fg);
+  /* 16 px: mindre text i ett fält får iPhone att zooma in när man trycker i det, och sedan stannar sidan inzoomad */
+  width: 100%; font: inherit; font-size: 1rem; padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--fg);
 }
 input[type="number"], #l-date, #l-test { font-family: var(--font-data); }
 input:user-invalid { border-color: var(--warn); }
@@ -137,7 +138,7 @@ body { overflow: hidden; }
 .wizard-nav #wz-back { min-height: 44px; }
 .status.bad { color: var(--warn); font-weight: 600; }
 .backup { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
-.backup-text { width: 100%; font-family: var(--font-data); font-size: 0.78rem; resize: vertical; }
+.backup-text { width: 100%; font-family: var(--font-data); font-size: 1rem; resize: vertical; }
 .backup-paste { display: grid; gap: 8px; }
 .backup-paste summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--accent); }
 .backup-paste[open] { gap: 8px; }
@@ -218,7 +219,7 @@ small.block { display: block; color: var(--muted); font-size: 0.75rem; }
 .tiles { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
 .tiles.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .tiles.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-@media (max-width: 640px) { .tiles.four, .tiles.three.wrap { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .tile { background: var(--surface); padding: 14px; display: grid; gap: 2px; min-width: 0; }
 .tile .v { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
 .tile .v small { font-family: var(--font-body); font-size: 0.85rem; font-weight: 600; color: var(--muted); letter-spacing: 0; }
@@ -233,7 +234,6 @@ small.block { display: block; color: var(--muted); font-size: 0.75rem; }
 .flag b { color: var(--warn); }
 .flag.good { background: var(--accent-soft); }
 .flag.good b { color: var(--accent); }
-.flag.tip-example { background: var(--spice-soft); display: block; }
 .safety { background: var(--warn-soft); border-radius: var(--r); padding: 16px 18px; display: grid; gap: 6px; }
 .safety h3 { color: var(--warn); }
 
@@ -250,7 +250,6 @@ a.row:hover, summary.row:hover { border-color: var(--accent); }
 .row .main small, .row .kind { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
 .row .main b { font-weight: 600; }
 .row .end { font-family: var(--font-data); font-size: 0.8rem; color: var(--muted); text-align: right; white-space: nowrap; }
-.row.accent { border-left: 4px solid var(--c-weight); }
 .chevron { width: 18px; height: 18px; color: var(--muted); flex: none; transition: transform 0.15s; }
 @media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
 
@@ -390,9 +389,18 @@ details.recipe[open] { border-color: var(--accent); }
 .sources li { margin-bottom: 4px; break-inside: avoid; }
 
 /* ---------- Inställningar ---------- */
-textarea { width: 100%; font: inherit; font-size: 0.95rem; padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--fg); resize: vertical; }
+textarea { width: 100%; font: inherit; font-size: 1rem; padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--fg); resize: vertical; }
 .mr-items { display: grid; gap: 6px; }
-.mr-item { display: grid; grid-template-columns: minmax(0, 1fr) 90px auto; gap: 6px; align-items: center; }
+#mr-how { min-height: 11em; }
+.recipe-body .how { white-space: pre-line; } /* radbrytningar i Så gör du */
+.weigh-in { display: grid; gap: 6px; }
+.weigh-in label { font-weight: 600; }
+.weigh-in small { color: var(--muted); font-size: 0.82rem; }
+.row-actions { display: flex; gap: 14px; flex: none; }
+/* Ingrediensrad: livsmedel över hela bredden, sedan (egen ingrediens,) mängd, mått och ta bort */
+.mr-item { display: grid; grid-template-columns: minmax(0, 1fr) 76px auto; gap: 6px; align-items: center; padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
+.mr-item [data-mr-food], .mr-item [data-mr-name] { grid-column: 1 / -1; }
+.mr-item [data-mr-unit] { width: auto; }
 .supplements-info { display: grid; gap: 12px; }
 .chip-check.positive:has(input:checked) { background: var(--accent-soft); border-color: var(--accent); }
 .chip-check.positive input { accent-color: var(--accent); }
@@ -443,6 +451,13 @@ textarea { width: 100%; font: inherit; font-size: 0.95rem; padding: 9px 10px; bo
   [data-view="profil"] #mal .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* ---------- Pekskärmar: minst 16 px i alla fält ----------
+   iPhone zoomar in när man trycker i ett fält med mindre text än 16 px och zoomar inte ut igen. Den här regeln
+   vinner över alla andra, så att inget fält (t.ex. importrutan) kan bli mindre av misstag. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea { font-size: max(1rem, 16px) !important; }
+}
+
 /* ---------- Utskrift: bara rapporten, utan menyer och knappar ---------- */
 @media print {
   html, body { height: auto; overflow: visible; background: #fff; color: #000; }
@@ -456,3 +471,16 @@ textarea { width: 100%; font: inherit; font-size: 0.95rem; padding: 9px 10px; bo
   h3 { break-after: avoid; }
   tr, .tile, .card { break-inside: avoid; }
 }
+
+/* Inställningar: en meny med en rad per undersida (se route() i app.js) */
+.settings-menu { display: grid; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.settings-menu a { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; color: var(--fg); text-decoration: none; }
+.settings-menu a + a { border-top: 1px solid var(--line); }
+.settings-menu a:hover, .settings-menu a:focus-visible { background: var(--accent-soft); }
+.settings-menu span:first-child { display: grid; gap: 2px; }
+.settings-menu small { color: var(--muted); font-size: 0.85rem; }
+.settings-menu .chev { color: var(--muted); font-size: 1.4rem; line-height: 1; }
+.settings-page { display: grid; gap: 36px; min-width: 0; }
+.settings-page[hidden] { display: none; }
+.back-link { justify-self: start; color: var(--accent); text-decoration: none; font-weight: 600; }
+.back-link:hover { text-decoration: underline; }

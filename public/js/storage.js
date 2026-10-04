@@ -216,17 +216,45 @@ export function remove(key) {
 /** Alla appens sparade nycklar. */
 export const keys = () => (cache ? [...cache.keys()] : lsKeys());
 
-/** Radera allt appen har sparat: hela databasen och appens nycklar i localStorage. */
+/**
+ * Radera allt appen har sparat: tömmer databasen, tar bort den och appens nycklar i localStorage.
+ *
+ * Databasen töms först, eftersom deleteDatabase kan blockeras (t.ex. i Safari på iPhone när en annan flik eller
+ * webbappen har den öppen) och då annars ligger kvar orörd. Lagringen låses igen, så att inget hinner skrivas
+ * tillbaka innan sidan laddas om.
+ */
 export async function clearAll() {
   await pending;
+  locked = true;
   cache?.clear();
   unsaved.clear();
   for (const k of lsKeys()) lsRemove(k);
-  if (!useIdb) return;
-  db?.close();
+  if (!useIdb && typeof indexedDB === "undefined") return;
+  try {
+    const opened = db ?? (await openDb({ create: false }));
+    if (opened) {
+      const tx = opened.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).clear();
+      await committed(tx);
+      opened.close();
+    }
+  } catch {
+    /* töms inte: försök ändå ta bort databasen */
+  }
   db = null;
-  await new Promise((resolve) => {
-    const req = indexedDB.deleteDatabase(DB_NAME);
-    req.onsuccess = req.onerror = req.onblocked = () => resolve();
+  await deleteDatabase();
+}
+
+/** Ta bort databasen. Väntar högst några sekunder om den är blockerad; innehållet är redan tömt. */
+function deleteDatabase() {
+  return new Promise((resolve) => {
+    let req;
+    try {
+      req = indexedDB.deleteDatabase(DB_NAME);
+    } catch {
+      return resolve();
+    }
+    req.onsuccess = req.onerror = () => resolve();
+    req.onblocked = () => setTimeout(resolve, 3000);
   });
 }

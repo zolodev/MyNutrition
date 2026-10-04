@@ -160,7 +160,7 @@ export function weekPlan(week, breakfastChoice) {
 
 /**
  * Bygg veckans meny: säsongsanpassade och skalade recept, dagssummor och inköpslista.
- * Returnerar { season, plan, recipes, factors, shopping }. `recipes[id]` har t, how, items, m (makron), subs, dropped.
+ * Returnerar { season, plan, recipes, factors, shopping, extras }. `extras` är egna ingredienser { "x:namn": { n, amounts } }. `recipes[id]` har t, how, items, m (makron), subs, dropped.
  */
 /** Vilken frukt med enzymer en rätt får en viss vecka: olika för olika rätter och veckor, aldrig en bortvald. */
 function digestiveFruit(recipeId, week) {
@@ -209,7 +209,15 @@ export function buildWeek(week, targets, breakfastChoice) {
   const shopping = {};
   for (const id of eaten) for (const [food, grams] of recipes[id].items) shopping[food] = (shopping[food] || 0) + grams;
 
-  return { season, plan, recipes, factors, shopping };
+  // Egna ingredienser i egna recept (t.ex. parmesan, salt) ingår inte i näringen och skalas inte, men ska handlas.
+  // Samma namn slås ihop; mängderna summeras per mått.
+  const extras = {};
+  for (const id of eaten) for (const x of recipes[id].extra || []) {
+    const item = (extras[`x:${x.n.toLowerCase()}`] ??= { n: x.n, amounts: {} });
+    if (x.q) item.amounts[x.u] = (item.amounts[x.u] || 0) + x.q;
+  }
+
+  return { season, plan, recipes, factors, shopping, extras };
 }
 
 /** Summa kcal, protein, kolhydrater och fett för en lista recept-id. */

@@ -4,7 +4,7 @@ import { $, esc, fmt, signed, hhmm, DAYS, DAY_MS, mondayOf, isoWeekNumber } from
 import { FOOD, CATEGORIES, categoryOf, scaleGroupOf } from "../data/foods.js";
 import { SEASONS, NONE } from "../data/recipes.js";
 import { isExcluded } from "../preferences.js";
-import { formatAmount, kgPerWeek } from "../nutrition.js";
+import { formatAmount, formatQuantity, kgPerWeek } from "../nutrition.js";
 import { recipesFor, totals } from "../menu.js";
 import { CHEVRON, macroLine } from "./components.js";
 import { MEAL_AT } from "../day.js";
@@ -82,8 +82,9 @@ export function recipeRow(recipe, kind, usedOn, withId = false) {
     `<summary class="row"><span class="kind">${kind}</span><span class="main"><b>${esc(recipe.t)}</b>${recipe.se ? '<small>Säsongsrätt</small>' : ""}</span>` +
     `<span class="end">${fmt(recipe.m.k)} kcal · ${fmt(recipe.m.p)} g P ${CHEVRON}</span></summary>` +
     `<div class="recipe-body">${macroLine(recipe.m)}` +
-    `<ul class="ingredients">${recipe.items.map(([id, g]) => `<li><span>${esc(FOOD[id].n)}</span><span class="q">${formatAmount(id, g)}</span></li>`).join("")}</ul>` +
-    `<p>${esc(recipe.how)}</p>${salmonAlternative(recipe)}${adaptationNote(recipe)}` +
+    `<ul class="ingredients">${recipe.items.map(([id, g]) => `<li><span>${esc(FOOD[id].n)}</span><span class="q">${formatAmount(id, g, recipe.units?.[id])}</span></li>`).join("")}` +
+    (recipe.extra || []).map((x) => `<li><span>${esc(x.n)}</span><span class="q">${x.q ? `${formatQuantity(x.q, x.u)} ${esc(x.u)}` : "efter smak"}</span></li>`).join("") + `</ul>` +
+    `<p class="how">${esc(recipe.how)}</p>${salmonAlternative(recipe)}${adaptationNote(recipe)}` +
     (usedOn === false ? "" : `<p class="used">${usedOn ? `Äts: ${usedOn}` : "Byt mot veckans lördagsgodis om du hellre vill ha detta."}</p>`) + `</div></details>`;
 }
 
@@ -137,8 +138,18 @@ export function renderShopping(week, weekTitle, checked) {
     return `<div class="shop-group"><h4>${esc(name)}</h4>${foods
       .map((id) => `<label class="shop-item${checked.has(id) ? " done" : ""}"><input type="checkbox" data-shop="${id}"${checked.has(id) ? " checked" : ""}><span class="name">${esc(FOOD[id].n)}</span><span class="q">${shoppingAmount(id, week.shopping[id])}</span></label>`)
       .join("")}</div>`;
-  }).join("");
+  }).join("") + extrasGroup(week.extras, checked);
   updateShoppingProgress();
+}
+
+/** Egna ingredienser från egna recept, sist i listan. Avbockas som andra varor (nyckeln är "x:namn"). */
+function extrasGroup(extras, checked) {
+  const keys = Object.keys(extras || {}).sort((a, b) => extras[a].n.localeCompare(extras[b].n, "sv"));
+  if (!keys.length) return "";
+  const amount = ({ amounts }) => Object.entries(amounts).map(([u, q]) => `${formatQuantity(q, u)} ${u}`).join(" + ");
+  return `<div class="shop-group"><h4>Egna ingredienser</h4>${keys
+    .map((key) => `<label class="shop-item${checked.has(key) ? " done" : ""}"><input type="checkbox" data-shop="${esc(key)}"${checked.has(key) ? " checked" : ""}><span class="name">${esc(extras[key].n)}</span><span class="q">${esc(amount(extras[key]))}</span></label>`)
+    .join("")}</div>`;
 }
 
 export function updateShoppingProgress() {

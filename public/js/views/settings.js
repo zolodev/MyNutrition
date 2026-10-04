@@ -7,7 +7,7 @@ import { exclusions, myFoods, isExcluded } from "../preferences.js";
 import { adaptRecipe, allDinnersIn, seasonOf, inSeason, fillSeasonalNames } from "../menu.js";
 import { myRecipes, RECIPE_TYPES } from "../myrecipes.js";
 import { SUPPLEMENTS, using, mySupps, SUPP_WHEN } from "../supplements.js";
-import { macros } from "../nutrition.js";
+import { macros, UNITS, unitsFor, gramsOf, formatQuantity } from "../nutrition.js";
 
 const checkbox = (attr, id, label, checked) =>
   `<label class="chip-check"><input type="checkbox" ${attr}="${id}"${checked ? " checked" : ""}><span>${esc(label)}</span></label>`;
@@ -41,24 +41,79 @@ export function renderSettings(week) {
 // ---------- Mina recept ----------
 
 /** En rad i receptformuläret: livsmedel och gram. */
-export function recipeItemRow(food = "", grams = "") {
+const OWN = "__own"; // egen ingrediens som inte finns i listan
+
+/** En ingrediensrad i Mina recept: livsmedel (eller en egen ingrediens), mängd och mått. */
+export function recipeItemRow() {
   const options = Object.keys(FOOD).sort((a, b) => FOOD[a].n.localeCompare(FOOD[b].n, "sv"))
-    .map((id) => `<option value="${id}"${id === food ? " selected" : ""}>${esc(FOOD[id].n)}</option>`).join("");
-  return `<div class="mr-item"><select data-mr-food aria-label="Livsmedel"><option value="">Välj livsmedel</option>${options}</select>` +
-    `<input type="text" inputmode="decimal" data-decimal data-mr-grams min="1" max="2000" placeholder="gram" value="${grams}" aria-label="Gram">` +
-    `<button type="button" class="linkbtn" data-mr-remove>Ta bort</button></div>`;
+    .map((id) => `<option value="${id}">${esc(FOOD[id].n)}</option>`).join("");
+  // Som lista: bun 1.1 tappade en av strängarna när de slogs ihop med +
+  return [
+    `<div class="mr-item"><select data-mr-food aria-label="Livsmedel"><option value="">Välj livsmedel</option>${options}`,
+    `<option value="${OWN}">Egen ingrediens (skriv själv)</option></select>`,
+    `<input type="text" data-mr-name maxlength="40" placeholder="t.ex. salt" aria-label="Egen ingrediens" hidden>`,
+    `<input type="text" inputmode="decimal" data-decimal data-mr-qty min="0.01" max="5000" placeholder="mängd" aria-label="Mängd">`,
+    `<select data-mr-unit aria-label="Mått"><option value="g">g</option></select>`,
+    `<button type="button" class="linkbtn" data-mr-remove>Ta bort</button></div>`,
+  ].join("");
 }
 
-/** Ingredienserna som står i formuläret just nu. */
+/** Måtten i en rad efter valt livsmedel: bara de som går att räkna om (st för ägg, dl för t.ex. äggvita). */
+export function syncItemUnits(row) {
+  const food = row.querySelector("[data-mr-food]").value;
+  const own = food === OWN;
+  row.querySelector("[data-mr-name]").hidden = !own;
+  const units = own ? UNITS : food ? unitsFor(food) : ["g"];
+  const select = row.querySelector("[data-mr-unit]");
+  const current = select.value;
+  select.innerHTML = units.map((u) => `<option value="${u}">${u}</option>`).join("");
+  select.value = units.includes(current) && current !== "g" ? current : units.includes("st") ? "st" : "g";
+}
+
+/**
+ * Läs ingredienserna: items = [livsmedel, gram, mängd, mått] för näringen, extra = egna ingredienser { n, q, u }.
+ * Rader utan livsmedel eller mängd hoppas över.
+ */
 export function readRecipeItems() {
-  return [...document.querySelectorAll("#mr-items .mr-item")]
-    .map((row) => [row.querySelector("[data-mr-food]").value, num(row.querySelector("[data-mr-grams]").value)])
-    .filter(([food, grams]) => food && grams > 0);
+  const items = [], extra = [];
+  for (const row of document.querySelectorAll("#mr-items .mr-item")) {
+    const food = row.querySelector("[data-mr-food]").value;
+    const q = num(row.querySelector("[data-mr-qty]").value);
+    const u = row.querySelector("[data-mr-unit]").value;
+    if (food === OWN) {
+      const n = row.querySelector("[data-mr-name]").value.trim();
+      if (n) extra.push({ n, q: q > 0 ? q : null, u: q > 0 ? u : "" });
+      continue;
+    }
+    const grams = food ? gramsOf(food, q, u) : null;
+    if (grams > 0) items.push([food, grams, q, u]);
+  }
+  return { items, extra };
+}
+
+/** Fyll formuläret med ett eget recept för att ändra det: ingredienserna i de mått de skrevs in i. */
+export function fillRecipeForm(recipe) {
+  $("mr-name").value = recipe.t;
+  $("mr-type").value = recipe.g;
+  $("mr-how").value = recipe.how || "";
+  $("mr-items").innerHTML = "";
+  const addRow = (food, quantity, unit, name) => {
+    $("mr-items").insertAdjacentHTML("beforeend", recipeItemRow());
+    const row = $("mr-items").lastElementChild;
+    row.querySelector("[data-mr-food]").value = food;
+    syncItemUnits(row);
+    if (name) row.querySelector("[data-mr-name]").value = name;
+    row.querySelector("[data-mr-qty]").value = quantity != null ? String(quantity).replace(".", ",") : "";
+    if (unit && [...row.querySelector("[data-mr-unit]").options].some((o) => o.value === unit)) row.querySelector("[data-mr-unit]").value = unit;
+  };
+  for (const [f, g, q, u] of recipe.items) addRow(FOOD[f] ? f : "", q ?? g, q ? u : "g");
+  for (const x of recipe.extra || []) addRow(OWN, x.q, x.u, x.n);
+  updateRecipeSum();
 }
 
 export function updateRecipeSum() {
-  const items = readRecipeItems();
-  const m = macros(items);
+  const { items } = readRecipeItems();
+  const m = macros(items.map(([f, g]) => [f, g]));
   $("mr-sum").textContent = items.length ? `Per portion innan skalning: ${fmt(m.k)} kcal · ${fmt(m.p)} g protein · ${fmt(m.c)} g kolhydrater · ${fmt(m.f)} g fett` : "";
 }
 
@@ -69,8 +124,10 @@ function renderMyRecipes() {
   $("mr-list").innerHTML = myRecipes.map((r) => {
     const m = macros(r.items.filter(([f]) => FOOD[f]));
     return `<div class="row my-food"><span class="main"><b>${esc(r.t)}</b><small>${typeName[r.g]} · ${fmt(m.k)} kcal · ${fmt(m.p)} g protein per portion</small>` +
-      `<small>${r.items.map(([f, g]) => `${esc(FOOD[f]?.n || f)} ${fmt(g)} g`).join(", ")}</small></span>` +
-      `<button type="button" class="linkbtn" data-mrdel="${r.id}">Ta bort</button></div>`;
+      `<small>${[...r.items.map(([f, g, q, u]) => `${esc(FOOD[f]?.n || f)} ${q ? `${formatQuantity(q, u)} ${u}` : `${fmt(g)} g`}`),
+        ...(r.extra || []).map((x) => esc(x.q ? `${x.n} ${formatQuantity(x.q, x.u)} ${x.u}` : x.n))].join(", ")}</small></span>` +
+      [`<span class="row-actions"><button type="button" class="linkbtn" data-mredit="${r.id}">Ändra</button>`,
+        `<button type="button" class="linkbtn" data-mrdel="${r.id}">Ta bort</button></span></div>`].join("");
   }).join("");
 }
 

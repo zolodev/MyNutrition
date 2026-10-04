@@ -1,6 +1,6 @@
 // Energibehov, makromål och skalning av portioner. Inga beroenden till sidan, så allt här går att testa fristående.
 
-import { FOOD, scaleGroupOf } from "./data/foods.js";
+import { FOOD, scaleGroupOf, GRAMS_PER_DL } from "./data/foods.js";
 import { fmt, clamp, DAY_MS } from "./util.js";
 
 const KCAL_PER_KG_FAT = 7700;
@@ -149,10 +149,51 @@ export function solveScaling(scalableItems, fixedItems, targets, days = 7) {
 }
 
 /** Mängd som text, t.ex. "2 st (120 g)" eller "350 g". */
-export function formatAmount(id, grams) {
+/**
+ * Mängd att visa. `unit` (från ett eget recept, t.ex. "dl" eller "msk") visar mängden i det måttet,
+ * omräknat från gram så att det följer skalningen: "1,5 dl (155 g)".
+ */
+export function formatAmount(id, grams, unit) {
   const food = FOOD[id];
+  const perUnit = unit && unit !== "g" ? gramsOf(id, 1, unit) : null;
+  if (perUnit) return `${formatQuantity(grams / perUnit, unit)} ${unit} (${fmt(grams)} g)`;
   if (!food.per) return `${fmt(grams)} g`;
   const count = Math.round(grams / food.per);
-  const unit = food.unit === "st" ? "st" : count === 1 ? "skiva" : "skivor";
-  return `${count} ${unit} (${fmt(grams)} g)`;
+  const pieces = food.unit === "st" ? "st" : count === 1 ? "skiva" : "skivor";
+  return `${count} ${pieces} (${fmt(grams)} g)`;
+}
+
+// ---------- Hushållsmått ----------
+// Egna recept kan anges i gram, kg, styck (för styckvaror som ägg) och i volym (krm, tsk, msk, dl, ml, l) för de
+// livsmedel som har en vikt per dl i GRAMS_PER_DL. Allt räknas om till gram för näringsvärdena.
+
+export const UNITS = ["g", "kg", "st", "krm", "tsk", "msk", "dl", "ml", "l"];
+const ML = { krm: 1, tsk: 5, msk: 15, dl: 100, ml: 1, l: 1000 };
+
+/** Vilka mått ett livsmedel kan anges i. */
+export function unitsFor(id) {
+  const food = FOOD[id];
+  if (!food) return [];
+  return UNITS.filter((u) => u === "g" || u === "kg" || (u === "st" ? food.per && food.unit === "st" : ML[u] && GRAMS_PER_DL[id]));
+}
+
+/** Gram för en mängd i ett mått, t.ex. (agg, 2, "st") → 120 eller (aggvita, 1.5, "dl") → 154.5. null om det inte går. */
+export function gramsOf(id, quantity, unit) {
+  const food = FOOD[id];
+  if (!food || !(quantity > 0)) return null;
+  if (unit === "g") return quantity;
+  if (unit === "kg") return quantity * 1000;
+  if (unit === "st") return food.per && food.unit === "st" ? quantity * food.per : null;
+  if (ML[unit] && GRAMS_PER_DL[id]) return (quantity * ML[unit] * GRAMS_PER_DL[id]) / 100;
+  return null;
+}
+
+/** Rimliga steg att avrunda till i köket: kvarts dl, halva msk/tsk/krm/st, 5 ml. */
+const STEPS = { dl: 0.25, msk: 0.5, tsk: 0.5, krm: 0.5, st: 0.5, ml: 5, l: 0.05, kg: 0.05, g: 1 };
+
+/** Mängd som text i ett mått, t.ex. (1.505, "dl") → "1,5" och (4.01, "msk") → "4". Aldrig 0 för en mängd över 0. */
+export function formatQuantity(q, unit) {
+  const step = STEPS[unit] || 0.01;
+  const rounded = Math.max(step, Math.round(q / step) * step);
+  return rounded.toLocaleString("sv-SE", { maximumFractionDigits: 2 });
 }

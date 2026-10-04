@@ -25,7 +25,7 @@ if (!Object.keys(stored).length) {
   // Första start: guiden visas och inget sparas förrän den är klar; sedan finns profil och ett eget frö
   check("Guiden visas och localStorage är tom", !$("wizard").hidden && win.localStorage.length === 0);
   const next = () => $("wz-next").dispatchEvent(new win.Event("click"));
-  $("wz-accept").checked = true; $("wz-accept").dispatchEvent(new win.Event("change")); next();
+  $("wz-accept").checked = true; $("wz-accept").dispatchEvent(new win.Event("change")); next(); next(); // villkor, hoppa över import och plankod
   win.document.querySelector('input[name="sex"][value="k"]').checked = true;
   Object.assign($("age"), { value: "35" }); $("weight").value = "70"; $("height").value = "168";
   next(); $("goal").value = "64"; next(); next(); next(); // BMI 24,8: ingen föreslagen målvikt, så den fylls i här

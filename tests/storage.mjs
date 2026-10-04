@@ -51,7 +51,7 @@ if (process.argv[2] === "ny-användare") {
   const $ = (id) => win.document.getElementById(id);
   const next = () => $("wz-next").dispatchEvent(new win.Event("click"));
   check("Ny användare: guiden visas och ingen databas skapas", !$("wizard").hidden && !(await databases()).includes("fettforbranning") && memory.size === 0);
-  $("wz-accept").checked = true; $("wz-accept").dispatchEvent(new win.Event("change")); next();
+  $("wz-accept").checked = true; $("wz-accept").dispatchEvent(new win.Event("change")); next(); next(); // villkor, hoppa över import och plankod
   check("Ny användare: inget skrivs medan guiden fylls i", !(await databases()).includes("fettforbranning") && memory.size === 0);
   win.document.querySelector('input[name="sex"][value="m"]').checked = true;
   $("age").value = "40"; $("weight").value = "95"; $("height").value = "180";
@@ -117,6 +117,24 @@ check("Radera allt tar bort databasen", !(await databases()).includes("fettforbr
 db = await idb();
 s = await pageLoad();
 check("Radera allt tömmer IndexedDB och localStorage", Object.keys(db).length === 0 && s.keys().length === 0 && ![...memory.keys()].some((k) => k.startsWith("ffv")) && memory.get("annan-app") === "rörs inte");
+
+// 5b. Radera allt när databasen är öppen någon annanstans (t.ex. en annan flik i Safari på iPhone) och
+// borttagningen blockeras: innehållet ska ändå vara borta
+s = await pageLoad();
+s.save("ffv", { age: "33" });
+s.save("ffv-log", { entries: [{ date: "2026-08-15", weight: 90 }] });
+await s.flush();
+const otherTab = await new Promise((resolve) => {
+  const req = indexedDB.open("fettforbranning");
+  req.onsuccess = () => resolve(req.result); // stänger inte vid versionchange, så deleteDatabase blockeras
+});
+const started = Date.now();
+await s.clearAll();
+check("Radera allt blir klart även när databasen är öppen i en annan flik", Date.now() - started < 5000);
+otherTab.close();
+s = await pageLoad({ unlock: false });
+check("Radera allt tömmer databasen även när borttagningen blockeras", s.keys().length === 0 && s.load("ffv") === undefined);
+await s.clearAll();
 
 // 6. Reserv: utan IndexedDB, och när IndexedDB inte går att öppna
 const realIndexedDB = globalThis.indexedDB;

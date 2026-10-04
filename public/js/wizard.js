@@ -9,6 +9,7 @@ import { parseTrainingDays } from "./training.js";
 
 const STEPS = [
   { key: "terms", title: "Innan du börjar", intro: "Läs igenom villkoren. De gäller hela appen." },
+  { key: "start", title: "Har du redan använt appen?", intro: "Importera dina uppgifter eller använd en plankod du har fått. Har du inget av det, hoppa över steget." },
   { key: "you", title: "Börja med dig", intro: "Kalorier, protein och portioner räknas efter dina uppgifter. De sparas bara på den här enheten." },
   { key: "goal", title: "Ditt mål", intro: "Målvikten och takten avgör hur stort kaloriunderskottet blir." },
   { key: "training", title: "Träning", intro: "Utrustningen och dagarna styr träningsprogrammet." },
@@ -39,19 +40,21 @@ export function openWizard({ allergens = new Set(), termsOnly = false, onStep = 
       `<label class="chip-check"><input type="checkbox" data-wz-allergen="${a.id}"${allergens.has(a.id) ? " checked" : ""}><span>${esc(a.n)}</span></label>`).join("");
   }
 
+  delete $("wizard").dataset.planCode; // sätts när en plankod har använts i steget "start"
   let step = 0;
   // På villkorssteget går det inte vidare förrän villkoren är godkända
   const syncNext = () => ($("wz-next").disabled = steps[step].key === "terms" && !$("wz-accept").checked);
   $("wz-accept").onchange = syncNext;
   const show = () => {
     for (const el of $$("#wizard [data-step]")) el.hidden = Number(el.dataset.step) !== step + 1;
-    $("wz-body").hidden = steps[step].key === "terms"; // profilformuläret har inga fält i villkorssteget
+    $("wz-body").hidden = !form.querySelector(`[data-step="${step + 1}"]`); // profilformuläret visas bara på steg med fält i det
     $("wz-progress").textContent = termsOnly ? "Villkor" : `Steg ${step + 1} av ${steps.length}`;
     $("wz-title").textContent = steps[step].title;
     $("wz-intro").textContent = steps[step].intro;
     $("wz-msg").textContent = "";
     $("wz-back").hidden = step === 0;
-    $("wz-next").textContent = termsOnly ? "Godkänn och fortsätt" : step === steps.length - 1 ? "Kom igång" : "Nästa";
+    $("wz-next").textContent = termsOnly ? "Godkänn och fortsätt" : step === steps.length - 1 ? "Kom igång"
+      : steps[step].key === "start" && !$("wizard").dataset.planCode ? "Hoppa över" : "Nästa";
     syncNext();
     $("wizard").scrollTop = 0;
     onStep(steps[step].key);
