@@ -26,13 +26,15 @@ import { initSettingsForms, syncBreakfastOptions } from "./controllers/settings-
 import { initLogForm } from "./controllers/log-form.js";
 import { initBackupForms, showImportReceipt } from "./controllers/backup-form.js";
 import "./controllers/inputs.js";
+import { APP_VERSION } from "./version.js";
 import "./pwa.js";
 
 // ---------- Tillstånd ----------
 
 const TODAY_WEEK = weekIndexOf(new Date());
 const state = {
-  week: TODAY_WEEK, // veckan som visas under Mat
+  week: TODAY_WEEK, // veckan som visas under Mat → Veckan och Recept
+  shopWeek: null, // veckan som inköpslistan visar; sätts vid start (se defaultShopWeek)
   trainingDays: [0, 2, 4], // senaste giltiga val av gymdagar
 };
 
@@ -133,6 +135,11 @@ function showTrainingDaysMessage({ valid, picked }) {
 // Inköpslistan: det man har bockat av ("har hemma") gäller i alla veckor tills man själv bockar ur det.
 const SHOP_KEY = "ffv-shop";
 const boughtFoods = () => new Set(load(SHOP_KEY, []));
+// Inställning: inköpslistan öppnas alltid på nästa vecka (för den som handlar helgen före)
+const SHOP_NEXT_KEY = "ffv-shop-next";
+const defaultShopWeek = () => TODAY_WEEK + (load(SHOP_NEXT_KEY, false) ? 1 : 0);
+/** " · denna vecka" eller " · nästa vecka" efter datumen, annars inget. */
+const relativeWeek = (week) => (week === TODAY_WEEK ? " · denna vecka" : week === TODAY_WEEK + 1 ? " · nästa vecka" : "");
 
 /**
  * Äldre versioner sparade avbockningar per vecka (ffv-shop-<vecka>). Flytta dem till den gemensamma listan:
@@ -162,12 +169,12 @@ function update() {
   $("prog-week").textContent = `Övningarna för ${label.title.toLowerCase()}${state.week === TODAY_WEEK ? " (denna vecka)" : ""}. De byts ${SWAP_TEXT[profile.swapPeriod]}; passindelningen är alltid densamma. Byt vecka under Mat → Veckan.`;
 
   $("wk-title").textContent = `${label.title} · ${SEASONS[week.season].n}`;
-  $("wk-range").textContent = label.range + (state.week === TODAY_WEEK ? " · denna vecka" : state.week === TODAY_WEEK + 1 ? " · nästa vecka" : "");
+  $("wk-range").textContent = label.range + relativeWeek(state.week);
   $("wk-today").hidden = state.week === TODAY_WEEK;
   renderWeekGrid(week, program.schedule, profile.breakfastHour);
   renderCheatTable(week, targets);
   renderRecipes(week, targets, profile.breakfastHour, label.title);
-  renderShopping(week, label.title, boughtFoods());
+  renderShoppingWeek(profile, targets, week);
 
   // Idag följer de verkliga måltidstiderna om de är loggade
   if (state.week === TODAY_WEEK) renderToday({ week, targets, program, breakfast: todaysFasting(profile.breakfastHour).day.start, weight: profile.weight });
@@ -371,6 +378,31 @@ $("pc-form").addEventListener("submit", (ev) => {
 
 // ---------- Mat: veckor och inköpslista ----------
 
+/** Inköpslistan har en egen vecka, så att den kan visa nästa vecka medan Veckan visar den här. */
+function renderShoppingWeek(profile, targets, shownWeek) {
+  state.shopWeek ??= defaultShopWeek();
+  const week = state.shopWeek === state.week ? shownWeek : buildWeek(state.shopWeek, targets, profile.breakfastChoice);
+  const label = weekLabel(state.shopWeek);
+  const preferred = defaultShopWeek();
+  $("shop-wk-title").textContent = label.title;
+  $("shop-wk-range").textContent = label.range + relativeWeek(state.shopWeek);
+  $("shop-wk-default").hidden = state.shopWeek === preferred;
+  $("shop-wk-default").textContent = preferred === TODAY_WEEK ? "Till denna vecka" : "Till nästa vecka";
+  renderShopping(week, label.title, boughtFoods());
+}
+const showShopWeek = (week) => {
+  state.shopWeek = week;
+  update();
+};
+$("shop-prev").addEventListener("click", () => showShopWeek(state.shopWeek - 1));
+$("shop-next").addEventListener("click", () => showShopWeek(state.shopWeek + 1));
+$("shop-wk-default").addEventListener("click", () => showShopWeek(defaultShopWeek()));
+// Inställningar → Inköpslista
+$("shop-next-week").addEventListener("change", (ev) => {
+  save(SHOP_NEXT_KEY, ev.target.checked);
+  showShopWeek(defaultShopWeek());
+});
+
 $("wk-prev").addEventListener("click", () => showWeek(state.week - 1));
 $("wk-next").addEventListener("click", () => showWeek(state.week + 1));
 $("wk-today").addEventListener("click", () => showWeek(TODAY_WEEK));
@@ -392,6 +424,7 @@ $("shop-clear").addEventListener("click", async () => {
 
 // ---------- Start ----------
 
+for (const el of $$("[data-app-version]")) el.textContent = `Version ${APP_VERSION}`;
 loadPreferences();
 loadMyRecipes();
 loadLog();
@@ -411,6 +444,8 @@ function start(newUser = false) {
   initSeed(newUser && !Object.keys(load("ffv-salt", {}) || {}).length, randomSeed);
   migrateShopping();
   syncDayButtons();
+  state.shopWeek = defaultShopWeek();
+  $("shop-next-week").checked = load(SHOP_NEXT_KEY, false);
   update();
   initNavigation({ onToday: () => state.week !== TODAY_WEEK && showWeek(TODAY_WEEK) });
   showImportReceipt();

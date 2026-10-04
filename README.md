@@ -73,7 +73,7 @@ Mer om hur appen hänger ihop (start, lagring, dataflöde, hur man lägger till 
 - **Ny övning:** lägg till den i `public/js/data/exercises.js` och använd den i `buildSessions` i `public/js/training.js`.
 - **Ny undersida under Inställningar:** se [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#ny-undersida-under-inställningar).
 - **Ny fil i `public/js/` eller `public/css/`:** lägg till den i listan `CORE` i `public/sw.js`, annars fungerar den inte offline.
-- **Efter varje ändring:** höj `VERSION` i `public/sw.js` och kör testerna.
+- **Efter varje ändring:** höj versionen med `npm run bump -- patch` (rättning) eller `minor` (ny funktion), skriv vad som ändrats i `CHANGELOG.md` och kör testerna. Se [Versioner](#versioner).
 
 ## Köra lokalt
 
@@ -115,13 +115,28 @@ Alla sökvägar är relativa, så appen fungerar även i en undermapp som GitHub
 
 ## Uppdatera appen
 
-Höj `VERSION` i `public/sw.js` (till exempel från `ffv-v7` till `ffv-v8`) när du ändrar filerna. Då hämtar installerade appar de nya filerna och rensar den gamla cachen.
+Höj versionen (se [Versioner](#versioner)) när du ändrar filerna. Den nya versionen ger service workern en ny cache, så installerade appar hämtar de nya filerna och den gamla cachen rensas.
+
+## Versioner
+
+Appen numreras enligt [semantisk versionshantering](https://semver.org/lang/sv/), `MAJOR.MINOR.PATCH`. Före 1.0.0 är
+appen under utveckling: **MINOR** höjs för nya funktioner (och för ändringar som inte är bakåtkompatibla), **PATCH**
+för rättningar. 1.0.0 blir den första releasen.
+
+```bash
+npm run bump -- patch     # 0.1.0 -> 0.1.1
+npm run bump -- minor     # 0.1.0 -> 0.2.0
+```
+
+Skriptet (`scripts/version.py`) uppdaterar `package.json`, `public/js/version.js` och `public/sw.js` och lägger en
+rubrik för versionen i [CHANGELOG.md](CHANGELOG.md). Versionen visas i sidfoten och under Om appen och följer med i
+exporten. Testerna kontrollerar att de tre filerna har samma version.
 
 ## Data
 
 ### Användardata vid uppdateringar
 
-Profil, logg, plankod, allergival, egna livsmedel och recept sparas i webbläsarens IndexedDB (databasen `fettforbranning`), med localStorage som reserv om IndexedDB saknas, under nycklar som börjar på `ffv`. Data från äldre versioner flyttas automatiskt från localStorage till IndexedDB vid start (`public/js/storage.js`). En ny version av appen (ny `VERSION` i `public/sw.js`) byter bara filerna i cachen; den sparade datan rörs inte. Därför gäller vid varje ändring:
+Profil, logg, plankod, allergival, egna livsmedel och recept sparas i webbläsarens IndexedDB (databasen `fettforbranning`), med localStorage som reserv om IndexedDB saknas, under nycklar som börjar på `ffv`. Data från äldre versioner flyttas automatiskt från localStorage till IndexedDB vid start (`public/js/storage.js`). En ny version av appen (`npm run bump`) byter bara filerna i cachen; den sparade datan rörs inte. Därför gäller vid varje ändring:
 
 - **Byt aldrig namn på en nyckel** (`ffv`, `ffv-log`, `ffv-seed`, `ffv-tseed`, `ffv-salt`, `ffv-excl`, `ffv-myfoods`, `ffv-myrecipes`, `ffv-supps`, `ffv-shop-*`) och ändra inte formatet utan att läsa in det gamla formatet också.
 - **Nya fält ska ha ett standardvärde**, så att sparade profiler utan fältet fungerar.

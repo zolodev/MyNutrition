@@ -1,7 +1,8 @@
 // Service worker för Fettförbränningsveckan: gör appen installerbar och användbar offline.
-// Höj VERSION när filerna ändras, så hämtas de nya och den gamla cachen rensas.
+// VERSION följer appens version (js/version.js): en ny version ger en ny cache, och den gamla rensas.
+// Höj den med `npm run bump -- patch|minor|major`, aldrig för hand.
 // Lägger du till en fil i js/ eller css/ ska den också in i CORE, annars fungerar den inte offline.
-const VERSION = "ffv-v76";
+const VERSION = "ffv-0.2.0";
 const CORE = [
   "./",
   "./index.html",
@@ -32,6 +33,7 @@ const CORE = [
   "./js/training.js",
   "./js/storage.js",
   "./js/util.js",
+  "./js/version.js",
   "./js/wizard.js",
   "./js/views/components.js",
   "./js/views/fasting-view.js",

@@ -93,7 +93,8 @@ Datum ÅÅÅÅ-MM-DD, 24-timmarsklocka, måndag först och decimalkomma. Använd
 
 ## Ändra och publicera
 
-- Höj `VERSION` i `public/sw.js` efter varje ändring, annars kan installerade appar ladda gamla filer.
+- Höj versionen efter varje ändring med `npm run bump -- patch|minor` (semver, se README) och skriv i
+  `CHANGELOG.md`. Versionen ger service workern en ny cache, annars kan installerade appar ladda gamla filer.
 - En ny fil i `public/js/` måste in i `CORE` i `public/sw.js` (testerna kontrollerar det).
 - Kör `npm test` (alla rader ska vara `OK`).
 - Alla filer är UTF-8 (`.editorconfig`, `public/_headers`).

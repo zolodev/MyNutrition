@@ -42,7 +42,7 @@ export const FOOD = {
   blomkal:  { n: "Blomkål", k: 25, p: 2, c: 3, f: 0.3, s: "blomkål" },
   sallad:   { n: "Sallad, svensk", k: 15, p: 1.3, c: 2, f: 0.2, s: "sallad" },
   gronkal:  { n: "Grönkål", k: 50, p: 3, c: 6, f: 0.8, s: "grönkål" },
-  ananas:   { n: "Ananas, färsk eller fryst", k: 50, p: 0.5, c: 12, f: 0.1, s: "ananas" },
+  ananas:   { n: "Ananas, färsk (ej konserverad)", k: 50, p: 0.5, c: 12, f: 0.1, s: "ananas" },
   mango:    { n: "Mango, färsk eller fryst", k: 60, p: 0.8, c: 14, f: 0.4, s: "mango" },
   papaya:   { n: "Papaya, färsk", k: 43, p: 0.5, c: 11, f: 0.3, s: "papaya" },
   kiwi:     { n: "Kiwi", k: 61, p: 1.1, c: 15, f: 0.5, s: "kiwi" },

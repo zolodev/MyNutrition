@@ -465,8 +465,8 @@
               <div class="rule">
                 <h3>Frukt med enzymer</h3>
                 <p>Ananas (bromelain), papaya (papain) och kiwi (aktinidin) har enzymer som bryter ner protein, och mango
-                  har amylas som bryter ner kolhydrater. Ät dem färska eller frysta: i konserver har värmen förstört
-                  enzymerna. Att de hjälper matsmältningen är väl känt; att de minskar lukt från ägg eller kål är dåligt
+                  har amylas som bryter ner kolhydrater. Ät dem färska (mango går också fryst), aldrig konserverade: i
+                  konserver har värmen förstört enzymerna. Att de hjälper matsmältningen är väl känt; att de minskar lukt från ägg eller kål är dåligt
                   studerat, så se det som ett försök.</p>
               </div>
               <div class="rule">
@@ -499,8 +499,16 @@
               <span class="eyebrow">Handla</span>
               <h2 id="shop-title">Inköpslista för veckan</h2>
               <p>Summan av allt du äter under veckan, avrundat och sorterat efter avdelning i butiken. Bocka av det du köper
-                eller redan har hemma. Det du bockar av är avbockat i alla veckor tills du själv bockar ur det, till exempel
+                eller redan har hemma, och byt vecka med pilarna. Handlar du helgen före kan du under <a href="#inkopslista">Inställningar
+                → Inköpslista</a> välja att listan alltid visar nästa vecka. Det du bockar av är avbockat i alla veckor tills du själv bockar ur det, till exempel
                 ett paket havregryn som räcker flera veckor.</p>
+            </div>
+            <div class="weeknav">
+              <button type="button" class="weeknav-arrow" id="shop-prev" aria-label="Föregående veckas inköpslista">‹</button>
+              <div class="weeknav-label"><span class="weeknav-title" id="shop-wk-title">Vecka</span><span class="num"
+                  id="shop-wk-range"></span></div>
+              <button type="button" class="weeknav-arrow" id="shop-next" aria-label="Nästa veckas inköpslista">›</button>
+              <button type="button" class="btn small weeknav-today" id="shop-wk-default" hidden>Till denna vecka</button>
             </div>
             <div class="shop-bar"><span class="num" id="shop-progress"></span><button type="button" class="btn"
                 id="shop-clear" hidden>Avmarkera alla</button></div>
@@ -968,6 +976,7 @@
             <a href="#anpassa"><span><b>Allergier och livsmedel</b><small>Allergener, ingredienser du inte äter och egna livsmedel</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#mina-recept"><span><b>Mina recept</b><small>Egna recept, i valfria mått, som kan komma med i menyn</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#tillskott"><span><b>Tillskott</b><small>Vilka tillskott du tar, och egna tillskott som BCAA</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#inkopslista"><span><b>Inköpslista</b><small>Vilken vecka inköpslistan visar, t.ex. alltid nästa vecka</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#sakerhetskopia"><span><b>Säkerhetskopia och delning</b><small>Dela din plan med vänner, spara och flytta allt, radera all data</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#installera"><span><b>Installera appen</b><small>Öppna appen som en egen app, även offline</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#om"><span><b>Om appen och villkor</b><small>Vad appen bygger på, villkor, dataskydd och källkod</small></span><span class="chev" aria-hidden="true">›</span></a>
@@ -1096,6 +1105,22 @@
         </section>
         </div>
 
+        <div class="settings-page" data-page="inkopslista" hidden>
+          <a class="back-link" href="#installningar">‹ Inställningar</a>
+        <section id="inkopslista-val">
+          <div class="sec-head">
+            <span class="eyebrow">Mat</span>
+            <h2>Inköpslista</h2>
+            <p>Inköpslistan under <a href="#inkop">Mat → Handla</a> visar en vecka i taget, och du kan alltid bläddra
+              mellan veckorna med pilarna. Här väljer du vilken vecka den öppnas på.</p>
+          </div>
+          <div class="card form">
+            <label class="terms-accept"><input type="checkbox" id="shop-next-week"><span>Visa alltid nästa veckas
+                inköpslista, t.ex. om du handlar på söndagen inför veckan</span></label>
+          </div>
+        </section>
+        </div>
+
 
         <div class="settings-page" data-page="sakerhetskopia" hidden>
           <a class="back-link" href="#installningar">‹ Inställningar</a>
@@ -1209,6 +1234,14 @@
           </div>
           <div class="rules">
             <div class="rule">
+              <h3>Version</h3>
+              <p><b class="num" data-app-version></b>. Numreringen följer <a href="https://semver.org/lang/sv/"
+                  target="_blank" rel="noopener">semantisk versionshantering</a>. Före 1.0 är appen under
+                utveckling, och vad som ändrats i varje version står i <a
+                  href="https://github.com/zolodev/MyNutrition/blob/main/CHANGELOG.md" target="_blank"
+                  rel="noopener">ändringsloggen</a>.</p>
+            </div>
+            <div class="rule">
               <h3>Byggd på ExRx</h3>
               <p>Beräkningarna och träningen bygger på ExRx som bakgrund och analys: formlerna för energibehov,
                 BMI-gränserna, övningskatalogen och råden om fettförbränning. Källorna länkas i appen och i <a
@@ -1287,7 +1320,7 @@
       </div>
 
       <p class="app-note">Rekommendationer baserade på ExRx, inte medicinsk rådgivning. <a href="#om">Om appen</a> · <a
-          href="#villkor">Villkor och dataskydd</a></p>
+          href="#villkor">Villkor och dataskydd</a> · <span class="app-version" data-app-version></span></p>
     </main>
 
     <aside class="install-banner" id="install-banner" aria-label="Installera appen" hidden>

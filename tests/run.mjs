@@ -201,6 +201,13 @@ console.log("\n# Appen i en simulerad webbläsare (jsdom)");
   const headers = fs.readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
   check("Cloudflare skickar Cache-Control: no-cache för alla filer, så att ny HTML aldrig blandas med gamla moduler", /^\/\*\n\s+Cache-Control: no-cache/m.test(headers));
   check("Service workern hämtar filerna från servern, inte webbläsarens cache, när en ny version installeras", sw.includes('cache: "reload"'));
+  // Versionen: samma i package.json, js/version.js och sw.js, enligt semver (MAJOR.MINOR.PATCH)
+  const pkgVersion = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
+  const appVersion = fs.readFileSync(new URL("../public/js/version.js", import.meta.url), "utf8").match(/APP_VERSION = "([^"]+)"/)?.[1];
+  const swVersion = sw.match(/const VERSION = "ffv-([^"]+)"/)?.[1];
+  check(`Versionen följer semver och är samma i package.json, version.js och sw.js (${pkgVersion}, ${appVersion}, ${swVersion})`, /^\d+\.\d+\.\d+$/.test(pkgVersion) && pkgVersion === appVersion && pkgVersion === swVersion);
+  const changelog = fs.readFileSync(new URL("../CHANGELOG.md", import.meta.url), "utf8");
+  check("Ändringsloggen har en rubrik för den aktuella versionen", changelog.includes(`## [${pkgVersion}]`));
   check(`Alla ${jsFiles.length} JS-filer finns i sw.js (CORE)${missing.length ? ": saknas " + missing.join(", ") : ""}`, !missing.length);
 }
 
@@ -277,6 +284,10 @@ const rid = $("week").querySelector('a[href^="#rc-"]').getAttribute("href").slic
 go(rid); check("Länk till recept öppnar Mat → Recept och fäller ut receptet", visible() === "mat" && !win.document.querySelector('[data-subview="recept"]').hidden && $(rid).open);
 go("inkop"); check("#inkop öppnar Handla", !win.document.querySelector('[data-subview="inkop"]').hidden);
 go("traning"); check("Fliken Träning", visible() === "traning");
+{
+  const v = fs.readFileSync(new URL("../public/js/version.js", import.meta.url), "utf8").match(/APP_VERSION = "([^"]+)"/)[1];
+  check("Versionsnumret visas i sidfoten och under Om appen", win.document.querySelector(".app-note .app-version").textContent === `Version ${v}` && $("om").textContent.includes(`Version ${v}`));
+}
 go("installningar"); check("Inställningar via kugghjulet", visible() === "installningar" && win.document.querySelector('a[data-tab="installningar"]').getAttribute("aria-current") === "page");
 check("Inställningar visar en meny och inga undersidor", !$("installningar-meny").hidden && [...win.document.querySelectorAll("[data-page]")].every((p) => p.hidden));
 go("sakerhetskopia"); check("En undersida öppnas via sitt namn och döljer menyn", visible() === "installningar" && $("installningar-meny").hidden && !$("backup").closest("[data-page]").hidden && !$("radera").closest("[data-page]").hidden && $("anpassa").closest("[data-page]").hidden);
@@ -454,6 +465,10 @@ for (let i = 0; i < 3; i++) fire($("mr-add"), "click");
 fire($("mr"), "submit");
 const omelettOption = [...$("bmeal").options].find((o) => o.textContent.includes("Omelett med parmesan"));
 $("bmeal").value = omelettOption.value; fire($("f"), "change");
+{
+  const { FOOD: foods } = await import("../public/js/data/foods.js");
+  check("Ananas står som färsk och ej konserverad (konserverad har inga enzymer kvar)", /färsk/.test(foods.ananas.n) && /ej konserverad/.test(foods.ananas.n) && !/fryst/.test(foods.ananas.n));
+}
 check("Äggvita i dl från ett eget recept finns i inköpslistan", !!$("shop").querySelector('[data-shop="aggvita"]'));
 check("En egen ingrediens från ett eget recept finns i inköpslistan, med mängden för veckan", /14 msk/.test($("shop").querySelector('[data-shop="x:parmesanost"]')?.closest(".shop-item")?.textContent || ""));
 {
@@ -583,14 +598,33 @@ check("Inställningar länkar till Om appen", !!$("installningar-meny").querySel
 go("inkop");
 const shopFoods = () => new Set([...win.document.querySelectorAll("[data-shop]")].map((el) => el.dataset.shop));
 const thisWeek = shopFoods();
-fire($("wk-next"), "click");
+fire($("shop-next"), "click");
 const shared = [...shopFoods()].find((f) => thisWeek.has(f));
-fire($("wk-prev"), "click");
+fire($("shop-prev"), "click");
 const shopBox = () => win.document.querySelector(`[data-shop="${shared}"]`);
 shopBox().checked = true; fire(shopBox(), "change");
 check("Avbockning sparas i den gemensamma listan", JSON.parse(win.localStorage.getItem("ffv-shop")).includes(shared) && !Object.keys(win.localStorage).some((k) => /^ffv-shop-\d+$/.test(k)));
-fire($("wk-next"), "click");
+fire($("shop-next"), "click");
 check("Avbockad vara är avbockad även nästa vecka", shopBox().checked && shopBox().closest(".shop-item").classList.contains("done"));
+{
+  // Inköpslistan har en egen vecka och kan alltid visa nästa vecka
+  const weekNo = (id) => Number(text(id).match(/\d+/)[0]);
+  fire($("shop-wk-default"), "click");
+  const current = weekNo("shop-wk-title");
+  check("Inköpslistan öppnas på denna vecka utan inställningen", weekNo("wk-title") === current && text("shop-wk-range").includes("denna vecka") && $("shop-wk-default").hidden);
+  fire($("shop-next"), "click");
+  check("Inköpslistan byter vecka med egna pilar utan att Veckan byter", weekNo("shop-wk-title") === current + 1 && weekNo("wk-title") === current && text("shop-title").includes(`vecka ${current + 1}`) && !$("shop-wk-default").hidden);
+  go("inkopslista");
+  check("Inställningen för inköpslistan finns på en egen undersida", visible() === "installningar" && !$("inkopslista-val").closest("[data-page]").hidden && !$("shop-next-week").checked);
+  $("shop-next-week").checked = true; fire($("shop-next-week"), "change");
+  fire($("shop-wk-default"), "click");
+  check("Med inställningen visar inköpslistan nästa vecka", JSON.parse(win.localStorage.getItem("ffv-shop-next")) === true && weekNo("shop-wk-title") === current + 1 && text("shop-wk-range").includes("nästa vecka") && $("shop-wk-default").hidden);
+  fire($("shop-prev"), "click");
+  check("Knappen tillbaka går till nästa vecka när inställningen är på", !$("shop-wk-default").hidden && text("shop-wk-default") === "Till nästa vecka");
+  $("shop-next-week").checked = false; fire($("shop-next-week"), "change");
+  check("Utan inställningen tillbaka på denna vecka", weekNo("shop-wk-title") === current);
+  go("inkop");
+}
 shopBox().checked = false; fire(shopBox(), "change");
 fire($("wk-prev"), "click");
 check("Bockar man ur den gäller det alla veckor", !shopBox().checked && !JSON.parse(win.localStorage.getItem("ffv-shop")).includes(shared));
@@ -814,6 +848,7 @@ check("Export och import ligger under Inställningar", visible() === "installnin
 check("Logg länkar till exporten under Inställningar", !!$("logg").closest("[data-view]").querySelector('a[href="#backup"]'));
 const exportedText = $("l-copytext").value;
 const exportedData = JSON.parse(exportedText).data;
+check("Exporten anger vilken version av appen den gjordes med", /^\d+\.\d+\.\d+$/.test(JSON.parse(exportedText).appVersion));
 check("Kopiera allt visar texten när urklipp nekas", !$("l-copytext").hidden && text("backup-msg").startsWith("Kopieringen nekades"));
 check("Exporten innehåller profil, logg, plan, allergier och tillskott", ["ffv", "ffv-log", "ffv-seed", "ffv-excl"].every((k) => k in exportedData) && exportedData["ffv-log"].entries.length > 0 && exportedData.ffv.weight === "92");
 check("Exporten innehåller allt sparat utom det som bara gäller enheten", Object.keys(win.localStorage).filter((k) => k.startsWith("ffv") && k !== "ffv-swipe-hint" && k !== "ffv-install-declined" && k !== "ffv-terms").every((k) => k in exportedData) && !("ffv-swipe-hint" in exportedData));

@@ -3,6 +3,7 @@
 // automatiskt. En import ersätter allt sparat på enheten; äldre exportfiler (version 1) och rena logglistor läses också.
 
 import { load, save, remove, keys, clearAll, flush } from "./storage.js";
+import { APP_VERSION } from "./version.js";
 import { DAYS, hhmm } from "./util.js";
 
 const APP = "fettforbranningsveckan";
@@ -39,7 +40,7 @@ function overview(data) {
 /** Allt sparat som JSON-text, för fil eller urklipp. */
 export function exportText() {
   const data = Object.fromEntries(storedKeys().sort().map((k) => [k, load(k)]));
-  return JSON.stringify({ app: APP, version: VERSION, exported: new Date().toISOString(), oversikt: overview(data), data }, null, 2);
+  return JSON.stringify({ app: APP, version: VERSION, appVersion: APP_VERSION, exported: new Date().toISOString(), oversikt: overview(data), data }, null, 2);
 }
 
 /**
