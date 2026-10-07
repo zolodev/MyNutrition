@@ -2,7 +2,7 @@
 // VERSION följer appens version (js/version.js): en ny version ger en ny cache, och den gamla rensas.
 // Höj den med `npm run bump -- patch|minor|major`, aldrig för hand.
 // Lägger du till en fil i js/ eller css/ ska den också in i CORE, annars fungerar den inte offline.
-const VERSION = "ffv-0.2.0";
+const VERSION = "ffv-0.8.0";
 const CORE = [
   "./",
   "./index.html",
@@ -14,10 +14,14 @@ const CORE = [
   "./js/controllers/backup-form.js",
   "./js/controllers/inputs.js",
   "./js/controllers/log-form.js",
+  "./js/controllers/meal-swap.js",
   "./js/controllers/navigation.js",
   "./js/controllers/settings-forms.js",
+  "./js/controllers/training-times.js",
+  "./js/controllers/workout.js",
   "./js/data/exercises.js",
   "./js/data/foods.js",
+  "./js/data/meal-replacements.js",
   "./js/data/recipes.js",
   "./js/day.js",
   "./js/fasting.js",
@@ -31,6 +35,7 @@ const CORE = [
   "./js/pwa.js",
   "./js/supplements.js",
   "./js/training.js",
+  "./js/trainingtimes.js",
   "./js/storage.js",
   "./js/util.js",
   "./js/version.js",
@@ -92,7 +97,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(req.mode === "navigate" ? req : new Request(req, { cache: "no-cache" }))
         .then((res) => remember(req, res))
-        .catch(() => caches.match(req).then((hit) => hit || (req.mode === "navigate" ? caches.match("./index.html") : null)).then((hit) => hit || Response.error()))
+        .catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => hit || (req.mode === "navigate" ? caches.match("./index.html") : null)).then((hit) => hit || Response.error()))
     );
     return;
   }

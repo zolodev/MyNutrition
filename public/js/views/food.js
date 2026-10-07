@@ -8,6 +8,8 @@ import { formatAmount, formatQuantity, kgPerWeek } from "../nutrition.js";
 import { recipesFor, totals } from "../menu.js";
 import { CHEVRON, macroLine } from "./components.js";
 import { MEAL_AT } from "../day.js";
+import { strengthTime } from "../trainingtimes.js";
+import { formatClock } from "../fasting.js";
 
 const MEALS = ["Frukost", "Eftermiddagsmåltid", "Efterrätt", "Lördagsgodis"];
 
@@ -29,7 +31,10 @@ export function renderWeekGrid(week, schedule, breakfast) {
         .filter((id) => id !== NONE)
         .map((id, m) => `<li><a href="#rc-${id}"><small>${MEALS[m]}${times[m] ? " · " + times[m] : ""}</small>${esc(week.recipes[id].t)}</a></li>`)
         .join("");
-      return `<div class="day"><h3>${DAYS[i]}</h3><span class="chip ${schedule[i].kind}">${schedule[i].label}</span><ul>${meals}</ul>` +
+      // Gymdagar visar passets tid: den egna tiden för veckodagen, annars räknat från frukosten
+      const gym = schedule[i].kind === "str" ? strengthTime(i, breakfast) : null;
+      const label = gym ? `${schedule[i].label} · ${formatClock(gym.from)}–${formatClock(gym.to)}` : schedule[i].label;
+      return `<div class="day"><h3>${DAYS[i]}</h3><span class="chip ${schedule[i].kind}">${esc(label)}</span><ul>${meals}</ul>` +
         `<div class="tot num">${fmt(sum.k)} kcal · ${fmt(sum.p)} g P · ${fmt(sum.c)} g K</div></div>`;
     })
     .join("");

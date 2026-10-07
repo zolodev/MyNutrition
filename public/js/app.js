@@ -1,9 +1,9 @@
 // Appens styrning: läser profilen, räknar om och ritar alla vyer, kopplar knappar och formulär och sköter flikarna.
 
-import { $, $$, num, signed, radioValue, setRadio, load, save, remove, todayStr, weekIndexOf, confirmDialog, checkDecimal, isClockText, DAYS_SHORT } from "./util.js";
+import { $, $$, num, signed, radioValue, setRadio, load, save, remove, todayStr, weekIndexOf, confirmDialog, checkDecimal, isClockText, DAYS_SHORT, DAYS } from "./util.js";
 import { computeTargets, kgPerWeek, recommendedGoal } from "./nutrition.js";
 import { loadPreferences, exclusions, saveExclusions, setExclusions } from "./preferences.js";
-import { buildWeek, invalidateMenu, initSeed, planRandomness, setPlanRandomness } from "./menu.js";
+import { buildWeek, invalidateMenu, initSeed, planRandomness, setPlanRandomness, swapMeals, resetMoves, movesFor } from "./menu.js";
 import { encodePlan, decodePlan, prettyCode, randomSeed } from "./plancode.js";
 import { SEASONS } from "./data/recipes.js";
 import { parseTrainingDays, buildProgram, SWAP_TEXT } from "./training.js";
@@ -25,6 +25,9 @@ import { initNavigation } from "./controllers/navigation.js";
 import { initSettingsForms, syncBreakfastOptions } from "./controllers/settings-forms.js";
 import { initLogForm } from "./controllers/log-form.js";
 import { initBackupForms, showImportReceipt } from "./controllers/backup-form.js";
+import { initWorkout } from "./controllers/workout.js";
+import { initMealSwap } from "./controllers/meal-swap.js";
+import { initTrainingTimes, renderTrainingTimes } from "./controllers/training-times.js";
 import "./controllers/inputs.js";
 import { APP_VERSION } from "./version.js";
 import "./pwa.js";
@@ -177,13 +180,15 @@ function update() {
   renderShoppingWeek(profile, targets, week);
 
   // Idag följer de verkliga måltidstiderna om de är loggade
-  if (state.week === TODAY_WEEK) renderToday({ week, targets, program, breakfast: todaysFasting(profile.breakfastHour).day.start, weight: profile.weight });
+  if (state.week === TODAY_WEEK) renderToday({ week, targets, program, breakfast: todaysFasting(profile.breakfastHour).day.start, weight: profile.weight, swaps: entryFor(todayStr())?.swaps || [] });
   renderFastingToday(profile.breakfastHour);
   renderFasting(targets, profile.breakfastHour);
   renderLog(kgPerWeek(targets.deficit), profile.goal, profile.weight);
   renderSettings(state.week);
   renderPlanCode(profile);
   renderQuickWeight();
+  renderTrainingTimes(profile.days.days, profile.breakfastHour);
+  $("mv-reset").hidden = !movesFor(state.week).length;
   showGoalAdvice();
   renderReport({
     period: $("rp-period").value, profile, targets,
@@ -406,6 +411,22 @@ $("shop-next-week").addEventListener("change", (ev) => {
 $("wk-prev").addEventListener("click", () => showWeek(state.week - 1));
 $("wk-next").addEventListener("click", () => showWeek(state.week + 1));
 $("wk-today").addEventListener("click", () => showWeek(TODAY_WEEK));
+// Byt plats på måltider mellan dagar (Mat → Veckan); gäller veckan som visas
+for (const select of $$("[data-days]")) select.innerHTML = DAYS.map((d, i) => `<option value="${i}">${d}</option>`).join("");
+$("mv-b").value = "4";
+$("mv-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const meal = Number($("mv-meal").value), a = Number($("mv-a").value), b = Number($("mv-b").value);
+  if (a === b) return ($("mv-msg").textContent = "Välj två olika dagar.");
+  swapMeals(state.week, meal, a, b);
+  update();
+  $("mv-msg").textContent = `${$("mv-meal").selectedOptions[0].textContent} på ${DAYS[a].toLowerCase()} och ${DAYS[b].toLowerCase()} har bytt plats.`;
+});
+$("mv-reset").addEventListener("click", () => {
+  resetMoves(state.week);
+  update();
+  $("mv-msg").textContent = "Veckan är tillbaka i planens ordning.";
+});
 $("shop").addEventListener("change", (ev) => {
   const food = ev.target.dataset.shop;
   if (!food) return;
@@ -431,6 +452,9 @@ loadLog();
 initSettingsForms({ update, saveProfile });
 initLogForm({ update });
 initBackupForms({ acceptTerms });
+initWorkout({ update });
+initMealSwap({ update });
+initTrainingTimes({ update });
 syncBreakfastOptions();
 syncDayButtons();
 
@@ -443,6 +467,7 @@ function start(newUser = false) {
   navigator.storage?.persist?.().catch(() => {});
   initSeed(newUser && !Object.keys(load("ffv-salt", {}) || {}).length, randomSeed);
   migrateShopping();
+  remove("ffv-timer"); // inställningar från hemmapasset med intervalltimer, som är borttaget (0.7.0)
   syncDayButtons();
   state.shopWeek = defaultShopWeek();
   $("shop-next-week").checked = load(SHOP_NEXT_KEY, false);

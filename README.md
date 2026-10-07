@@ -18,7 +18,7 @@ En personlig veckoplan för viktnedgång som fungerar som installerbar webbapp (
 
 Allt körs i webbläsaren. Inga uppgifter skickas till någon server.
 
-Appen ger **rekommendationer baserade på ExRx.net, inte medicinsk rådgivning**. Första gången visas villkoren (rekommendationer, eget ansvar, hur data hanteras, i befintligt skick) och måste godkännas; de finns sedan under **Om appen** (`#om`, `#villkor`). Godkännandet sparas per enhet i `ffv-terms`; höj `TERMS_VERSION` i `public/js/app.js` när villkoren ändras, så får alla godkänna dem igen.
+Appen ger **rekommendationer baserade på ExRx.net, inte medicinsk rådgivning**. Första gången visas först ett välkomststeg med möjligheten att installera appen, sedan villkoren (rekommendationer, eget ansvar, hur data hanteras, i befintligt skick) och måste godkännas; de finns sedan under **Om appen** (`#om`, `#villkor`). Godkännandet sparas per enhet i `ffv-terms`; höj `TERMS_VERSION` i `public/js/app.js` när villkoren ändras, så får alla godkänna dem igen.
 
 Källkoden är licensierad under MIT-licensen (se `LICENSE`). Licensen gäller koden, inte material från ExRx.net.
 
@@ -33,7 +33,9 @@ public/js/main.js            Startpunkt: läser in lagringen och startar appen
 public/js/storage.js         Lagring: IndexedDB, med localStorage som reserv
 public/js/app.js             Styrning: profilen, update() som ritar om allt, plankod, Mat, fastan och starten
 public/js/controllers/       Knappar och formulär per område: navigation (flikar, undersidor, svep), inputs
-                             (sifferfält, klockslag, info-ikoner), log-form, backup-form, settings-forms
+                             (sifferfält, klockslag, info-ikoner), log-form, backup-form, settings-forms,
+                             workout (gympass som loggas direkt),
+                             meal-swap (ersätt en måltid på Idag), training-times (Profil → Träningstider)
 public/js/util.js            Hjälpfunktioner: DOM, talformat, lagring, datum, slump som går att upprepa
 public/js/nutrition.js       Energibehov, makromål och skalning av portioner
 public/js/preferences.js     Allergier, bortvalda ingredienser och egna livsmedel
@@ -44,6 +46,7 @@ public/js/fasting.js         Fastan: ätfönster, nästa måltid och läget just
 public/js/myrecipes.js       Egna recept
 public/js/supplements.js     Tips om PWO, vassle och kreatin
 public/js/training.js        Träningsprogram och vilka dagar passen läggs
+public/js/trainingtimes.js   Egna träningstider per veckodag (annars räknat från frukosten)
 public/js/log.js             Loggposter och statistik
 public/js/pwa.js             Offline, beständig lagring och förslaget att installera appen
 public/js/wizard.js          Guiden första gången: profilen steg för steg innan något sparas

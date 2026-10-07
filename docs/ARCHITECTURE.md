@@ -24,7 +24,10 @@ importera `app.js`, så att det inte blir cirkulära importer.
 1. `index.html` visar en laddningsskärm (`html.booting`). Skriptet där laddar om automatiskt om starten misslyckas;
    försök 2 och 3 tömmer också cachen (data finns kvar). Knapparna för att rensa visas efter tre misslyckanden
    eller 60 sekunder.
-2. `main.js` väntar på `initStorage()`, stilmallen och typsnitten (högst 2 s) och importerar `app.js`.
+2. `index.html` laddar `js/main.js?v=<version>`, så att startfilen alltid är den nya. Styrs sidan inte av service
+   workern (första besöket, eller efter Radera all data) kontrollerar `main.js` först alla app-filer mot servern,
+   en gång per session och version, så att gamla filer i webbläsarens cache inte blandas med den nya sidan.
+   Därefter väntar `main.js` på `initStorage()`, stilmallen och typsnitten (högst 2 s) och importerar `app.js`.
 3. `app.js` läser in sparad data, kopplar controllers (`initSettingsForms`, `initLogForm`, `initBackupForms`) och:
    - har profil och godkända villkor: `start()`
    - har profil men inte nuvarande villkor: guiden visar bara villkoren
@@ -47,6 +50,11 @@ bakgrunden (localStorage som reserv). **Inget skrivs innan villkoren är godkän
 | `ffv-supps` | Valda tillskott | supplements.js |
 | `ffv-seed`, `ffv-salt`, `ffv-tseed` | Slumpfrön för meny och träning (plankoden) | menu.js |
 | `ffv-shop` | Avbockat i inköpslistan, gäller alla veckor | app.js |
+| `ffv-shop-next` | Inköpslistan visar alltid nästa vecka | app.js |
+| `ffv-traintimes` | Egna träningstider per veckodag | trainingtimes.js |
+| `ffv-moves` | Måltider som bytt plats mellan dagar, per vecka | menu.js |
+| `ffv-mealswaps` | Senast använda ersättningar för måltider (snabbval) | log.js |
+| `ffv-workout` | Pågående gympass (bara för enheten, överlever en omladdning) | controllers/workout.js |
 | `ffv-install-declined`, `ffv-swipe-hint` | Bara för enheten | pwa.js, navigation.js |
 
 Allt utom det som bara gäller enheten följer med i exporten (`backup.js`). En ny nyckel som ska följa med
@@ -79,6 +87,12 @@ anropar `update()`; ingen vy uppdateras för sig. Det är enkelt och tillräckli
 2. Lägg till en rad i `<nav class="settings-menu">` med `href="#namn"`.
 3. Händelser kopplas i `controllers/settings-forms.js` (eller en ny controller med en `init…()` som anropas i
    `app.js`). Ingen ändring behövs i navigeringen.
+
+## Pass som loggas direkt
+
+Gympass (`controllers/workout.js`) loggas när de avslutas, via `addWorkout()` i `log.js`: en rad i dagens
+anteckning och "tränat". Knappar med `data-edit-log` öppnar dagens post i loggen (`openLogFor` i
+`controllers/log-form.js`), så att användaren kan ändra eller lägga till.
 
 ## Formulärfält
 

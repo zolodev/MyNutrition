@@ -484,3 +484,28 @@ textarea { width: 100%; font: inherit; font-size: 1rem; padding: 9px 10px; borde
 .settings-page[hidden] { display: none; }
 .back-link { justify-self: start; color: var(--accent); text-decoration: none; font-weight: 600; }
 .back-link:hover { text-decoration: underline; }
+
+/* Pågående gympass (Träning): stor klocka som syns på håll */
+.timer { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 22px 16px; }
+.timer-phase { font-family: var(--font-display); font-weight: 800; font-size: 1.4rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.timer-clock { font-family: var(--font-display); font-weight: 800; font-size: clamp(4rem, 22vw, 8rem); line-height: 1; font-variant-numeric: tabular-nums; }
+.timer-round { color: var(--muted); }
+.timer-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.timer-summary { font-size: 1.1rem; font-weight: 600; }
+.session-head .btn { margin-left: auto; }
+.workout-running [data-start-session] { display: none; }
+
+/* Ersatt måltid (Idag) och formuläret för att ersätta en måltid */
+.row.swapped .main small { color: var(--muted); }
+.row.swapped .end { display: inline-flex; align-items: baseline; gap: 10px; }
+.swap-box summary { cursor: pointer; font-weight: 600; }
+.swap-box[open] summary { margin-bottom: 12px; }
+.swap-box form { display: grid; gap: 12px; }
+.chip { font: inherit; font-size: 0.86rem; padding: 7px 11px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--fg); cursor: pointer; }
+.chip:hover { background: var(--accent-soft); }
+
+/* Profil → Träningstider: en rad per gymdag */
+.tt-list { display: grid; gap: 8px; }
+.tt-row { display: grid; grid-template-columns: 5.5em minmax(0, 1fr) auto minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.tt-day { font-weight: 600; }
+#tt-box { display: grid; gap: 10px; margin-top: 12px; }

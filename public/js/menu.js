@@ -8,6 +8,7 @@ import { DAY_MS, DAYS, mondayOf, seededRandom, shuffle, load, save } from "./uti
 
 const SALTS_KEY = "ffv-salt";
 const SEED_KEY = "ffv-seed";
+const MOVES_KEY = "ffv-moves"; // måltider som användaren har bytt plats på: { vecka: [[måltid, dag, dag], …] }
 const TRAINING_SEED_KEY = "ffv-tseed"; // eget frö för övningarna; saknas det följer träningen receptfröet
 const SEED_MIX = 1000003; // fröet blandas in i alla slumptal; frö 0 ger samma menyer som innan plankoden fanns
 const SATURDAY = 5;
@@ -156,6 +157,33 @@ export function weekPlan(week, breakfastChoice) {
   return DAYS.map((_, i) => (i === SATURDAY ? [breakfasts[i], dinners[i], desserts[i], treat] : [breakfasts[i], dinners[i], desserts[i]]));
 }
 
+// ---------- Flytta måltider mellan dagar ----------
+// Användaren kan byta plats på två dagars måltider (t.ex. eftermiddagsmåltiden på tisdag och fredag), eller flytta en
+// planerad rätt när den ersätts med något annat. Bytena sparas per vecka i den ordning de gjordes och läggs på den
+// slumpade planen, så de följer med även om planen byggs om. Måltid: 0 frukost, 1 eftermiddagsmåltid, 2 efterrätt.
+
+let moves = load(MOVES_KEY, {}) || {};
+export const movesFor = (week) => moves[week] || [];
+
+/** Byt plats på måltiden `meal` mellan dag `a` och `b` (0 = måndag) vecka `week`. */
+export function swapMeals(week, meal, a, b) {
+  if (a === b || ![0, 1, 2].includes(meal) || ![a, b].every((d) => Number.isInteger(d) && d >= 0 && d <= 6)) return;
+  moves[week] = [...movesFor(week), [meal, a, b]];
+  save(MOVES_KEY, moves);
+}
+
+/** Återställ veckans ordning till planens. */
+export function resetMoves(week) {
+  delete moves[week];
+  save(MOVES_KEY, moves);
+}
+
+function applyMoves(week, plan) {
+  const result = plan.map((day) => day.slice());
+  for (const [meal, a, b] of movesFor(week)) [result[a][meal], result[b][meal]] = [result[b][meal], result[a][meal]];
+  return result;
+}
+
 // ---------- Veckans recept, skalade efter målen ----------
 
 /**
@@ -174,7 +202,7 @@ function digestiveFruit(recipeId, week) {
 
 export function buildWeek(week, targets, breakfastChoice) {
   const season = seasonOf(week);
-  const plan = weekPlan(week, breakfastChoice);
+  const plan = applyMoves(week, weekPlan(week, breakfastChoice));
 
   // Säsongsanpassa och anpassa efter bortval. Måltider med ägg, kål eller baljväxter får 100 g frukt med enzymer;
   // frukten växlar mellan rätterna och veckorna, och bortvalda frukter hoppas över.

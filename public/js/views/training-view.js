@@ -18,7 +18,8 @@ export function sessionBlock(session) {
   const when = `${session.days.join(", ")} · ca 45–55 min inkl. uppvärmning`;
   return [
     '<div class="session">',
-    `<div class="session-head"><h3>${session.name}</h3><span>${when}</span></div>`,
+    `<div class="session-head"><h3>${session.name}</h3><span>${when}</span>`,
+    `<button type="button" class="btn small" data-start-session="${esc(session.name)}">Starta passet</button></div>`,
     `<div class="list">${rows}</div>`,
     "</div>",
   ].join("");

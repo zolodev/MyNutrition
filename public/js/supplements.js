@@ -51,11 +51,12 @@ export const usesSupplements = () => using.size > 0 || mySupps.length > 0;
  * Dagens tips, sorterade efter tid. `start` = första måltiden (timmar), `kind` = "str" | "int" | "rest",
  * `weight` (kg) för kreatindosen.
  */
-export function supplementTips({ start, kind, weight }) {
+export function supplementTips({ start, kind, weight, workout: own = null }) {
   const tips = [];
   const at = (offset) => start + offset;
-  const workout = kind === "str" ? at(STRENGTH[0]) : kind === "int" ? at(INTERVALS[0]) : null;
-  const workoutEnd = kind === "str" ? at(STRENGTH[1]) : kind === "int" ? at(INTERVALS[1]) : null;
+  // `own` = passets egen tid i timmar ({ from, to }, se trainingtimes.js); annars räknat från frukosten
+  const workout = own ? own.from : kind === "str" ? at(STRENGTH[0]) : kind === "int" ? at(INTERVALS[0]) : null;
+  const workoutEnd = own ? own.to : kind === "str" ? at(STRENGTH[1]) : kind === "int" ? at(INTERVALS[1]) : null;
 
   if (using.has("pwo") && workout != null) {
     const time = workout - 0.5;
@@ -71,7 +72,11 @@ export function supplementTips({ start, kind, weight }) {
     if (workoutEnd != null && kind === "str") {
       tips.push({
         at: workoutEnd, name: "Vassle",
-        text: meal - workoutEnd <= 1.5
+        text: workoutEnd > meal
+          ? (workoutEnd <= at(WINDOW)
+            ? `25–30 g direkt efter passet, eftersom passet slutar efter eftermiddagsmåltiden men före att ätfönstret stänger kl. ${formatClock(at(WINDOW))}. Räkna in den: 30 g ger ca 115 kcal och 23 g protein, så ta en mindre efterrätt.`
+            : `Passet slutar efter att ätfönstret har stängt kl. ${formatClock(at(WINDOW))}, och vassle bryter fastan. Ät eftermiddagsmåltiden före passet, eller flytta frukosten senare så att ätfönstret täcker passet.`)
+          : meal - workoutEnd <= 1.5
           ? `Behövs inte i dag: eftermiddagsmåltiden kl. ${formatClock(meal)} kommer strax efter passet och ger proteinet. Ta 25–30 g direkt efter passet bara om måltiden blir senare.`
           : `25–30 g direkt efter passet, eftersom det dröjer till eftermiddagsmåltiden. Räkna in den: 30 g ger ca 115 kcal och 23 g protein, så ta en mindre efterrätt.`,
       });
@@ -102,7 +107,7 @@ export function supplementTips({ start, kind, weight }) {
       at: kind === "str" ? at(MEAL_AT) : start, name: "Kreatin",
       text: `3–5 g${weight ? ` (0,1 g/kg ≈ ${Math.round(weight * 0.1)} g, men mer än 5 g behövs inte)` : ""} varje dag, även vilodagar. ` +
         (kind === "str" ? "Ta det med eftermiddagsmåltiden efter passet; kolhydraterna i måltiden kan förbättra upptaget." : "Ta det med frukosten.") +
-        (using.has("pwo") ? " Ta det inte samtidigt som PWO:n; en äldre studie visade att koffein kan motverka kreatinets effekt." : ""),
+        (using.has("pwo") ? " Går bra att ta samtidigt som PWO:n; att koffein skulle motverka kreatinet har inte bekräftats av senare forskning. Ta det efter passet om kombinationen ger dig ont i magen." : ""),
     });
   }
   return tips.sort((a, b) => a.at - b.at);

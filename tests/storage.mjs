@@ -51,7 +51,7 @@ if (process.argv[2] === "ny-användare") {
   const $ = (id) => win.document.getElementById(id);
   const next = () => $("wz-next").dispatchEvent(new win.Event("click"));
   check("Ny användare: guiden visas och ingen databas skapas", !$("wizard").hidden && !(await databases()).includes("fettforbranning") && memory.size === 0);
-  $("wz-accept").checked = true; $("wz-accept").dispatchEvent(new win.Event("change")); next(); next(); // villkor, hoppa över import och plankod
+  next(); $("wz-accept").checked = true; $("wz-accept").dispatchEvent(new win.Event("change")); next(); next(); // välkommen, villkor, hoppa över import och plankod
   check("Ny användare: inget skrivs medan guiden fylls i", !(await databases()).includes("fettforbranning") && memory.size === 0);
   win.document.querySelector('input[name="sex"][value="m"]').checked = true;
   $("age").value = "40"; $("weight").value = "95"; $("height").value = "180";

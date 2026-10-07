@@ -96,6 +96,50 @@ export const cardioText = (c) =>
 
 // ---------- Poster ----------
 
+// ---------- Ersatta måltider ----------
+// Åt man något annat än planens måltid (t.ex. en Huel-shake i stället för eftermiddagsmåltiden) sparas det i dagens
+// post som { meal, n, k, p }: vilken måltid (0 frukost, 1 eftermiddagsmåltid, 2 efterrätt, 3 lördagsgodis), namn,
+// kcal och protein. Idag räknar då dagens summa med ersättningen i stället för receptet.
+
+export const MEAL_NAMES = ["Frukost", "Eftermiddagsmåltid", "Efterrätt", "Lördagsgodis"];
+const SWAPS_KEY = "ffv-mealswaps"; // senast använda ersättningar, för snabbval
+const cleanSwap = (x) =>
+  x && typeof x.n === "string" && x.n.trim() ? { n: x.n.trim().slice(0, 60), k: inRange(x.k, 0, 5000) ?? 0, p: inRange(x.p, 0, 500) ?? 0 } : null;
+// I dagens post sparas också vilken rätt som ersattes (`was`) och om den flyttades till en annan dag (`moved`, 0 = måndag)
+const swapExtras = (x) => ({
+  ...(typeof x.was === "string" && x.was.trim() ? { was: x.was.trim().slice(0, 80) } : {}),
+  ...(Number.isInteger(x.moved) && x.moved >= 0 && x.moved <= 6 ? { moved: x.moved } : {}),
+});
+function cleanSwaps(list) {
+  if (!Array.isArray(list)) return [];
+  const byMeal = new Map();
+  for (const x of list) {
+    const swap = cleanSwap(x);
+    if (swap && [0, 1, 2, 3].includes(x.meal)) byMeal.set(x.meal, { meal: x.meal, ...swap, ...swapExtras(x) });
+  }
+  return [...byMeal.values()].sort((a, b) => a.meal - b.meal);
+}
+
+/** Senast använda ersättningar, nyast först (högst åtta). */
+export const recentSwaps = () => (load(SWAPS_KEY, []) || []).map(cleanSwap).filter(Boolean);
+
+/**
+ * Ersätt en måltid en dag med något annat ({ n, k, p, was?, moved? }), eller ångra med `swap` = null.
+ * Ger ersättningen som togs bort (eller null), så att den som anropar kan flytta tillbaka en flyttad rätt.
+ */
+export function setSwap(date, meal, swap) {
+  const e = entryFor(date) || { date };
+  const removed = (e.swaps || []).find((x) => x.meal === meal) || null;
+  const swaps = (e.swaps || []).filter((x) => x.meal !== meal);
+  const clean = swap && cleanSwap(swap);
+  if (clean) {
+    swaps.push({ meal, ...clean, ...swapExtras(swap) });
+    save(SWAPS_KEY, [clean, ...recentSwaps().filter((x) => x.n.toLowerCase() !== clean.n.toLowerCase())].slice(0, 8));
+  }
+  upsertEntry(cleanEntry({ ...e, date, swaps }));
+  return removed;
+}
+
 /** Kontrollera och städa en post. Ger null om datumet saknas eller är felaktigt. */
 export function cleanEntry(e) {
   if (!e || !isIsoDate(e.date)) return null;
@@ -112,6 +156,7 @@ export function cleanEntry(e) {
     imVig: inRange(e.imVig, 0, 1440), // intensitetsminuter, höga
     test: inRange(e.test, 1, 36000), // äldre versioner: en testtid utan aktivitet och distans
     note: typeof e.note === "string" ? e.note.slice(0, 200) : "",
+    swaps: cleanSwaps(e.swaps), // måltider som ersattes med något annat, t.ex. en Huel-shake
     firstMeal: isClock(e.firstMeal) ? e.firstMeal : null, // "HH:MM", för uppföljning av fastan
     lastMeal: isClock(e.lastMeal) ? e.lastMeal : null,
   };
@@ -162,6 +207,19 @@ export function removeEntry(date) {
 }
 
 export const entryFor = (date) => entries.find((x) => x.date === date);
+
+/**
+ * Logga ett avslutat pass direkt (gympass, se controllers/workout.js). Lägger till `text` i dagens anteckning, `vigorous`
+ * minuter som höga intensitetsminuter och, för styrkepass, markerar dagen som tränad ("Samma" som förra passet
+ * om inget annat är valt). Det som redan finns i posten ligger kvar; resten fyller användaren i själv i loggen.
+ */
+export function addWorkout(date, { text, vigorous = 0, strength = false }) {
+  const e = entryFor(date) || { date };
+  const entry = { ...e, date, note: [e.note, text].filter(Boolean).join(" · ") };
+  if (vigorous) entry.imVig = (e.imVig || 0) + vigorous;
+  if (strength) Object.assign(entry, { trained: true, perf: e.perf ?? 0 });
+  upsertEntry(cleanEntry(entry));
+}
 
 
 

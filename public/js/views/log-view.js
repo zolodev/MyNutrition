@@ -1,9 +1,12 @@
 // Logg: nyckeltal, viktkurva, råd och tabell.
 
 import { $, esc, fmt, signed, todayStr, dateToDay, dayToDate, svDate } from "../util.js";
-import { entries, entryFor, logStats, sevenDayAverage, formatHms, CARDIO, paceText, secondsPerKm, cardioText, intensityMinutes, WEEKLY_INTENSITY_GOAL } from "../log.js";
+import { entries, entryFor, logStats, sevenDayAverage, formatHms, CARDIO, paceText, secondsPerKm, cardioText, intensityMinutes, WEEKLY_INTENSITY_GOAL, MEAL_NAMES } from "../log.js";
 import { parseClock, fastingHours, formatDuration } from "../fasting.js";
 import { tile } from "./components.js";
+
+/** Anteckningen och dagens ersatta måltider, t.ex. "Eftermiddagsmåltid: Huel shake (400 kcal)". */
+const noteText = (e) => [e.note, ...(e.swaps || []).map((x) => `${MEAL_NAMES[x.meal]}: ${x.n} (${fmt(x.k)} kcal)`)].filter(Boolean).join(" · ");
 
 export function renderLog(planKgPerWeek, goal, planStartWeight) {
   const stats = logStats(planKgPerWeek, goal);
@@ -180,7 +183,7 @@ function renderTable(s) {
     `<thead><tr><th>Datum</th><th>Vikt</th><th>7-d snitt</th><th>Midja</th><th>Mående</th><th>Prestation</th><th>Kondition</th><th>Måltider</th><th>Fasta efter</th><th>Anteckning</th><th></th></tr></thead><tbody>` +
     entries.slice().reverse().map((e) =>
       `<tr><td class="num">${e.date}</td><td class="num">${value(e.weight)}</td><td class="num">${value(e.weight != null ? sevenDayAverage(s.weighIns, dateToDay(e.date)) : null)}</td>` +
-      `<td class="num">${value(e.waist)}</td><td class="num">${e.mood ?? "–"}</td><td>${perf(e.perf)}</td><td>${conditioning(e)}</td><td class="num">${e.firstMeal || e.lastMeal ? `${e.firstMeal || "?"}–${e.lastMeal || "?"}` : "–"}</td><td class="num">${nightFast(e)}</td><td>${esc(e.note)}</td>` +
+      `<td class="num">${value(e.waist)}</td><td class="num">${e.mood ?? "–"}</td><td>${perf(e.perf)}</td><td>${conditioning(e)}</td><td class="num">${e.firstMeal || e.lastMeal ? `${e.firstMeal || "?"}–${e.lastMeal || "?"}` : "–"}</td><td class="num">${nightFast(e)}</td><td>${esc(noteText(e))}</td>` +
       `<td><button type="button" class="linkbtn" data-edit="${e.date}">Ändra</button> <button type="button" class="linkbtn" data-del="${e.date}">Ta bort</button></td></tr>`).join("") +
     `</tbody>`;
 }

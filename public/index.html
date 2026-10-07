@@ -4,6 +4,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Appens version (samma som js/version.js; uppdateras av npm run bump). main.js använder den för att se till att
+       alla filer kommer från samma version. -->
+  <meta name="app-version" content="0.8.0">
   <meta name="description"
     content="Personlig veckoplan för viktnedgång: kalorimål, styrkeprogram med ExRx-övningar, säsongsrecept, fasta 16:8 och logg.">
   <meta name="theme-color" content="#1d5c4c" media="(prefers-color-scheme: light)">
@@ -246,8 +249,8 @@
   <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="css/app.css">
-  <script type="module" src="js/main.js" onerror="ffvBootFailed()"></script>
-  <link rel="modulepreload" href="js/app.js">
+  <!-- ?v= gör att startfilen alltid hämtas på nytt efter en uppdatering, även ur en gammal webbläsarcache -->
+  <script type="module" src="js/main.js?v=0.8.0" onerror="ffvBootFailed()"></script>
 </head>
 
 <body>
@@ -349,6 +352,32 @@
             <p>Tryck på en måltid för att se ingredienser och hur du lagar den.</p>
           </div>
           <div class="list" id="td-food"></div>
+          <details class="card form swap-box" id="sw-box">
+            <summary>Åt du något annat? Ersätt en måltid</summary>
+            <form id="sw-form" autocomplete="off">
+              <p class="hint">T.ex. en Huel-shake i stället för eftermiddagsmåltiden. Dagens kalorier och protein räknas om,
+                och ersättningen sparas i loggen.</p>
+              <div class="field"><label for="sw-meal">Måltid</label><select id="sw-meal"></select></div>
+              <div class="field" id="sw-move-field" hidden><label for="sw-move">Flytta den planerade rätten till en annan
+                  dag?</label><select id="sw-move"></select></div>
+              <div class="chips" id="sw-recent"></div>
+              <div class="field">
+                <span class="label">Måltidsersättningar <small>värden per måltid enligt tillverkaren; kontrollera din
+                    förpackning</small></span>
+                <div class="chips" id="sw-products"></div>
+              </div>
+              <div class="field"><label for="sw-name">Vad åt du?</label><input type="text" id="sw-name" maxlength="60"
+                  placeholder="t.ex. Huel shake"></div>
+              <div class="row2">
+                <div class="field"><label for="sw-k">Kalorier (kcal)</label><input type="text" inputmode="decimal"
+                    data-decimal min="0" max="5000" id="sw-k" placeholder="står på förpackningen"></div>
+                <div class="field"><label for="sw-p">Protein (g)</label><input type="text" inputmode="decimal" data-decimal
+                    min="0" max="500" id="sw-p"></div>
+              </div>
+              <div class="actions"><button type="submit" class="btn primary">Spara</button></div>
+              <p class="hint" id="sw-msg"></p>
+            </form>
+          </details>
         </section>
 
         <section id="dagens-traning">
@@ -393,6 +422,25 @@
               <button type="button" class="btn small weeknav-today" id="wk-today" hidden>Till denna vecka</button>
             </div>
             <div class="week" id="week"></div>
+            <details class="card form swap-box" id="mv-box">
+              <summary>Byt plats på måltider mellan dagar</summary>
+              <form id="mv-form" autocomplete="off">
+                <p class="hint">T.ex. eftermiddagsmåltiden på tisdag och fredag. Gäller veckan som visas. Portionerna och
+                  inköpslistan blir desamma, eftersom det är samma rätter.</p>
+                <div class="row2">
+                  <div class="field"><label for="mv-meal">Måltid</label><select id="mv-meal">
+                      <option value="1">Eftermiddagsmåltid</option>
+                      <option value="0">Frukost</option>
+                      <option value="2">Efterrätt</option>
+                    </select></div>
+                  <div class="field"><label for="mv-a">Dag</label><select id="mv-a" data-days></select></div>
+                  <div class="field"><label for="mv-b">Byt med</label><select id="mv-b" data-days></select></div>
+                </div>
+                <div class="actions"><button type="submit" class="btn primary">Byt plats</button><button type="button"
+                    class="btn" id="mv-reset" hidden>Återställ veckans ordning</button></div>
+                <p class="hint" id="mv-msg"></p>
+              </form>
+            </details>
           </section>
 
           <section id="fusk">
@@ -526,6 +574,20 @@
             <p class="highlight" id="prog-week"></p>
             <p id="prog-sub"></p>
           </div>
+          <div class="card timer" id="ws-run" hidden aria-live="polite">
+            <span class="timer-phase" id="ws-name">Pass</span>
+            <output class="timer-clock num" id="ws-clock">00:00</output>
+            <p class="timer-round" id="ws-started"></p>
+            <div class="timer-actions">
+              <button type="button" class="btn primary" id="ws-finish">Avsluta och logga</button>
+              <button type="button" class="btn danger" id="ws-cancel">Avbryt utan att logga</button>
+            </div>
+          </div>
+          <div class="card timer" id="ws-result" hidden>
+            <span class="timer-phase">Bra jobbat</span>
+            <p class="timer-summary" id="ws-msg"></p>
+            <div class="actions"><button type="button" class="btn primary" data-edit-log>Ändra i loggen</button></div>
+          </div>
           <div class="sessions" id="sessions"></div>
           <div class="rules">
             <div class="rule">
@@ -570,8 +632,9 @@
               <div class="rule">
                 <h3>Kreatin</h3>
                 <p>3–5 g varje dag, även vilodagar (ExRx: 0,1 g/kg räcker, laddning behövs inte). Helst efter passet
-                  tillsammans med kolhydrater, alltså med eftermiddagsmåltiden. Inte samtidigt som PWO: en äldre studie
-                  visade att koffein kan motverka effekten.</p>
+                  tillsammans med kolhydrater, alltså med eftermiddagsmåltiden. Går bra att ta samtidigt
+                  som PWO: en äldre studie antydde att koffein kunde motverka kreatinet, men senare forskning har inte
+                  bekräftat det. Får du ont i magen av kombinationen, ta kreatinet efter passet i stället.</p>
               </div>
               <div class="rule">
                 <h3>Vågen</h3>
@@ -749,7 +812,7 @@
               sparas i webbläsaren på den här enheten.</p>
           </div>
           <form class="card form" id="f" autocomplete="off">
-            <div class="field" data-step="3">
+            <div class="field" data-step="4">
               <span class="label">Kön</span>
               <div class="seg" role="radiogroup" aria-label="Kön">
                 <label><input type="radio" name="sex" value="m" checked><span>Man</span></label>
@@ -757,13 +820,13 @@
               </div>
               <small>Rätterna och övningarna är desamma för båda; kalorier, protein och portioner räknas om.</small>
             </div>
-            <div class="row2" data-step="3">
+            <div class="row2" data-step="4">
               <div class="field"><label for="age">Ålder</label><input type="text" inputmode="numeric" data-decimal
                   id="age" min="18" max="90" value="40"></div>
               <div class="field"><label for="weight">Vikt (kg)</label><input type="text" inputmode="decimal"
                   data-decimal id="weight" min="40" max="250" value="95"></div>
             </div>
-            <div class="row2" data-step="3">
+            <div class="row2" data-step="4">
               <div class="field"><label for="height">Längd (cm)</label><input type="text" inputmode="decimal"
                   data-decimal id="height" min="130" max="220" value="180"></div>
               <div class="field">
@@ -779,11 +842,11 @@
                 ett DEXA-test; då används Harris-Benedict, som bara räknar på kön, ålder, vikt och längd. En gissning
                 gör beräkningen sämre, inte bättre.</p>
             </div>
-            <div class="field" data-step="4"><label for="goal">Målvikt (kg)</label><input type="text"
+            <div class="field" data-step="5"><label for="goal">Målvikt (kg)</label><input type="text"
                 inputmode="decimal" data-decimal id="goal" min="35" max="250" value="85">
               <div class="goal-info" id="goal-info" aria-live="polite" hidden></div>
             </div>
-            <div class="field" data-step="4">
+            <div class="field" data-step="5">
               <label for="act">Vardagsaktivitet <a class="help" href="guide.html#aktivitet" target="_blank"
                   rel="noopener">Vad betyder valen?</a></label>
               <select id="act">
@@ -794,7 +857,7 @@
               </select>
               <small>Räkna inte med träningen här. ExRx påpekar att de flesta överskattar sin aktivitetsnivå.</small>
             </div>
-            <div class="field" data-step="4">
+            <div class="field" data-step="5">
               <span class="label">Takt</span>
               <div class="seg" role="radiogroup" aria-label="Takt">
                 <label><input type="radio" name="rate" value="0.5"><span>0,5 %/v</span></label>
@@ -802,7 +865,7 @@
                 <label><input type="radio" name="rate" value="1" checked><span>1 %/v max</span></label>
               </div>
             </div>
-            <div class="field" data-step="5">
+            <div class="field" data-step="6">
               <span class="label">Utrustning</span>
               <div class="seg" role="radiogroup" aria-label="Utrustning">
                 <label><input type="radio" name="eq" value="gym" checked><span>Gym</span></label>
@@ -810,7 +873,7 @@
                 <label><input type="radio" name="eq" value="bw"><span>Kroppsvikt</span></label>
               </div>
             </div>
-            <div class="field" data-step="5">
+            <div class="field" data-step="6">
               <span class="label">Gymdagar</span>
               <div class="daypick" id="tdays" role="group" aria-label="Gymdagar">
                 <label><input type="checkbox" data-day="0"><span>Mån</span></label><label><input type="checkbox"
@@ -825,7 +888,7 @@
               <small id="tdays-msg">Välj 3 eller 4 dagar. 3 dagar ger helkropp, överkropp och ben; 4 dagar ger över- och
                 underkropp två gånger var.</small>
             </div>
-            <div class="field" data-step="5">
+            <div class="field" data-step="6">
               <label for="exswap">Byt övningar</label>
               <select id="exswap">
                 <option value="1" selected>Varje vecka</option>
@@ -835,7 +898,7 @@
               <small>Passen är alltid desamma (helkropp, överkropp, ben), men övningarna i dem växlar. Byter du mer
                 sällan är det lättare att öka vikten steg för steg i samma övning.</small>
             </div>
-            <div class="field" data-step="6">
+            <div class="field" data-step="7">
               <label for="bmeal">Frukost</label>
               <select id="bmeal">
                 <option value="F0" selected>Samma varje dag: ägg och kvarg med bär</option>
@@ -847,7 +910,7 @@
               </select>
               <small>Samma frukost varje dag gör det lätt att handla och följa planen.</small>
             </div>
-            <div class="field" data-step="6">
+            <div class="field" data-step="7">
               <label for="bfast">Frukost klockan</label>
               <select id="bfast">
                 <option value="6">06:00</option>
@@ -867,6 +930,13 @@
             <p class="hint" id="saved-hint">Uppgifterna sparas bara i den här webbläsaren när du ändrar något. De
               skickas ingenstans.</p>
           </form>
+          <div class="card form" id="tt-box">
+            <span class="label">Träningstider</span>
+            <p class="hint">Tränar du olika tider olika dagar, t.ex. 16:00–18:00 på tisdagar men 11:00–13:00 på lördagar,
+              fyller du i det här. Tomt = planens tid, räknat från frukosten. Idag, veckoschemat och tillskottstipsen
+              följer tiderna.</p>
+            <div class="tt-list" id="tt-list"></div>
+          </div>
         </section>
 
         <section id="mal">
@@ -899,6 +969,13 @@
               <h3>Under fastan</h3>
               <p>Vatten, kolsyrat vatten, svart kaffe och te utan mjölk och socker. Allt annat, även frukt, bryter
                 fastan.</p>
+            </div>
+            <div class="rule">
+              <h3>Medicin</h3>
+              <p>Medicin utan kalorier bryter inte fastan. Alvedon (paracetamol) går bra med vatten när som helst;
+                Ipren och liknande (NSAID) tar du helst med en måltid, eftersom de kan irritera en tom mage. Ändra aldrig
+                tid eller dos på medicin du tar regelbundet för fastans skull. <a href="guide.html#medicin">Mer om medicin,
+                  fasta och träning</a>.</p>
             </div>
             <div class="rule">
               <h3>Frukt</h3>
@@ -1336,7 +1413,19 @@
         <span class="eyebrow" id="wz-progress"></span>
         <h2 id="wz-title"></h2>
         <p class="wizard-intro" id="wz-intro"></p>
-        <div class="card wizard-terms" data-step="1">
+        <div class="card wizard-welcome" data-step="1">
+          <p>Fettförbränningsveckan är en personlig veckoplan för viktnedgång: kalorimål, veckomeny och inköpslista,
+            träningsprogram, fasta 16:8 och en logg att följa upp med. Allt sparas bara på din enhet.</p>
+          <h3>Installera appen på mobilen eller datorn</h3>
+          <p id="wz-install-text">Appen går att installera, så att den öppnas som en egen app från hemskärmen, skrivbordet
+            eller aktivitetsfältet och fungerar utan internet.</p>
+          <p class="hint" id="wz-install-how"></p>
+          <div class="actions"><button type="button" class="btn primary" id="wz-install">Installera appen</button></div>
+          <p class="hint" id="wz-install-tip">Gör det gärna nu, innan du fyller i något: på iPhone och iPad har appen på
+            hemskärmen en egen lagring, skild från webbläsaren, så det du fyller i här följer inte med dit. Du kan också
+            installera senare under Inställningar → Installera appen.</p>
+        </div>
+        <div class="card wizard-terms" data-step="2">
           <p class="hint">Läs igenom villkoren. Godkännandet finns längst ner i rutan.</p>
           <div class="terms-scroll" tabindex="0" aria-label="Villkor">
             <div class="terms" id="wz-terms"></div>
@@ -1345,7 +1434,7 @@
                 rådgivning.</span></label>
           </div>
         </div>
-        <div class="card wizard-import" data-step="2">
+        <div class="card wizard-import" data-step="3">
           <h3>Importera dina uppgifter</h3>
           <p>Har du använt appen på en annan enhet eller i en annan webbläsare? Importera exporten därifrån, så hoppar du
             över resten av guiden.</p>
@@ -1361,7 +1450,7 @@
             <button type="button" class="btn primary small" id="wz-paste-go">Importera texten</button>
           </div>
         </div>
-        <div class="card wizard-import" data-step="2">
+        <div class="card wizard-import" data-step="3">
           <h3>Använd en plankod</h3>
           <p>Har du fått en plankod av någon? Då får du samma rätter och samma träningsprogram, med portioner efter dina
             egna uppgifter, som du fyller i i nästa steg.</p>
@@ -1373,13 +1462,13 @@
           <p class="status" id="wz-code-msg" role="status"></p>
         </div>
         <div id="wz-body"></div>
-        <div class="field" data-step="6">
+        <div class="field" data-step="7">
           <span class="label">Allergier <small>valfritt</small></span>
           <div class="chips" id="wz-allergens"></div>
           <small>Kryssa i det du inte tål, så byts eller stryks det i recepten. Enskilda ingredienser väljer du bort
             under Inställningar.</small>
         </div>
-        <div class="card wizard-yours" data-step="7">
+        <div class="card wizard-yours" data-step="8">
           <ul class="yours-list">
             <li><b>Lägg in det du äter.</b> Egna recept och egna livsmedel lägger du till under Inställningar, där du också väljer bort det du inte äter. Då passar veckomenyn och inköpslistan dig.</li>
             <li><b>Logga så mycket du kan.</b> Vikt och midja, mående, konditionspass med distans, tid och puls, intensitetsminuter och när du äter. Ju mer du loggar, desto tydligare ser du dina framsteg.</li>

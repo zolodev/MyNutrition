@@ -9,7 +9,7 @@ import { DAYS, hhmm } from "./util.js";
 const APP = "fettforbranningsveckan";
 const VERSION = 2;
 // Gäller bara den här enheten och flyttas inte med
-const DEVICE_ONLY = new Set(["ffv-install-declined", "ffv-swipe-hint", "ffv-terms"]);
+const DEVICE_ONLY = new Set(["ffv-install-declined", "ffv-swipe-hint", "ffv-terms", "ffv-workout"]); // ffv-workout: pågående pass
 const isDataKey = (k) => (k === "ffv" || k.startsWith("ffv-")) && !DEVICE_ONLY.has(k);
 
 const storedKeys = () => keys().filter(isDataKey);

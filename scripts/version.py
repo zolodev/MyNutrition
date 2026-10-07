@@ -6,8 +6,9 @@
     npm run bump -- major     0.1.0 -> 1.0.0   första release, därefter ändringar som inte är bakåtkompatibla
     npm run bump -- 0.3.0     sätt en bestämd version
 
-Versionen finns på tre ställen som alltid ska vara lika (testerna kontrollerar det):
-package.json, public/js/version.js och public/sw.js (cachens namn, så att installerade appar hämtar de nya filerna).
+Versionen finns på flera ställen som alltid ska vara lika (testerna kontrollerar det): package.json,
+public/js/version.js, public/sw.js (cachens namn, så att installerade appar hämtar de nya filerna) och
+public/index.html (meta app-version och js/main.js?v=, så att startfilen alltid är den nya).
 Rubriken "Ej släppt" i CHANGELOG.md blir den nya versionen med dagens datum.
 """
 
@@ -52,6 +53,8 @@ def main() -> None:
     replace(package, r'"version": "[^"]+"', f'"version": "{new}"')
     replace(ROOT / "public/js/version.js", r'APP_VERSION = "[^"]+"', f'APP_VERSION = "{new}"')
     replace(ROOT / "public/sw.js", r'const VERSION = "ffv-[^"]+"', f'const VERSION = "ffv-{new}"')
+    replace(ROOT / "public/index.html", r'<meta name="app-version" content="[^"]+">', f'<meta name="app-version" content="{new}">')
+    replace(ROOT / "public/index.html", r'src="js/main\.js\?v=[^"]+"', f'src="js/main.js?v={new}"')
 
     changelog = ROOT / "CHANGELOG.md"
     today = datetime.date.today().isoformat()

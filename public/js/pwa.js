@@ -19,11 +19,13 @@ const isFirefox = /firefox|fxios/i.test(ua);
 const isAndroid = /android/i.test(ua);
 const isWindows = /windows/i.test(ua);
 const isMacSafari = /macintosh/i.test(ua) && /safari/i.test(ua) && !/chrome|chromium|edg|firefox/i.test(ua) && !isIos;
-const isStandalone = () => window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone === true;
+export const isStandalone = () => window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone === true;
 let installPrompt = null; // webbläsarens egen installationsfråga, när den finns
+/** Kan webbläsaren själv fråga om installation (Chrome, Edge m.fl.)? */
+export const canPromptInstall = () => !!installPrompt;
 
 /** Hur man installerar i den här webbläsaren när den inte kan fråga själv. null om webbläsaren inte kan installera webbappar. */
-function instructions() {
+export function instructions() {
   if (isIos) return "Tryck på dela-knappen (fyrkanten med en pil) och välj Lägg till på hemskärmen. Appen på hemskärmen har egen lagring: fyll i profilen där, eller flytta dina uppgifter med Kopiera allt under Inställningar → Säkerhetskopia och delning och klistra in texten i appens första steg.";
   if (isFirefox && isAndroid) return "Öppna menyn ⋮ i Firefox och välj Installera eller Lägg till på startskärmen.";
   if (isFirefox && isWindows) return "Klicka på knappen Add tab to taskbar (Lägg till flik i aktivitetsfältet) i adressfältet, eller högerklicka på fliken och välj den där. Då öppnas appen som en egen app från aktivitetsfältet.";
@@ -45,7 +47,7 @@ function render() {
 }
 
 /** Installera: webbläsarens egen fråga om den finns, annars en förklaring för den här webbläsaren. */
-async function installApp() {
+export async function installApp() {
   if (installPrompt) {
     const prompt = installPrompt;
     installPrompt = null;

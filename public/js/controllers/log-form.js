@@ -112,7 +112,7 @@ $("logf").addEventListener("submit", (ev) => {
   const perf = radioValue("l-perf");
   const existing = entryFor(date);
   const entry = cleanEntry({
-    firstMeal: existing?.firstMeal, lastMeal: existing?.lastMeal,
+    firstMeal: existing?.firstMeal, lastMeal: existing?.lastMeal, swaps: existing?.swaps,
     date, weight: num($("l-weight").value), waist: num($("l-waist").value), mood: radioValue("l-mood") ? +radioValue("l-mood") : null,
     perf: perf && perf !== "none" ? +perf : null, trained: perf ? perf !== "none" : false, cardio: cardio.list, test: existing?.test, imMod: num($("l-im-mod").value), imVig: num($("l-im-vig").value), note: $("l-note").value.trim(),
   });
@@ -133,6 +133,18 @@ $("l-table").addEventListener("click", async (ev) => {
     update();
     logMessage("Posten är borttagen.");
   }
+});
+
+/** Öppna loggen med dagens (eller en annan dags) post ifylld, t.ex. för att ändra ett pass som loggats automatiskt. */
+export function openLogFor(date) {
+  fillLogForm(date);
+  location.hash = "logf";
+}
+// Knappar och länkar med data-edit-log (t.ex. efter ett avslutat pass) öppnar dagens post i loggen
+document.addEventListener("click", (ev) => {
+  if (!ev.target.closest?.("[data-edit-log]")) return;
+  ev.preventDefault();
+  openLogFor(todayStr());
 });
 
 /** Koppla loggen till appen. Anropas när loggen är inläst (loadLog). */

@@ -41,7 +41,7 @@ if (scenario === "skriv-över" || scenario === "radera") {
 await import("../public/js/main.js");
 
 // Guidens villkor kommer först; importen finns i steg 2. Godkännandet gäller enheten och ingår inte i exporten.
-const acceptTerms = () => { $("wz-accept").checked = true; fire($("wz-accept"), "change"); fire($("wz-next"), "click"); };
+const acceptTerms = () => { if ($("wz-accept").closest("[data-step]").hidden) fire($("wz-next"), "click"); /* förbi välkomststeget */ $("wz-accept").checked = true; fire($("wz-accept"), "change"); fire($("wz-next"), "click"); };
 const withoutDevice = ({ "ffv-terms": _t, "ffv-swipe-hint": _h, ...rest }) => rest;
 
 if (scenario === "guide") {

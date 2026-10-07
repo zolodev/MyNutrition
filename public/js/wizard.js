@@ -1,13 +1,16 @@
-// Guide första gången (och efter "Rensa mina uppgifter"): först villkoren, sedan profilformuläret ett steg i taget
-// i en helskärmsvy. Fälten markeras med data-step i index.html. Guiden sparar inget själv; när användaren är klar
+// Guide första gången (och efter "Rensa mina uppgifter"): först välkommen och möjligheten att installera appen,
+// sedan villkoren och profilformuläret ett steg i taget i en helskärmsvy. Fälten markeras med data-step i index.html
+// (stegets plats i STEPS, räknat från 1). Guiden sparar inget själv; när användaren är klar
 // flyttas formuläret tillbaka och `onDone` får de valda allergierna, så att app.js sparar allt på en gång.
 // Med `termsOnly` visas bara villkoren, för den som redan har en profil men inte har godkänt dem.
 
 import { $, $$, esc, checkDecimal } from "./util.js";
 import { ALLERGENS } from "./data/foods.js";
 import { parseTrainingDays } from "./training.js";
+import { isStandalone, instructions, installApp, canPromptInstall } from "./pwa.js";
 
 const STEPS = [
+  { key: "welcome", title: "Välkommen", intro: "Ett verktyg för fettförbränning: mat, träning och fasta i en vecka i taget." },
   { key: "terms", title: "Innan du börjar", intro: "Läs igenom villkoren. De gäller hela appen." },
   { key: "start", title: "Har du redan använt appen?", intro: "Importera dina uppgifter eller använd en plankod du har fått. Har du inget av det, hoppa över steget." },
   { key: "you", title: "Börja med dig", intro: "Kalorier, protein och portioner räknas efter dina uppgifter. De sparas bara på den här enheten." },
@@ -18,12 +21,25 @@ const STEPS = [
 ];
 const REQUIRED = ["age", "weight", "height", "goal"];
 
+/** Välkomststeget: hur appen installeras här, eller att den redan är installerad. */
+function showInstall() {
+  const installed = isStandalone();
+  const how = instructions();
+  $("wz-install-text").hidden = installed;
+  $("wz-install-tip").hidden = installed || (!how && !canPromptInstall());
+  $("wz-install").hidden = installed || (!how && !canPromptInstall());
+  $("wz-install-how").textContent = installed ? "Du använder redan appen som installerad app. Bra!"
+    : canPromptInstall() ? "Tryck på Installera appen, så frågar webbläsaren om du vill installera den."
+    : how || "Den här webbläsaren kan inte installera webbappar. Öppna sidan i Chrome eller Edge för att installera den, eller lägg till ett bokmärke.";
+}
+
 /**
  * Öppna guiden. `allergens` är de allergier som redan är valda (en Set). `onStep(key)` anropas när ett steg visas.
  * `onDone({ allergens })` anropas när användaren är klar.
  */
 export function openWizard({ allergens = new Set(), termsOnly = false, onStep = () => {} }, onDone) {
-  const steps = termsOnly ? STEPS.slice(0, 1) : STEPS;
+  const steps = termsOnly ? STEPS.filter((x) => x.key === "terms") : STEPS;
+  const stepNo = () => STEPS.indexOf(steps[step]) + 1; // data-step för steget som visas
   const form = $("f");
   const home = { parent: form.parentNode, next: form.nextSibling };
   const sex = $$('input[name="sex"]');
@@ -46,8 +62,8 @@ export function openWizard({ allergens = new Set(), termsOnly = false, onStep = 
   const syncNext = () => ($("wz-next").disabled = steps[step].key === "terms" && !$("wz-accept").checked);
   $("wz-accept").onchange = syncNext;
   const show = () => {
-    for (const el of $$("#wizard [data-step]")) el.hidden = Number(el.dataset.step) !== step + 1;
-    $("wz-body").hidden = !form.querySelector(`[data-step="${step + 1}"]`); // profilformuläret visas bara på steg med fält i det
+    for (const el of $$("#wizard [data-step]")) el.hidden = Number(el.dataset.step) !== stepNo();
+    $("wz-body").hidden = !form.querySelector(`[data-step="${stepNo()}"]`); // profilformuläret visas bara på steg med fält i det
     $("wz-progress").textContent = termsOnly ? "Villkor" : `Steg ${step + 1} av ${steps.length}`;
     $("wz-title").textContent = steps[step].title;
     $("wz-intro").textContent = steps[step].intro;
@@ -57,11 +73,12 @@ export function openWizard({ allergens = new Set(), termsOnly = false, onStep = 
       : steps[step].key === "start" && !$("wizard").dataset.planCode ? "Hoppa över" : "Nästa";
     syncNext();
     $("wizard").scrollTop = 0;
+    if (steps[step].key === "welcome") showInstall();
     onStep(steps[step].key);
   };
 
   const stepIsValid = () => {
-    const fields = $$(`#wizard [data-step="${step + 1}"] :is(input, select)`);
+    const fields = $$(`#wizard [data-step="${stepNo()}"] :is(input, select)`);
     for (const el of fields) if (el.matches("[data-decimal]")) checkDecimal(el);
     const invalid = fields.find((el) => !el.checkValidity());
     if (invalid === $("wz-accept")) {
@@ -89,9 +106,14 @@ export function openWizard({ allergens = new Set(), termsOnly = false, onStep = 
       for (const el of [...REQUIRED.map($), sex[0]]) el.required = false;
       home.parent.insertBefore(form, home.next);
     }
-    $("wz-back").onclick = $("wz-next").onclick = $("wz-accept").onchange = null;
+    $("wz-back").onclick = $("wz-next").onclick = $("wz-accept").onchange = $("wz-install").onclick = null;
     $("wz-next").disabled = false;
     onDone({ allergens: $$("[data-wz-allergen]:checked").map((el) => el.dataset.wzAllergen) });
+  };
+
+  $("wz-install").onclick = async () => {
+    await installApp();
+    showInstall();
   };
 
   $("wz-back").onclick = () => {
