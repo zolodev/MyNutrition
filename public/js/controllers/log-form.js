@@ -1,7 +1,7 @@
 // Logg: formuläret för en dag (vikt, midja, kondition, intensitetsminuter, mående, anteckning) och tabellen
 // med det som är loggat. Själva datan och reglerna för den finns i log.js; tabellen och raderna ritas i views/log-view.js.
 
-import { $, $$, num, radioValue, todayStr, dayToDate, dateToDay, svDate, confirmDialog, checkDecimal } from "../util.js";
+import { $, $$, num, radioValue, todayStr, dayToDate, dateToDay, svDate, confirmDialog, checkDecimal, scrollToElement } from "../util.js";
 import { entries, entryFor, upsertEntry, removeEntry, cleanEntry, isIsoDate, parseWorkoutTime, formatWorkoutInput, formatHms, cleanCardio, CARDIO, intensityMinutes } from "../log.js";
 import { cardioRow } from "../views/log-view.js";
 
@@ -112,7 +112,7 @@ $("logf").addEventListener("submit", (ev) => {
   const perf = radioValue("l-perf");
   const existing = entryFor(date);
   const entry = cleanEntry({
-    firstMeal: existing?.firstMeal, lastMeal: existing?.lastMeal, swaps: existing?.swaps,
+    firstMeal: existing?.firstMeal, lastMeal: existing?.lastMeal, swaps: existing?.swaps, eaten: existing?.eaten,
     date, weight: num($("l-weight").value), waist: num($("l-waist").value), mood: radioValue("l-mood") ? +radioValue("l-mood") : null,
     perf: perf && perf !== "none" ? +perf : null, trained: perf ? perf !== "none" : false, cardio: cardio.list, test: existing?.test, imMod: num($("l-im-mod").value), imVig: num($("l-im-vig").value), note: $("l-note").value.trim(),
   });
@@ -126,7 +126,7 @@ $("l-table").addEventListener("click", async (ev) => {
   const del = ev.target.closest("[data-del]")?.dataset.del;
   if (edit) {
     fillLogForm(edit);
-    $("logf").scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollToElement($("logf"), { smooth: true });
   }
   if (del && (await confirmDialog(`Är du säker på att du vill ta bort loggen för ${del}?`))) {
     removeEntry(del);

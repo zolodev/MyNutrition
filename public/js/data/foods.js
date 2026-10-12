@@ -208,3 +208,30 @@ export const SUBSTITUTES = {
   blabar: ["lingon", "jordgubbar"], blabarF: ["blabar"], jordgubbar: ["blabarF", "blabar"], lingon: ["blabar"], apple: ["blabar"],
   ananas: ["mango"], mango: ["ananas"], papaya: ["ananas"], kiwi: ["mango"],
 };
+
+/**
+ * Billiga råvaror (Inställningar → Måltider): dyra råvaror byts mot billigare med samma roll i rätten, och rätter
+ * som bygger på en dyr råvara utan bra ersättare (räkor, renskav, älgskav, älgkött) tas inte med i planen.
+ */
+export const CHEAP = {
+  swap: { algfars: "kycklingfars", torsk: "sej", lax: "sej", flaskfile: "kyckling", kalkon: "kyckling" },
+  skip: ["rakor", "renskav", "algskav", "algkott"],
+};
+
+/**
+ * Hur livsmedlen skrivs i receptens namn och text: [obestämd form, bestämd form]. När en råvara byts ut (allergi,
+ * bortval eller billiga råvaror) skrivs den om i namnet och texten, t.ex. "med bulgur" → "med ris" och
+ * "Koka bulguren" → "Koka riset" (se renameInText i menu.js).
+ */
+export const TEXT_FORMS = {
+  sej: ["sej", "sejen"], torsk: ["torsk", "torsken"], lax: ["lax", "laxen"], kalkon: ["kalkon", "kalkonen"],
+  kyckling: ["kyckling", "kycklingen"], flaskfile: ["fläskfilé", "fläskfilén"], kycklingfars: ["kycklingfärs", "kycklingfärsen"],
+  algfars: ["älgfärs", "älgfärsen"], renskav: ["renskav", "renskavet"], algskav: ["älgskav", "älgskavet"], algkott: ["älgkött", "älgköttet"],
+  kvarg: ["kvarg", "kvargen"], keso: ["keso", "kesot"], sojayoghurt: ["sojayoghurt", "sojayoghurten"],
+  mjolk: ["mjölk", "mjölken"], havredryck: ["havredryck", "havredrycken"], filmjolk: ["filmjölk", "filmjölken"],
+  havre: ["havregryn", "havregrynen"], havreGF: ["glutenfria havregryn", "havregrynen"], knacke: ["knäckebröd", "knäckebrödet"],
+  knackeGF: ["glutenfritt knäckebröd", "knäckebrödet"], pasta: ["pasta", "pastan"], ris: ["ris", "riset"], bulgur: ["bulgur", "bulguren"],
+  tortilla: ["tortilla", "tortillan"], tortillaMajs: ["majstortilla", "majstortillan"], tunnbrod: ["tunnbröd", "tunnbrödet"],
+  brunabonor: ["bruna bönor", "bönorna"], gulaartor: ["gula ärtor", "ärtorna"], potatis: ["potatis", "potatisen"],
+  farskpotatis: ["färskpotatis", "färskpotatisen"], rotfrukter: ["rotfrukter", "rotfrukterna"],
+};

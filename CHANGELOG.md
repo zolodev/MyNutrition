@@ -6,6 +6,120 @@ MINOR höjs för nya funktioner, PATCH för rättningar. Höj versionen med `npm
 
 ## [Ej släppt]
 
+## [0.14.3] - 2026-10-11
+
+### Rättat
+- Ett eget recept såg annorlunda ut i Idag och Recept än under Inställningar → Mina recept: mängderna skalades om
+  näringsämne för näringsämne (t.ex. 20 g ost blev 60 g och 2 ägg blev 3), och rätter med ägg fick 100 g frukt.
+  Nu används egna recept precis som de är skrivna, och veckans övriga måltider anpassas efter målen runt dem.
+  Ingen sparad data ändras.
+
+## [0.14.2] - 2026-10-10
+
+### Rättat
+- En bortvald råvara byttes ut i ingredienserna men stod kvar i rättens namn och text, t.ex. "Kycklingfärsbiffar med
+  bulgur" och "Koka bulguren" när bulgur var bortvald och ris användes. Nu skrivs utbytta råvaror om i namn och text
+  ("med ris", "Koka riset"), även vid allergier och billiga råvaror (t.ex. "Torsk med …" blir "Sej med …").
+
+## [0.14.1] - 2026-10-10
+
+### Ändrat
+- "Billiga råvaror" ligger nu under Inställningar → Inköpslista i stället för under Måltider. Valet är detsamma och
+  behålls.
+
+## [0.14.0] - 2026-10-10
+
+### Tillagt
+- Välj fuskdag under Inställningar → Måltider, t.ex. fredag i stället för lördag. Godiset (t.ex. "Fredagsgodis")
+  och den fria måltiden flyttas dit, och texterna, tabellen för fri måltid, veckoschemat och recepten följer med.
+  Veckans övriga rätter ändras inte.
+
+## [0.13.0] - 2026-10-09
+
+### Tillagt
+- Bocka av måltider du har ätit, på Idag och i veckoschemat under Mat. Idag visar hur mycket som är ätet av dagens
+  kalorier och protein, avbockade måltider stryks över, och loggen visar vad som är ätet. Sparas i dagens loggpost
+  (`eaten`).
+
+### Rättat
+- Att nollställa dagens måltidstider under Fastan i dag kunde ta bort hela dagens loggpost när den bara innehöll en
+  ersatt måltid (t.ex. Huel) eller ett loggat pass. Nu tas en post bara bort när den verkligen är tom.
+
+## [0.12.0] - 2026-10-09
+
+### Tillagt
+- Dra och släpp måltider i veckoschemat (Mat → Veckan): dra en måltid i handtaget ⠿ och släpp den på en annan dag,
+  så byter de två dagarnas frukost, eftermiddagsmåltid eller efterrätt plats. Fungerar med finger och mus; recepten,
+  Idag och inköpslistan följer med. Formuläret "Byt plats på måltider" och Återställ finns kvar.
+
+## [0.11.0] - 2026-10-09
+
+### Tillagt
+- Eget kalorimål i Profil (valfritt). Portionerna skalas efter det. Under 1 500 kcal (män) eller 1 200 kcal
+  (kvinnor) används golvet med en förklaring; ett mål över underhållsbehovet ger en varning.
+- Inställningar → Måltider: efterrätt bara valda veckodagar eller helt avstängd, lördagsgodis av eller på, och
+  billiga råvaror (kycklingfärs i stället för älgfärs, sej i stället för torsk och lax, kyckling i stället för
+  fläskfilé och kalkon; rätter med räkor, renskav, älgskav eller älgkött tas inte med). Övriga rätter i veckan ändras
+  inte av valen.
+
+### Ändrat
+- Proteinmålet är sänkt till 2,2 g/kg fettfri massa (tidigare 2,8) eller 1,8 g/kg av vikten vid BMI 27 (tidigare
+  2,2), och högst 35 % av kalorierna. Det tidigare målet gav orimligt stora portioner, t.ex. nästan 4 kg kvarg i
+  veckan. Når kolhydraterna och fettet sitt tak hamnar veckan hellre något under kalorimålet än får större portioner.
+
+### Rättat
+- I veckoschemat under Mat fick lördagsgodiset etiketten "Efterrätt" när en dag saknade efterrätt.
+
+## [0.10.0] - 2026-10-09
+
+### Tillagt
+- Arbetstid i Veckoschema (t.ex. 08:00–17:00 måndag–fredag): förslagen läggs efter arbetsdagen, och aktiviteter som
+  krockar med arbetstiden får en varning.
+- Kryddor och smaksättning med mängd per portion i 33 recept (t.ex. 2 tsk curry, 4 krossade enbär och 1 lagerblad).
+  Där det tidigare stod "lite buljong" står nu hur mycket vatten och fond. Allt kommer med i inköpslistan under
+  Kryddor och smaksättning.
+
+### Ändrat
+- Inköpslistan räknar bort måltider som ersatts med något annat (t.ex. Huel) och inte flyttats.
+- Mjölk, filmjölk, havredryck och flytande äggvita visas i liter i inköpslistan.
+
+## [0.9.0] - 2026-10-08
+
+### Tillagt
+- Inställningar → Veckoschema: egna tider dag för dag för gympass, intervaller, promenad (t.ex. till och från jobbet)
+  och egna aktiviteter. Tomma tider visar appens förslag. Under varje dag visas råd med motivering (överlapp, pass
+  efter ätfönstret, intervaller samma dag som styrka eller före benpass, sena pass, promenad efter måltid); inget
+  blockeras. Idag, veckoschemat under Mat och tillskottstipsen följer schemat.
+
+### Ändrat
+- Gymdagar: 1–7 dagar går att välja. Färre än 3 eller fler än 4 ger en varning med motivering men blockeras inte
+  (1–2 dagar ger helkropp, 5 eller fler upprepar över/under-splitten).
+- Profil → Träningstider är ersatt av Veckoschema; sparade tider därifrån används fortfarande som förslag.
+
+### Rättat
+- På iPhone blev appen kvar uppskjuten när tangentbordet stängdes. Sidan flyttas nu tillbaka, och appen scrollar
+  bara sitt innehåll, aldrig själva sidan, när den visar en sektion.
+- En tom lista med gymdagar tolkades som måndag.
+
+## [0.8.2] - 2026-10-07
+
+### Rättat
+- Egna recept, egna livsmedel, egna tillskott och loggposter som inte gick att läsa in sorterades bort utan varning
+  och raderades sedan när något annat sparades. Nu ligger de kvar orörda, skrivs tillbaka vid sparning och följer med
+  i exporten. Mina recept visar vilka recept som inte kunde läsas.
+- Sparade poster utan giltigt id fick ett nytt slumpat id vid varje start (t.ex. tappade frukostvalet kopplingen till
+  ett eget recept). Nu får de ett id som alltid blir detsamma.
+- En logg sparad som en ren lista (äldre format) lästes som tom och kunde skrivas över. Nu läses den in.
+
+## [0.8.1] - 2026-10-07
+
+### Tillagt
+- Påminnelse på Idag om att säkerhetskopiera när det gått två veckor sedan senaste exporten (eller om ingen export
+  finns), med "Påminn mig om en vecka".
+- Skydd mot dataförlust i testerna: appen startas med sparad data från varje version (`tests/fixtures/`), och ingen
+  sparad data får ändras eller försvinna vid start.
+- Regler för datakompatibilitet (`.claude/skills/datakompatibilitet`, `CLAUDE.md`).
+
 ## [0.8.0] - 2026-10-06
 
 ### Tillagt

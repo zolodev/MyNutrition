@@ -7,7 +7,7 @@
 //   undersida via namnet, #backup via en sektion i den. Ny undersida: lägg en <div class="settings-page"
 //   data-page="namn" hidden> i vyn och en rad i menyn; ingen kod behövs här.
 
-import { $, $$, load, save, toast } from "../util.js";
+import { $, $$, load, save, toast, scrollToElement } from "../util.js";
 
 const VIEWS = ["idag", "mat", "traning", "logg", "profil", "installningar", "om", "rapport"];
 let subview = "vecka"; // senast valda underflik under Mat
@@ -40,7 +40,7 @@ function route() {
   if (target?.matches("details")) target.open = true;
   const isViewStart = !target || target.matches("[data-page]") || target === target.parentElement.querySelector("section");
   if (isViewStart) document.querySelector(".views").scrollTop = 0;
-  else target.scrollIntoView({ block: "start" });
+  else scrollToElement(target);
 }
 
 // Svep mellan flikar:
@@ -77,7 +77,7 @@ function enableSwipeNavigation() {
   area.addEventListener("touchstart", (ev) => {
     const t = ev.changedTouches[0];
     const ignore = ev.touches.length > 1 || t.clientX < EDGE_PX || t.clientX > window.innerWidth - EDGE_PX ||
-      ev.target.closest(".scroll-x, .timeline, .chart, input, select, textarea, .seg, .daypick, .chips");
+      ev.target.closest(".scroll-x, .timeline, .chart, input, select, textarea, .seg, .daypick, .chips, .drag-handle");
     start = ignore ? null : { x: t.clientX, y: t.clientY, time: Date.now() };
   }, { passive: true });
   area.addEventListener("touchend", (ev) => {

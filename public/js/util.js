@@ -49,6 +49,43 @@ export const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 export const hhmm = (h) => `${String(Math.floor(h)).padStart(2, "0")}:${h % 1 ? "30" : "00"}`;
 
 
+/**
+ * Scrolla så att `el` hamnar överst i sin scrollyta (appens innehåll .views eller guiden), utan att scrolla själva
+ * sidan. Ersätter el.scrollIntoView(), som även scrollar sidan; sidan ska aldrig scrollas, annars blir appen kvar
+ * uppskjuten (särskilt på iPhone).
+ */
+export function scrollToElement(el, { smooth = false } = {}) {
+  const box = el?.closest(".views, .wizard");
+  if (!box) return;
+  const top = box.scrollTop + el.getBoundingClientRect().top - box.getBoundingClientRect().top;
+  box.scrollTo ? box.scrollTo({ top, behavior: smooth ? "smooth" : "auto" }) : (box.scrollTop = top);
+}
+
+// ---------- Sparade listor: inget får gå förlorat ----------
+
+/**
+ * Läs en sparad lista (egna recept, livsmedel, tillskott, loggposter) utan att något kan gå förlorat. `clean(post, i)`
+ * kontrollerar varje post. Poster som inte går att läsa hamnar orörda i `rejected` och ska skrivas tillbaka vid
+ * nästa sparning, så att en ny version aldrig råkar radera data som en annan version har sparat
+ * (se skillen datakompatibilitet).
+ */
+export function readList(saved, clean) {
+  const kept = [], rejected = [];
+  (Array.isArray(saved) ? saved : []).forEach((raw, i) => {
+    const ok = clean(raw, i);
+    if (ok) kept.push(ok);
+    else rejected.push(raw);
+  });
+  return { kept, rejected };
+}
+
+/**
+ * Ett id som alltid blir detsamma för samma text, t.ex. stableId("MR_", "0:Omelett"). För sparade poster som saknar
+ * giltigt id, så att de inte får ett nytt slumpat id vid varje start (då tappar t.ex. frukostvalet kopplingen).
+ */
+export const stableId = (prefix, text) =>
+  prefix + [...String(text)].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 7).toString(36);
+
 // ---------- Lagring i webbläsaren ----------
 // IndexedDB med localStorage som reserv; se storage.js.
 

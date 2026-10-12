@@ -2,7 +2,7 @@
 // data. Vad som exporteras och hur det läses tillbaka finns i backup.js. Importen varnar om den skriver över något
 // och laddar sedan om sidan, så att alla delar av appen läser in de nya uppgifterna från början.
 
-import { $, todayStr, confirmDialog, toast } from "../util.js";
+import { $, todayStr, confirmDialog, toast, load, save, dateToDay } from "../util.js";
 import { exportText, readBackup, describe, restore, hasStoredData, eraseAll } from "../backup.js";
 
 let acceptTerms = () => {}; // sätts av initBackupForms()
@@ -51,6 +51,7 @@ $("l-export").addEventListener("click", () => {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
+    exported();
     backupMessage(`Allt är exporterat till ${filename}.`);
   } catch {
     backupMessage("Kunde inte spara filen här. Använd Kopiera allt i stället.");
@@ -61,6 +62,7 @@ $("l-copy").addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(text);
     $("l-copytext").hidden = true;
+    exported();
     backupMessage("Allt är kopierat. Klistra in texten under Inställningar → Säkerhetskopia och delning på den andra enheten.");
   } catch {
     // T.ex. när webbläsaren nekar urklipp: visa texten så att den kan markeras och kopieras för hand
@@ -97,6 +99,37 @@ $("wz-paste-toggle").addEventListener("click", (ev) => {
   if (!$("wz-paste").hidden) $("wz-paste-text").focus();
 });
 $("wz-paste-go").addEventListener("click", () => importBackup($("wz-paste-text").value, wizardMessage));
+
+// ---------- Påminnelse om säkerhetskopia ----------
+// Allt sparas bara på enheten. Rensar webbläsaren webbplatsdata, eller byter man enhet eller går från webbläsaren
+// till den installerade appen (egen lagring på iPhone), är en export det enda som räddar uppgifterna. Idag påminner
+// därför om att exportera när det har gått två veckor sedan senaste exporten (eller om man aldrig har exporterat).
+
+const LAST_EXPORT_KEY = "ffv-lastexport"; // datum för senaste export (bara den här enheten)
+const SNOOZE_KEY = "ffv-backup-snooze"; // påminn inte förrän detta datum
+const REMIND_AFTER_DAYS = 14;
+
+function exported() {
+  save(LAST_EXPORT_KEY, todayStr());
+  renderBackupReminder();
+}
+
+/** Visa påminnelsen på Idag när det finns något att förlora och det var länge sedan senaste exporten. */
+export function renderBackupReminder() {
+  const last = load(LAST_EXPORT_KEY, null);
+  const days = last ? dateToDay(todayStr()) - dateToDay(last) : Infinity;
+  const snoozed = load(SNOOZE_KEY, null) > todayStr();
+  $("bk-remind").hidden = !hasStoredData() || days < REMIND_AFTER_DAYS || snoozed;
+  $("bk-remind-text").textContent = (last ? `Senaste exporten var ${last}. ` : "Du har inte exporterat något ännu. ") +
+    "Allt sparas bara på den här enheten: rensas webbläsarens data, eller byter du enhet eller till den installerade appen, är en export det enda sättet att få tillbaka det.";
+}
+
+$("bk-later").addEventListener("click", () => {
+  const until = new Date();
+  until.setDate(until.getDate() + 7);
+  save(SNOOZE_KEY, until.toISOString().slice(0, 10));
+  renderBackupReminder();
+});
 
 /** Koppla exporten och importen. `acceptTerms` godkänner villkoren när importen görs i guiden. */
 export function initBackupForms(deps) {

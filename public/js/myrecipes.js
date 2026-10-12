@@ -1,21 +1,28 @@
 // Egna recept: användaren bygger ett recept av livsmedel i valfritt mått (gram, st, dl, msk …) och egna ingredienser
 // som kryddor (räknas inte i näringen). Ett eget frukostrecept kan väljas som
-// frukost varje dag. Recepten sparas i webbläsaren och läggs till i RECIPES, så att de skalas, anpassas
+// frukost varje dag. Recepten sparas i webbläsaren och läggs till i RECIPES, så att de anpassas
 // efter allergier och hamnar i inköpslistan precis som de inbyggda.
 
 import { FOOD } from "./data/foods.js";
 import { RECIPES } from "./data/recipes.js";
-import { load, save } from "./util.js";
+import { load, save, readList, stableId } from "./util.js";
 import { UNITS } from "./nutrition.js";
 
 const KEY = "ffv-myrecipes";
 export const RECIPE_TYPES = [["b", "Frukost"], ["m", "Efterrätt eller tillägg"], ["d", "Eftermiddagsmåltid"]];
 export let myRecipes = [];
+let unreadable = []; // sparade recept som inte går att läsa; ligger kvar orörda och skrivs tillbaka vid sparning
 
 export function loadMyRecipes() {
-  myRecipes = load(KEY, []).map(cleanRecipe).filter(Boolean);
+  const { kept, rejected } = readList(load(KEY, []), (r, i) =>
+    cleanRecipe(r && !/^MR_[\w-]+$/.test(r.id) ? { ...r, id: stableId("MR_", `${i}:${r.t}`) } : r));
+  myRecipes = kept;
+  unreadable = rejected;
   register();
 }
+
+/** Namnen på sparade recept som inte går att läsa (de finns kvar i lagringen och i exporten). */
+export const unreadableRecipes = () => unreadable.map((r) => (typeof r?.t === "string" && r.t.trim()) || "Utan namn");
 
 export function addMyRecipe(recipe) {
   myRecipes.push(recipe);
@@ -35,7 +42,7 @@ export function removeMyRecipe(id) {
 
 /** Lägg till recept från en import; befintliga med samma id behålls. */
 function persist() {
-  save(KEY, myRecipes);
+  save(KEY, [...myRecipes, ...unreadable]);
   register();
 }
 

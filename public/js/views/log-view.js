@@ -6,7 +6,8 @@ import { parseClock, fastingHours, formatDuration } from "../fasting.js";
 import { tile } from "./components.js";
 
 /** Anteckningen och dagens ersatta måltider, t.ex. "Eftermiddagsmåltid: Huel shake (400 kcal)". */
-const noteText = (e) => [e.note, ...(e.swaps || []).map((x) => `${MEAL_NAMES[x.meal]}: ${x.n} (${fmt(x.k)} kcal)`)].filter(Boolean).join(" · ");
+const noteText = (e) => [e.note, ...(e.swaps || []).map((x) => `${MEAL_NAMES[x.meal]}: ${x.n} (${fmt(x.k)} kcal)`),
+  e.eaten?.length ? `Ätit: ${e.eaten.map((m) => MEAL_NAMES[m].toLowerCase()).join(", ")}` : ""].filter(Boolean).join(" · ");
 
 export function renderLog(planKgPerWeek, goal, planStartWeight) {
   const stats = logStats(planKgPerWeek, goal);

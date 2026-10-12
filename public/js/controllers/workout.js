@@ -5,7 +5,7 @@
 // Det pågående passet sparas med sin starttid, så att det överlever en omladdning (t.ex. när iPhone stänger
 // appen i bakgrunden) och klockan fortsätter där den var.
 
-import { $, load, save, remove, todayStr, confirmDialog } from "../util.js";
+import { $, load, save, remove, todayStr, confirmDialog, scrollToElement } from "../util.js";
 import { addWorkout } from "../log.js";
 
 const KEY = "ffv-workout"; // pågående pass: { name, date, start }
@@ -38,7 +38,7 @@ function start(name) {
   save(KEY, { name, date: todayStr(), start: Date.now() });
   $("ws-result").hidden = true;
   render();
-  $("ws-run").scrollIntoView?.({ behavior: "smooth", block: "start" });
+  scrollToElement($("ws-run"), { smooth: true });
 }
 
 function finish() {

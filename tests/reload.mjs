@@ -68,10 +68,13 @@ if (weeklyShop.length) {
   check("Avbockningar per vecka flyttas till den gemensamma listan", expectedShop.every((f) => shop.includes(f)) && weeklyShop.every((k) => after(k) == null));
   check("Avbockningar från gamla veckor följer inte med", weeklyShop.filter((k) => Number(k.slice(9)) < weekNow).flatMap((k) => JSON.parse(stored[k])).every((f) => !shop.includes(f) || expectedShop.includes(f)));
 }
-const lost = Object.keys(stored).filter((k) => after(k) == null && !/^ffv-shop-\d+$/.test(k));
+const lost = Object.keys(stored).filter((k) => after(k) == null && !/^ffv-shop-\d+$/.test(k) && k !== "ffv-timer");
 check("Inga sparade nycklar försvinner", lost.length === 0);
-const changed = ["ffv-seed", "ffv-tseed", "ffv-salt", "ffv-excl", "ffv-myfoods", "ffv-myrecipes", "ffv-supps", "ffv-log"].filter((k) => k in stored && after(k) !== stored[k]);
-check("Plan, allergier, egna recept och logg skrivs inte om vid start", changed.length === 0);
+// Ingen sparad data får ändras av en omstart eller uppdatering. Undantag är bara kända flyttar av äldre format,
+// som var och en har ett eget test ovan (avbockningar per vecka) eller är borttagna funktioner utan användardata.
+const MIGRATED = (k) => /^ffv-shop-\d+$/.test(k) || k === "ffv-shop" && weeklyShop.length > 0 || k === "ffv-timer";
+const changed = Object.keys(stored).filter((k) => !MIGRATED(k) && after(k) != null && JSON.stringify(JSON.parse(after(k))) !== JSON.stringify(JSON.parse(stored[k])));
+check("Ingen sparad data ändras vid start (profil, logg, plan, allergier, recept, tillskott, tider …)", changed.length === 0);
 check("Ingen guide när profilen finns och villkoren är godkända", $("wizard").hidden);
 check("Inga JS-fel", errors.length === 0);
 if (lost.length || changed.length || errors.length) console.log({ lost, changed, errors });

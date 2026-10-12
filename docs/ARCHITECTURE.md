@@ -42,20 +42,23 @@ bakgrunden (localStorage som reserv). **Inget skrivs innan villkoren är godkän
 
 | Nyckel | Innehåll | Modul |
 | --- | --- | --- |
-| `ffv` | Profilen ({ fältets id: värde }) | app.js |
+| `ffv` | Profilen ({ fältets id: värde }, bl.a. eget kalorimål `kcal`) | app.js |
 | `ffv-terms` | Godkända villkor (gäller bara enheten) | app.js |
-| `ffv-log` | Loggposter | log.js |
+| `ffv-log` | Loggposter (vikt, pass, anteckning, ersatta måltider `swaps`, avbockade måltider `eaten` …) | log.js |
 | `ffv-excl` | Allergier, bortvalda livsmedel och ord | preferences.js |
 | `ffv-myfoods`, `ffv-myrecipes`, `ffv-mysupps` | Egna livsmedel, recept och tillskott | preferences.js, myrecipes.js, supplements.js |
 | `ffv-supps` | Valda tillskott | supplements.js |
 | `ffv-seed`, `ffv-salt`, `ffv-tseed` | Slumpfrön för meny och träning (plankoden) | menu.js |
 | `ffv-shop` | Avbockat i inköpslistan, gäller alla veckor | app.js |
 | `ffv-shop-next` | Inköpslistan visar alltid nästa vecka | app.js |
-| `ffv-traintimes` | Egna träningstider per veckodag | trainingtimes.js |
+| `ffv-schedule` | Veckoschema: egna tider för gympass, intervaller, promenad och egna aktiviteter per veckodag (`days`), och arbetstid (`work`) | schedule.js |
+| `ffv-traintimes` | Egna träningstider från 0.8.0 (läses fortfarande som förslag, skrivs inte längre) | trainingtimes.js |
 | `ffv-moves` | Måltider som bytt plats mellan dagar, per vecka | menu.js |
+| `ffv-meals` | Efterrätt vilka veckodagar, fuskdag (`cheatDay`) med godis, och billiga råvaror | preferences.js |
 | `ffv-mealswaps` | Senast använda ersättningar för måltider (snabbval) | log.js |
 | `ffv-workout` | Pågående gympass (bara för enheten, överlever en omladdning) | controllers/workout.js |
 | `ffv-install-declined`, `ffv-swipe-hint` | Bara för enheten | pwa.js, navigation.js |
+| `ffv-lastexport`, `ffv-backup-snooze` | Senaste export och påminnelsen om säkerhetskopia (bara för enheten) | controllers/backup-form.js |
 
 Allt utom det som bara gäller enheten följer med i exporten (`backup.js`). En ny nyckel som ska följa med
 behöver läggas till där, och testas i `tests/backup.mjs`.
@@ -94,6 +97,12 @@ Gympass (`controllers/workout.js`) loggas när de avslutas, via `addWorkout()` i
 anteckning och "tränat". Knappar med `data-edit-log` öppnar dagens post i loggen (`openLogFor` i
 `controllers/log-form.js`), så att användaren kan ändra eller lägga till.
 
+## Sidan scrollar aldrig
+
+Bara appens innehåll (`.views`) och guiden scrollar. Använd `scrollToElement()` i `util.js`, aldrig
+`el.scrollIntoView()`, som även scrollar sidan; då blir appen kvar uppskjuten, särskilt på iPhone när tangentbordet
+stängs. `controllers/inputs.js` flyttar tillbaka sidan om den ändå har scrollats.
+
 ## Formulärfält
 
 `controllers/inputs.js` ger alla fält sitt beteende via attribut: `data-decimal` (komma eller punkt),
@@ -104,6 +113,12 @@ text, annars zoomar iPhone in.
 
 Datum ÅÅÅÅ-MM-DD, 24-timmarsklocka, måndag först och decimalkomma. Använd hjälpfunktionerna i `util.js`
 (`todayStr`, `svDate`, `num`, `fmt`) i stället för webbläsarens standardformat.
+
+## Användarens data får aldrig försvinna
+
+Följ skillen `datakompatibilitet` (`.claude/skills/datakompatibilitet/SKILL.md`). Kort: nycklar och format ändras bara
+bakåtkompatibelt, inget raderas vid start, gamla exporter går alltid att läsa, och varje version får en
+ögonblicksbild av sparad data i `tests/fixtures/data-<version>.json` som testerna startar appen med.
 
 ## Ändra och publicera
 

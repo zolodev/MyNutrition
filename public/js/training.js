@@ -27,9 +27,11 @@ function variantPicker({ seed = 0, week = 0, period = 1 }) {
  * vid annat antal används `fallback` (senaste giltiga valet).
  */
 export function parseTrainingDays(value, fallback) {
-  const days = [...new Set(String(value).split(",").map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))].sort((a, b) => a - b);
-  const valid = days.length === 3 || days.length === 4;
-  return { days: valid ? days : fallback, picked: days, valid };
+  const days = [...new Set(String(value).split(",").filter((x) => x.trim() !== "").map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))].sort((a, b) => a - b);
+  // Alla antal dagar går att välja; 3–4 rekommenderas (se trainingDaysAdvice), men inget blockeras. Bara noll dagar
+  // ger planens tidigare dagar, eftersom ett program behöver minst ett pass.
+  const valid = days.length >= 1;
+  return { days: valid ? days : fallback, picked: days, valid, recommended: days.length === 3 || days.length === 4 };
 }
 
 /** Bygg passen för vald utrustning och antal dagar; övningarna väljs för veckan med `variation`. */
@@ -63,7 +65,7 @@ function buildSessions(equipment, dayCount, variation) {
     ex(E.push2, "2 × max −2", "60 s", "Bröst och triceps"),
   ];
 
-  if (dayCount === 3) {
+  if (dayCount <= 3) {
     return {
       title: "Helkropp, överkropp och ben",
       legSessions: ["H", "B"],
@@ -131,7 +133,11 @@ function placeIntervals(sessionOn, legSessions) {
  */
 export function buildProgram(equipment, days, variation = {}) {
   const program = buildSessions(equipment, days.length, variation);
-  const { sessionOn, clash } = placeSessions(days, program.sessions.map((s) => s.id), [
+  // 1–2 dagar: helkropp varje gång. 3 dagar: helkropp, överkropp, ben. 4 dagar eller fler: över/under-split som
+  // upprepas (5 dagar ger t.ex. ett extra underkroppspass). Samma pass kan alltså ligga på flera dagar.
+  const ids = days.length <= 2 ? days.map(() => "H") : days.length === 3 ? ["H", "Ö", "B"]
+    : days.map((_, i) => ["UA", "OA", "UB", "OB"][i % 4]);
+  const { sessionOn, clash } = placeSessions(days, ids, [
     { group: program.legSessions, cost: 10 },
     { group: program.upperSessions, cost: 5 },
   ]);
@@ -141,9 +147,21 @@ export function buildProgram(equipment, days, variation = {}) {
     if (sessionOn[d]) return { kind: "str", label: sessionById[sessionOn[d]].name, session: sessionOn[d] };
     return intervals.includes(d) ? { kind: "int", label: "Intervaller" } : { kind: "rest", label: "Vila + steg" };
   });
+  program.sessions = program.sessions.filter((s) => ids.includes(s.id)); // bara passen som används
   for (const s of program.sessions) s.days = DAYS.filter((_, d) => sessionOn[d] === s.id).map((d) => d.slice(0, 3));
 
   const parts = days.map((d) => `${sessionById[sessionOn[d]].name.toLowerCase().replace(/ (a|b)$/, (m) => m.toUpperCase())} på ${DAYS[d].toLowerCase()}`);
   const summary = `${parts.slice(0, -1).join(", ")} och ${parts[parts.length - 1]}.`;
   return { ...program, schedule, clash, summary: summary[0].toUpperCase() + summary.slice(1) };
+}
+
+/**
+ * Råd om antalet gymdagar: { level: "ok" | "warn", text }. Ingenting blockeras; användaren bestämmer.
+ * ACSM (via ExRx) rekommenderar att varje stor muskelgrupp tränas två gånger i veckan, med vila emellan.
+ */
+export function trainingDaysAdvice(count) {
+  if (count === 3) return { level: "ok", text: "3 dagar: helkropp, överkropp och ben. Varje muskelgrupp tränas två gånger i veckan med vila emellan." };
+  if (count === 4) return { level: "ok", text: "4 dagar: över- och underkropp två gånger var. Varje muskelgrupp tränas två gånger i veckan med vila emellan." };
+  if (count <= 2) return { level: "warn", text: `${count} ${count === 1 ? "dag" : "dagar"}: helkropp varje gång. Det fungerar, men med färre än 3 pass tränas varje muskelgrupp bara ${count === 1 ? "en gång" : "två gånger"} i veckan, och resultatet kommer långsammare. 3–4 dagar rekommenderas.` };
+  return { level: "warn", text: `${count} dagar: över/under-split där vissa pass upprepas. Med fler än 4 styrkepass blir återhämtningen kortare och samma muskler kan tränas två dagar i rad, vilket ökar risken för överbelastning. Kör passen lättare, eller välj 3–4 dagar.` };
 }

@@ -31,3 +31,24 @@ document.addEventListener("click", (ev) => {
   text.hidden = !text.hidden;
   button.setAttribute("aria-expanded", String(!text.hidden));
 });
+
+// iPhone: när tangentbordet öppnas skjuter Safari upp hela sidan för att visa fältet, men flyttar inte tillbaka den
+// när tangentbordet stängs, så appen blir kvar uppskjuten. Sidan själv ska aldrig scrolla (bara innehållet i .views
+// och guiden gör det, se app.css), så den flyttas tillbaka till toppen när tangentbordet har stängts.
+const resetPageScroll = () => {
+  if (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop) window.scrollTo(0, 0);
+};
+const typing = () => document.activeElement?.matches?.("input:not([type=checkbox]):not([type=radio]), textarea, select");
+// Tangentbordet stängs: den synliga ytan blir hög igen
+window.visualViewport?.addEventListener("resize", () => {
+  if (!typing() || window.visualViewport.height >= window.innerHeight * 0.85) resetPageScroll();
+});
+// Fältet lämnas (t.ex. Klar på tangentbordet) utan att ett annat fält får fokus
+document.addEventListener("focusout", () => setTimeout(() => {
+  if (!typing()) resetPageScroll();
+}, 150));
+// Skydd: har sidan ändå scrollats (av webbläsaren eller av kod), flytta tillbaka den – men aldrig medan man skriver,
+// eftersom iPhone då scrollar sidan för att fältet inte ska hamna bakom tangentbordet
+window.addEventListener("scroll", () => {
+  if (!typing()) resetPageScroll();
+}, { passive: true });

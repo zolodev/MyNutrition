@@ -48,13 +48,21 @@ menu.invalidateMenu();
 
 const week = menu.buildWeek(today, man, "F0");
 const kcal = week.plan.flat().reduce((s, id) => s + week.recipes[id].m.k, 0) / 7;
-unit("Veckans recept landar inom 5 % av kalorimålet", Math.abs(kcal - man.target) / man.target < 0.05);
+unit("Veckans recept går inte över kalorimålet (högst 5 %) och hamnar högst 15 % under", kcal <= man.target * 1.05 && kcal >= man.target * 0.85);
 
 const tueThuSat = buildProgram("gym", parseTrainingDays("1,3,5", [0, 2, 4]).days);
 unit("Gymdagar tis/tor/lör ger helkropp, överkropp och ben", tueThuSat.schedule[1].label === "Helkropp" && tueThuSat.schedule[3].label === "Överkropp" && tueThuSat.schedule[5].label === "Ben");
 const inARow = buildProgram("gym", [0, 1, 2]);
 unit("Tre dagar i rad varnar för samma muskler två dagar i rad", inARow.clash);
-unit("Fel antal gymdagar behåller senaste giltiga val", parseTrainingDays("1,3", [0, 2, 4]).days.join() === "0,2,4");
+unit("Inga gymdagar behåller senaste val", parseTrainingDays("", [0, 2, 4]).days.join() === "0,2,4");
+{
+  const { trainingDaysAdvice } = await import("../public/js/training.js");
+  const two = parseTrainingDays("1,3", [0, 2, 4]);
+  unit("2 gymdagar går att välja (blockeras inte) och ger helkropp varje gång", two.valid && !two.recommended && two.days.join() === "1,3" && buildProgram("gym", two.days).schedule[1].label === "Helkropp" && buildProgram("gym", two.days).schedule[3].label === "Helkropp");
+  const five = buildProgram("gym", [0, 1, 2, 3, 4]);
+  unit("5 gymdagar går att välja och ger ett pass varje vald dag", [0, 1, 2, 3, 4].every((d) => five.schedule[d].kind === "str") && five.sessions.length === 4);
+  unit("Fler än 4 eller färre än 3 dagar ger en varning med motivering, 3–4 dagar ger ok", trainingDaysAdvice(5).level === "warn" && /återhämtning/.test(trainingDaysAdvice(5).text) && trainingDaysAdvice(2).level === "warn" && trainingDaysAdvice(4).level === "ok");
+}
 
 // BMI och föreslagen målvikt (ExRx/WHO: normalvikt 18,5–24,9)
 const nutrition = await import("../public/js/nutrition.js");
@@ -154,9 +162,136 @@ own.addMyRecipe(myBreakfast);
 menu.invalidateMenu();
 const withOwn = menu.buildWeek(today, man, myBreakfast.id);
 unit("Eget frukostrecept kan väljas som frukost varje dag", withOwn.plan.every((d) => d[0] === myBreakfast.id) && withOwn.recipes[myBreakfast.id].items.length === 3);
+const myOmelet = own.cleanRecipe({ t: "Min omelett", g: "b", items: [["agg", 120, 2, "st"], ["aggvita", 150], ["ost", 20]], how: "Vispa och stek." });
+own.addMyRecipe(myOmelet);
+menu.invalidateMenu();
+unit("Eget recept visas och räknas som det är skrivet (ingen skalning, ingen extra frukt)",
+  JSON.stringify(menu.buildWeek(today, man, myOmelet.id).recipes[myOmelet.id].items) === JSON.stringify([["agg", 120], ["aggvita", 150], ["ost", 20]]));
+own.removeMyRecipe(myOmelet.id);
+menu.invalidateMenu();
 unit("Eget recept utan namn avvisas", own.cleanRecipe({ t: " ", items: [["kvarg", 100]] }) === null);
 own.removeMyRecipe(myBreakfast.id);
 menu.invalidateMenu();
+
+// Kryddor och smaksättning: allt som nämns i ett recept ska finnas som ingrediens med mängd, och komma med i inköpslistan
+{
+  const { RECIPES } = await import("../public/js/data/recipes.js");
+  const SPICES = ["curry", "enbär", "lagerblad", "kanel", "dill", "chili", "spiskummin", "soja", "ingefära", "tacokrydda", "oregano", "timjan", "kryddpeppar", "senap", "gräslök", "vitlök", "paprikapulver", "vanilj", "persilja", "citron", "lime"];
+  const missing = Object.entries(RECIPES).flatMap(([id, r]) => SPICES.filter((w) => (r.how || "").toLowerCase().includes(w) && !(r.extra || []).some((x) => x.n.toLowerCase().includes(w.replace("vitlök", "vitlök")))).map((w) => `${id}: ${w}`));
+  unit(`Varje krydda i receptens text finns som ingrediens med mängd${missing.length ? " (saknas: " + missing.join(", ") + ")" : ""}`, missing.length === 0);
+  unit("Kryddorna har mängd per portion", Object.values(RECIPES).every((r) => (r.extra || []).every((x) => x.q > 0 && x.u)));
+  const curry = RECIPES.D15.extra.find((x) => x.n === "Curry");
+  unit("Kycklingcurryn anger hur mycket curry (2 tsk)", curry?.q === 2 && curry.u === "tsk");
+  const wk = menu.buildWeek(today, man, "rot");
+  const list = menu.shoppingList(wk);
+  unit("Kryddorna hamnar i inköpslistan, summerade per mått", Object.keys(list.extras).length > 0 && Object.values(list.extras).every((x) => Object.keys(x.amounts).length));
+  const dinnerMonday = wk.plan[0][1];
+  const without = menu.shoppingList(wk, [[0, 1]]);
+  const [food, grams] = wk.recipes[dinnerMonday].items[0];
+  unit("En ersatt måltid räknas bort ur inköpslistan", Math.abs((list.shopping[food] - (without.shopping[food] || 0)) - grams) < 0.01);
+}
+
+// En bortvald råvara som byts ut får inte stå kvar i rättens namn eller text (t.ex. "med bulgur" när det blir ris)
+{
+  const { TEXT_FORMS } = await import("../public/js/data/foods.js");
+  const mentions = (text, word) => new RegExp(`(^|[^a-zåäöé])${word}(?=$|[^a-zåäöé])`, "i").test(text) || (word.length > 4 && text.toLowerCase().includes(word));
+  const left = [];
+  for (const food of Object.keys(TEXT_FORMS)) {
+    prefs.setExclusions({ allergens: [], foods: [food], words: [] });
+    menu.invalidateMenu();
+    const wk = menu.buildWeek(today, man, "rot");
+    for (const [id, r] of Object.entries(wk.recipes)) {
+      const sub = (r.subs || []).find(([from, to]) => from === food && TEXT_FORMS[to] && !TEXT_FORMS[to][0].includes(TEXT_FORMS[from][0]));
+      if (sub && TEXT_FORMS[food].some((w) => mentions(r.t, w) || mentions(r.how, w))) left.push(`${food} i ${id} (${r.t})`);
+    }
+  }
+  prefs.setExclusions({ allergens: [], foods: [], words: [] });
+  menu.invalidateMenu();
+  unit(`En bortvald råvara som byts ut syns inte i rättens namn eller text${left.length ? ": " + left.slice(0, 5).join("; ") : ""}`, left.length === 0);
+  const bulgur = (() => { prefs.setExclusions({ allergens: [], foods: ["bulgur"], words: [] }); menu.invalidateMenu(); return menu.buildWeek(today, man, "rot").recipes.D8; })();
+  unit("Utan bulgur heter rätten \"Kycklingfärsbiffar med ris och tzatziki\" och texten säger \"Koka riset\"", bulgur.t === "Kycklingfärsbiffar med ris och tzatziki" && bulgur.how.includes("Koka riset") && !bulgur.items.some(([f]) => f === "bulgur"));
+  prefs.setExclusions({ allergens: [], foods: [], words: [] });
+  prefs.setMealPrefs({ cheap: true });
+  menu.invalidateMenu();
+  const cheapTorsk = menu.buildWeek(today, man, "rot").recipes.D4;
+  unit("Billiga råvaror: \"Torsk med …\" blir \"Sej med …\"", cheapTorsk.t.startsWith("Sej med") && !/torsk/i.test(cheapTorsk.how));
+  prefs.setMealPrefs({ cheap: false });
+  menu.invalidateMenu();
+}
+
+// Eget kalorimål, efterrätter per dag, lördagsgodis och billiga råvaror
+{
+  const base = { sex: "m", age: 43, weight: 101, height: 183, bodyFat: 28, activity: 1.375, rate: 0.5 };
+  const auto = computeTargets(base);
+  unit("Eget kalorimål ersätter det beräknade", computeTargets({ ...base, kcal: 1800 }).target === 1800 && auto.target !== 1800);
+  const low = computeTargets({ ...base, kcal: 1000 });
+  unit("Ett kalorimål under golvet höjs till 1 500 kcal (män) med en förklaring", low.target === 1500 && low.flags.some((f) => f.includes("medicinsk uppföljning")));
+  unit("Ett kalorimål över underhållsbehovet ger en varning", computeTargets({ ...base, kcal: 3500 }).flags.some((f) => f.includes("går inte ner i vikt")));
+
+  const before = menu.buildWeek(today, man, "rot");
+  prefs.setMealPrefs({ dessertDays: [0, 2], treat: false });
+  menu.invalidateMenu();
+  const fewer = menu.buildWeek(today, man, "rot");
+  unit("Efterrätt bara valda dagar (måndag och onsdag)", fewer.plan.every((day, d) => (day[2] !== "NONE") === [0, 2].includes(d)));
+  unit("Lördagsgodiset går att stänga av", fewer.plan[5][3] === "NONE");
+  unit("Övriga rätter blir desamma när efterrätter tas bort", fewer.plan.every((day, d) => day[0] === before.plan[d][0] && day[1] === before.plan[d][1]));
+  prefs.setMealPrefs({ dessertDays: [] });
+  menu.invalidateMenu();
+  unit("Efterrätter går att stänga av helt", menu.buildWeek(today, man, "rot").plan.every((day) => day[2] === "NONE"));
+
+  prefs.setMealPrefs({ dessertDays: [0, 1, 2, 3, 4, 5, 6], treat: true });
+  menu.invalidateMenu();
+  const saturdayWeek = menu.buildWeek(today, man, "rot");
+  prefs.setMealPrefs({ cheatDay: 4 });
+  menu.invalidateMenu();
+  const fridayWeek = menu.buildWeek(today, man, "rot");
+  unit("Fuskdag fredag: samma godis flyttas till fredagen och lördagen blir en vanlig dag", fridayWeek.plan[4][3] === saturdayWeek.plan[5][3] && fridayWeek.plan[5].length === 3 && prefs.treatName() === "Fredagsgodis");
+  unit("Fuskdagen ändrar inga andra rätter", fridayWeek.plan.every((day, d) => day.slice(0, 3).join() === saturdayWeek.plan[d].slice(0, 3).join()));
+  prefs.setMealPrefs({ cheatDay: 5 });
+  prefs.setMealPrefs({ dessertDays: [0, 1, 2, 3, 4, 5, 6], treat: true, cheap: true });
+  menu.invalidateMenu();
+  const cheap = menu.buildWeek(today, man, "rot");
+  const used = cheap.plan.flat().flatMap((id) => cheap.recipes[id].items.map(([f]) => f));
+  unit("Billiga råvaror: inga räkor, renskav, älgskav, älgkött, älgfärs eller torsk i veckan", !used.some((f) => ["rakor", "renskav", "algskav", "algkott", "algfars", "torsk"].includes(f)) && cheap.plan.every((day) => day[1] !== "NONE"));
+  prefs.setMealPrefs({ cheap: false });
+  menu.invalidateMenu();
+}
+
+// Ingen sparad post får gå förlorad: poster som inte går att läsa ligger kvar och skrivs tillbaka vid sparning
+{
+  const broken = { t: "Gammalt recept", g: "d", ingredients: [["kvarg", 200]] }; // okänt format: klarar inte kontrollen
+  memory["ffv-myrecipes"] = JSON.stringify([{ t: "Utan id", g: "b", items: [["kvarg", 200]] }, broken]);
+  own.loadMyRecipes();
+  const firstId = own.myRecipes[0]?.id;
+  own.loadMyRecipes();
+  unit("Recept utan giltigt id får samma id vid varje start", /^MR_/.test(firstId) && own.myRecipes[0].id === firstId);
+  unit("Recept som inte går att läsa visas som olästa i stället för att försvinna", own.myRecipes.length === 1 && own.unreadableRecipes().join() === "Gammalt recept");
+  own.addMyRecipe(own.cleanRecipe({ t: "Nytt", g: "b", items: [["havre", 40]] }));
+  const savedRecipes = JSON.parse(memory["ffv-myrecipes"]);
+  unit("När ett annat recept sparas ligger det olästa receptet kvar orört", savedRecipes.length === 3 && savedRecipes.some((r) => JSON.stringify(r) === JSON.stringify(broken)));
+  delete memory["ffv-myrecipes"];
+  own.loadMyRecipes();
+
+  memory["ffv-log"] = JSON.stringify([{ date: "2026-08-01", weight: 90 }, { date: "inte ett datum", weight: 1 }]); // äldre format: ren lista
+  logMod.loadLog();
+  unit("En logg i äldre format (ren lista) läses in", logMod.entries.length === 1 && logMod.entries[0].weight === 90);
+  logMod.upsertEntry(logMod.cleanEntry({ date: "2026-08-02", weight: 89.5 }));
+  const savedLog = JSON.parse(memory["ffv-log"]).entries;
+  unit("Loggposter som inte går att läsa ligger kvar när loggen sparas", savedLog.length === 3 && savedLog.some((e) => e.date === "inte ett datum"));
+  delete memory["ffv-log"];
+  logMod.loadLog();
+
+  // En dag med bara en ersatt måltid får inte raderas när dagens måltidstider nollställs
+  logMod.setSwap("2026-08-20", 1, { n: "Huel Powder", k: 400, p: 30 });
+  logMod.setMealTimes("2026-08-20", { firstMeal: "", lastMeal: "" });
+  unit("Att nollställa måltidstiderna tar inte bort en dag med en ersatt måltid", logMod.entryFor("2026-08-20")?.swaps.length === 1);
+  logMod.setEaten("2026-08-21", 0, true);
+  unit("En avbockad måltid sparas i dagens post", logMod.entryFor("2026-08-21")?.eaten.join() === "0");
+  logMod.setEaten("2026-08-21", 0, false);
+  unit("En dag där bara avbockningen tas bort blir tom och tas bort", !logMod.entryFor("2026-08-21"));
+  delete memory["ffv-log"];
+  logMod.loadLog();
+}
 
 // Apelsinallergi är skild från citron och lime
 memory["ffv-excl"] = JSON.stringify({ allergens: ["citrus"], foods: [] });
@@ -850,16 +985,24 @@ const reload = (name, storage) => {
   fs.rmSync(file, { force: true });
   if (r.status !== 0) process.exitCode = 1;
 };
+check("Idag påminner om att säkerhetskopiera när inget har exporterats", !$("bk-remind").hidden && text("bk-remind-text").startsWith("Du har inte exporterat"));
 // Export av allt: kopiera (urklipp saknas i jsdom, så texten visas för att kopieras för hand)
 go("backup"); fire($("l-copy"), "click"); await tick();
 check("Export och import ligger under Inställningar", visible() === "installningar" && $("l-export").closest("section").id === "backup" && $("backup").closest("[data-page]").dataset.page === "sakerhetskopia" && !$("backup").closest("[data-page]").hidden);
 check("Logg länkar till exporten under Inställningar", !!$("logg").closest("[data-view]").querySelector('a[href="#backup"]'));
 const exportedText = $("l-copytext").value;
+check("En export som inte gick igenom tar inte bort påminnelsen", !$("bk-remind").hidden && !win.localStorage.getItem("ffv-lastexport"));
 const exportedData = JSON.parse(exportedText).data;
 check("Exporten anger vilken version av appen den gjordes med", /^\d+\.\d+\.\d+$/.test(JSON.parse(exportedText).appVersion));
 check("Kopiera allt visar texten när urklipp nekas", !$("l-copytext").hidden && text("backup-msg").startsWith("Kopieringen nekades"));
 check("Exporten innehåller profil, logg, plan, allergier och tillskott", ["ffv", "ffv-log", "ffv-seed", "ffv-excl"].every((k) => k in exportedData) && exportedData["ffv-log"].entries.length > 0 && exportedData.ffv.weight === "92");
 check("Exporten innehåller allt sparat utom det som bara gäller enheten", Object.keys(win.localStorage).filter((k) => k.startsWith("ffv") && k !== "ffv-swipe-hint" && k !== "ffv-install-declined" && k !== "ffv-terms").every((k) => k in exportedData) && !("ffv-swipe-hint" in exportedData));
+// En lyckad export tar bort påminnelsen om säkerhetskopia
+Object.defineProperty(win.navigator, "clipboard", { value: { writeText: async () => {} }, configurable: true });
+fire($("l-copy"), "click"); await tick();
+check("Påminnelsen försvinner efter en export, och exportdatumet följer inte med i exporten", $("bk-remind").hidden && !!win.localStorage.getItem("ffv-lastexport") && !("ffv-lastexport" in JSON.parse((await import("../public/js/backup.js")).exportText()).data));
+delete win.navigator.clipboard;
+
 // Gymdagarna följer med i exporten, både som data och läsbart i översikten
 go("profil");
 for (const d of ["0", "1", "2", "3", "4", "5", "6"]) { const el = win.document.querySelector(`[data-day="${d}"]`); el.checked = ["1", "3", "5"].includes(d); }
@@ -884,6 +1027,7 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   check("Ersatt måltid visas i stället för receptet", swapped?.textContent.includes("Huel shake") && swapped.textContent.includes(`I stället för ${dinner}`) && swapped.textContent.includes("400 kcal"));
   check("Dagens kalorier räknas om med ersättningen", kcalToday() !== before && Number.isFinite(kcalToday()));
   const logged = JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === todayStr());
+  check("Inköpslistan räknar bort den ersatta måltiden", text("shop-skipped").includes("1 måltid som du har ersatt"));
   check("Ersättningen sparas i dagens logg", logged?.swaps?.[0]?.n === "Huel shake" && logged.swaps[0].meal === 1 && logged.swaps[0].k === 400);
   check("Ersättningen syns i loggens tabell", text("l-table").includes("Eftermiddagsmåltid: Huel shake (400 kcal)"));
   check("Senaste ersättningen blir ett snabbval", !$("sw-recent").hidden && text("sw-recent").includes("Huel shake"));
@@ -907,23 +1051,52 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   check("Ångra visar receptet igen och dagens summa blir som förut", !$("td-food").querySelector(".row.swapped") && kcalToday() === before);
 }
 
-// Egna träningstider per veckodag
+// Inställningar → Måltider
 {
-  go("profil");
-  const rows = () => [...$("tt-list").querySelectorAll(".tt-row")];
+  go("maltider");
+  check("Måltider är en undersida under Inställningar", visible() === "installningar" && !$("maltider").closest("[data-page]").hidden && $("ml-dessert-on").checked);
+  $("ml-dessert-on").checked = false; fire($("ml-dessert-on"), "change");
+  check("Efterrätter avstängda: inga efterrätter i veckan och valet sparas", JSON.parse(win.localStorage.getItem("ffv-meals")).dessertDays.length === 0 && ![...$("week").querySelectorAll("small")].some((el) => el.textContent.startsWith("Efterrätt")));
+  $("ml-dessert-on").checked = true; fire($("ml-dessert-on"), "change");
+  check("Efterrätter på igen, alla dagar", JSON.parse(win.localStorage.getItem("ffv-meals")).dessertDays.length === 7);
+  $("ml-cheat-day").value = "4"; fire($("ml-cheat-day"), "change");
+  check("Fuskdagen går att välja: fredag", JSON.parse(win.localStorage.getItem("ffv-meals")).cheatDay === 4 && text("fusk").includes("Fuska på fredagen") && text("fusk").includes("Fredagsgodiset utgår"));
+  check("Veckoschemat visar fredagsgodis på fredagen och inget godis på lördagen", $("week").querySelectorAll(".day")[4].textContent.includes("Fredagsgodis") && !$("week").querySelectorAll(".day")[5].textContent.includes("godis"));
+  check("Tabellen för fri måltid gäller fredagen", $("cheat-table").querySelector("th").textContent === "Fredag");
+  $("ml-cheat-day").value = "5"; fire($("ml-cheat-day"), "change");
+  check("Tillbaka till lördag", text("fusk").includes("Fuska på lördagen"));
+  go("inkopslista");
+  check("Billiga råvaror ligger under Inställningar → Inköpslista", !$("ml-cheap").closest("[data-page]").hidden && $("ml-cheap").closest("[data-page]").dataset.page === "inkopslista");
+  $("ml-cheap").checked = true; fire($("ml-cheap"), "change");
+  check("Billiga råvaror sparas därifrån", JSON.parse(win.localStorage.getItem("ffv-meals")).cheap === true && text("ml-cheap-msg").startsWith("Sparat"));
+  $("ml-cheap").checked = false; fire($("ml-cheap"), "change");
+}
+
+// Veckoschema: egna tider per dag, råd som inte blockerar
+{
+  // Arbetstid: förslagen hamnar utanför arbetet, och det som krockar ger en varning
+  go("veckoschema");
+  $("work-from").value = "08:00"; $("work-to").value = "17:00"; fire($("work-to"), "change");
+  const sched = await import("../public/js/schedule.js");
+  check("Arbetstiden sparas, måndag–fredag förvalt", JSON.stringify(sched.getWork()) === JSON.stringify({ from: "08:00", to: "17:00", days: [0, 1, 2, 3, 4] }));
+  const int = sched.suggestion(1, "int", 7).int;
+  check("Förslaget för intervaller en arbetsdag flyttas till efter jobbet", int.from === 17.5 && int.to === 19);
+  check("Helgen påverkas inte av arbetstiden", sched.suggestion(5, "int", 7).int.from === 8.5);
+  const clash = sched.scheduleAdvice([{ kind: "str", label: "Gympass", from: 10, to: 11.5 }], { eat: { from: 7, to: 15 }, work: sched.workOn(1) });
+  check("Ett pass under arbetstiden ger en varning, men blockeras inte", clash.some((a) => a.level === "warn" && a.text.includes("krockar med arbetstiden")));
+  fire($("work-clear"), "click");
+  check("Arbetstiden går att ta bort", sched.getWork() === null);
+
+  go("veckoschema");
   const days = JSON.parse(win.localStorage.getItem("ffv"))["tdays-val"].split(",").map(Number);
-  check("Träningstider har en rad per gymdag", rows().length === days.length);
-  const row = rows()[0], day = days[0];
-  const set = (key, value) => { const el = row.querySelector(`[data-tt-key="${key}"]`); el.value = value; fire(el, "change"); };
-  set("from", "18:00"); set("to", "16:00");
-  check("En sluttid före starttiden sparas inte", !win.localStorage.getItem("ffv-traintimes") || !JSON.parse(win.localStorage.getItem("ffv-traintimes"))[day]);
-  const row2 = rows()[0];
-  const set2 = (key, value) => { const el = row2.querySelector(`[data-tt-key="${key}"]`); el.value = value; fire(el, "change"); };
-  set2("from", "16:00"); set2("to", "18:00");
-  check("En egen tid sparas för veckodagen", JSON.parse(win.localStorage.getItem("ffv-traintimes"))[day]?.from === "16:00");
-  check("Veckoschemat visar den egna tiden på gymdagen", $("week").querySelectorAll(".day")[day].querySelector(".chip").textContent.includes("16:00–18:00"));
-  fire(rows()[0].querySelector("[data-tt-clear]"), "click");
-  check("Planens tid går att återställa", !JSON.parse(win.localStorage.getItem("ffv-traintimes"))[day] && !$("week").querySelectorAll(".day")[day].querySelector(".chip").textContent.includes("16:00–18:00"));
+  const card = () => $("sched-list").querySelector(`[data-sched-day="${days[0]}"]`);
+  check("Veckoschemat har ett kort per dag", $("sched-list").querySelectorAll("[data-sched-day]").length === 7 && visible() === "installningar");
+  const set = (k, v) => { const el = card().querySelector(`.sched-row[data-kind="str"] [data-sched-time="${k}"]`); el.value = v; fire(el, "change"); };
+  set("from", "16:00"); set("to", "17:30");
+  check("En egen tid för gympasset sparas och syns i veckoschemat under Mat", JSON.parse(win.localStorage.getItem("ffv-schedule")).days[days[0]].str.from === "16:00" && $("week").querySelectorAll(".day")[days[0]].textContent.includes("16:00–17:30"));
+  check("Sent pass efter ätfönstret ger en varning men blockeras inte", [...card().querySelectorAll(".advice li.warn")].some((li) => li.textContent.includes("efter att ätfönstret stängt")));
+  fire(card().querySelector("[data-sched-reset]"), "click");
+  check("Dagen går att återställa till förslaget", !JSON.parse(win.localStorage.getItem("ffv-schedule")).days?.[days[0]]);
 }
 
 // Byt plats på måltider mellan dagar (Mat → Veckan)
@@ -934,6 +1107,22 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   $("mv-meal").value = "1"; $("mv-a").value = "0"; $("mv-b").value = "4";
   fire($("mv-form"), "submit");
   check("Eftermiddagsmåltiderna på måndag och fredag byter plats", dinnerOn(0) === friday && dinnerOn(4) === monday && !$("mv-reset").hidden && text("mv-msg").includes("bytt plats"));
+  fire($("mv-reset"), "click");
+  // Dra och släpp: måndagens eftermiddagsmåltid släpps på tisdagen
+  {
+    const [mon, tue] = [dinnerOn(0), dinnerOn(1)];
+    const pointer = (el, type) => el.dispatchEvent(Object.assign(new win.MouseEvent(type, { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }), { pointerId: 1 }));
+    const handle = $("week").querySelectorAll(".day")[0].querySelector('li[data-meal="1"] .drag-handle');
+    const realAt = win.document.elementFromPoint;
+    win.document.elementFromPoint = () => $("week").querySelectorAll(".day")[1];
+    pointer(handle, "pointerdown");
+    pointer(handle, "pointermove");
+    check("Dagen under pekaren markeras som mål", $("week").querySelectorAll(".day")[1].classList.contains("drop-target"));
+    pointer(handle, "pointerup");
+    win.document.elementFromPoint = realAt;
+    check("Dra och släpp byter plats på måndagens och tisdagens eftermiddagsmåltid", dinnerOn(0) === tue && dinnerOn(1) === mon && !win.document.querySelector(".drag-ghost") && !$("mv-reset").hidden);
+    check("Lördagsgodiset har inget handtag", !$("week").querySelector('li[data-meal="3"] .drag-handle'));
+  }
   fire($("mv-reset"), "click");
   check("Återställ ger planens ordning igen", dinnerOn(0) === monday && dinnerOn(4) === friday && $("mv-reset").hidden);
 
@@ -954,6 +1143,24 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   fire($("td-food").querySelector("[data-unswap]"), "click");
   go("vecka");
   check("Ångra flyttar tillbaka rätten", dinnerOn(today) === planned);
+  go("idag");
+}
+
+// Bocka av ätna måltider
+{
+  go("idag");
+  const box = (i) => $("td-food").querySelector(`[data-eaten="${i}"]`);
+  check("Varje måltid på Idag har en kryssruta för ätit", !!box(0) && !!box(1) && text("td-eaten").startsWith("Bocka av"));
+  box(1).checked = true; fire(box(1), "change");
+  const saved = JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === todayStr());
+  check("Avbockningen sparas i dagens logg och Idag visar hur mycket som är ätet", saved?.eaten.join() === "1" && /^Ätit 1 av \d måltider: [\d\s]+ av [\d\s]+ kcal/.test(text("td-eaten")) && box(1).closest(".meal-row").classList.contains("eaten"));
+  check("Loggen visar vad som är ätet", text("l-table").includes("Ätit: eftermiddagsmåltid"));
+  go("vecka");
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  const weekBox = $("week").querySelectorAll(".day")[todayIdx].querySelector('[data-eaten="1"]');
+  check("Veckoschemat visar samma avbockning för i dag", weekBox?.checked && weekBox.closest("li").classList.contains("eaten"));
+  weekBox.checked = false; fire(weekBox, "change");
+  check("En avbockning går att ta bort från veckoschemat", !(JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === todayStr())?.eaten || []).includes(1));
   go("idag");
 }
 
@@ -998,6 +1205,11 @@ for (const mode of [[], ["ny-användare"]]) {
 }
 
 console.log("\n# Uppdatering: appen startas om med sparad data");
+// Sparad data från varje släppt version (tests/fixtures/data-<version>.json) ska läsas in utan att något går förlorat
+for (const file of fs.readdirSync(new URL("./fixtures", import.meta.url)).filter((f) => /^data-[\d.]+\.json$/.test(f)).sort()) {
+  const data = JSON.parse(fs.readFileSync(new URL(`./fixtures/${file}`, import.meta.url), "utf8"));
+  reload(`data från ${file.slice(5, -5)}`, Object.fromEntries(Object.entries(data).map(([k, v]) => [k, JSON.stringify(v)])));
+}
 reload("första start", {});
 reload("omstart", Object.fromEntries(Object.keys(win.localStorage).map((k) => [k, win.localStorage.getItem(k)])));
 reload("äldre format", {

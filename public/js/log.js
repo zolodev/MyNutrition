@@ -1,6 +1,6 @@
 // Loggen: dagliga poster och statistik. Posterna sparas bara i webbläsaren (se storage.js).
 
-import { load, save, dateToDay, dayToDate, todayStr, fmt } from "./util.js";
+import { load, save, dateToDay, dayToDate, todayStr, fmt, readList } from "./util.js";
 
 const LOG_KEY = "ffv-log";
 export let entries = [];
@@ -101,7 +101,7 @@ export const cardioText = (c) =>
 // post som { meal, n, k, p }: vilken måltid (0 frukost, 1 eftermiddagsmåltid, 2 efterrätt, 3 lördagsgodis), namn,
 // kcal och protein. Idag räknar då dagens summa med ersättningen i stället för receptet.
 
-export const MEAL_NAMES = ["Frukost", "Eftermiddagsmåltid", "Efterrätt", "Lördagsgodis"];
+export const MEAL_NAMES = ["Frukost", "Eftermiddagsmåltid", "Efterrätt", "Godis"]; // godiset ligger på fuskdagen
 const SWAPS_KEY = "ffv-mealswaps"; // senast använda ersättningar, för snabbval
 const cleanSwap = (x) =>
   x && typeof x.n === "string" && x.n.trim() ? { n: x.n.trim().slice(0, 60), k: inRange(x.k, 0, 5000) ?? 0, p: inRange(x.p, 0, 500) ?? 0 } : null;
@@ -157,6 +157,7 @@ export function cleanEntry(e) {
     test: inRange(e.test, 1, 36000), // äldre versioner: en testtid utan aktivitet och distans
     note: typeof e.note === "string" ? e.note.slice(0, 200) : "",
     swaps: cleanSwaps(e.swaps), // måltider som ersattes med något annat, t.ex. en Huel-shake
+    eaten: Array.isArray(e.eaten) ? [0, 1, 2, 3].filter((m) => e.eaten.includes(m)) : [], // avbockade måltider (0 frukost …)
     firstMeal: isClock(e.firstMeal) ? e.firstMeal : null, // "HH:MM", för uppföljning av fastan
     lastMeal: isClock(e.lastMeal) ? e.lastMeal : null,
   };
@@ -173,8 +174,24 @@ export function setMealTimes(date, { firstMeal, lastMeal }) {
   const next = cleanEntry({ ...current, firstMeal: firstMeal ?? current.firstMeal, lastMeal: lastMeal ?? current.lastMeal });
   if (firstMeal === "") next.firstMeal = null;
   if (lastMeal === "") next.lastMeal = null;
-  const empty = ["weight", "waist", "mood", "perf", "test", "imMod", "imVig", "firstMeal", "lastMeal"].every((k) => next[k] == null) && !next.note && !next.cardio.length;
-  if (empty) removeEntry(date);
+  if (isEmptyEntry(next)) removeEntry(date);
+  else upsertEntry(next);
+}
+
+/** Har posten inget sparat alls? Bara då får den tas bort (t.ex. när dagens måltidstider nollställs). */
+function isEmptyEntry(e) {
+  return ["weight", "waist", "mood", "perf", "test", "imMod", "imVig", "firstMeal", "lastMeal"].every((k) => e[k] == null) &&
+    !e.note && !e.cardio.length && !e.swaps.length && !e.eaten.length && !e.trained;
+}
+
+/** Bocka av (eller ur) en måltid som ätit en dag: 0 frukost, 1 eftermiddagsmåltid, 2 efterrätt, 3 lördagsgodis. */
+export function setEaten(date, meal, on) {
+  const e = entryFor(date) || { date };
+  const eaten = new Set(e.eaten || []);
+  if (on) eaten.add(meal);
+  else eaten.delete(meal);
+  const next = cleanEntry({ ...e, date, eaten: [...eaten] });
+  if (isEmptyEntry(next)) removeEntry(date);
   else upsertEntry(next);
 }
 
@@ -185,11 +202,17 @@ export function isIsoDate(s) {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
 
+let unreadableEntries = []; // sparade poster som inte går att läsa; ligger kvar orörda och skrivs tillbaka
+
 export function loadLog() {
   const saved = load(LOG_KEY, null);
-  if (saved && Array.isArray(saved.entries)) entries = saved.entries.map(cleanEntry).filter(Boolean);
+  // { entries: [...] }, eller en ren lista med poster (äldre versioner och exporter)
+  const { kept, rejected } = readList(Array.isArray(saved) ? saved : saved?.entries, cleanEntry);
+  entries = kept;
+  unreadableEntries = rejected;
+  sortEntries();
 }
-const saveLog = () => save(LOG_KEY, { entries });
+const saveLog = () => save(LOG_KEY, { entries: [...entries, ...unreadableEntries] });
 const sortEntries = () => entries.sort((a, b) => (a.date < b.date ? -1 : 1));
 
 /** Lägg till eller ersätt posten för ett datum. */

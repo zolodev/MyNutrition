@@ -16,14 +16,14 @@ const message = (text) => ($("sw-msg").textContent = text);
 function renderRecent() {
   const recent = recentSwaps();
   $("sw-recent").innerHTML = recent.map((x, i) =>
-    `<button type="button" class="chip" data-swap-pick="${i}">${esc(x.n)} · ${fmt(x.k)} kcal</button>`).join("");
+    `<button type="button" class="chip-btn" data-swap-pick="${i}">${esc(x.n)} · ${fmt(x.k)} kcal</button>`).join("");
   $("sw-recent").hidden = !recent.length;
 }
 
 /** Färdiga produkter, t.ex. Huel, som snabbval. */
 function renderProducts() {
   $("sw-products").innerHTML = MEAL_REPLACEMENTS.map((x, i) =>
-    `<button type="button" class="chip" data-swap-product="${i}">${esc(x.n)} · ${fmt(x.k)} kcal · ${fmt(x.p)} g P</button>`).join("");
+    `<button type="button" class="chip-btn" data-swap-product="${i}">${esc(x.n)} · ${fmt(x.k)} kcal · ${fmt(x.p)} g P</button>`).join("");
 }
 
 $("sw-form").addEventListener("click", (ev) => {

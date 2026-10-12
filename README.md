@@ -35,7 +35,8 @@ public/js/app.js             Styrning: profilen, update() som ritar om allt, pla
 public/js/controllers/       Knappar och formulär per område: navigation (flikar, undersidor, svep), inputs
                              (sifferfält, klockslag, info-ikoner), log-form, backup-form, settings-forms,
                              workout (gympass som loggas direkt),
-                             meal-swap (ersätt en måltid på Idag), training-times (Profil → Träningstider)
+                             meal-swap (ersätt en måltid på Idag), schedule-editor (Inställningar → Veckoschema),
+                             week-drag (dra och släpp måltider i veckoschemat)
 public/js/util.js            Hjälpfunktioner: DOM, talformat, lagring, datum, slump som går att upprepa
 public/js/nutrition.js       Energibehov, makromål och skalning av portioner
 public/js/preferences.js     Allergier, bortvalda ingredienser och egna livsmedel
@@ -46,7 +47,8 @@ public/js/fasting.js         Fastan: ätfönster, nästa måltid och läget just
 public/js/myrecipes.js       Egna recept
 public/js/supplements.js     Tips om PWO, vassle och kreatin
 public/js/training.js        Träningsprogram och vilka dagar passen läggs
-public/js/trainingtimes.js   Egna träningstider per veckodag (annars räknat från frukosten)
+public/js/schedule.js        Veckoschema: tider för gympass, intervaller, promenad och egna aktiviteter, med råd
+public/js/trainingtimes.js   Egna träningstider från 0.8.0 (läses som förslag i veckoschemat)
 public/js/log.js             Loggposter och statistik
 public/js/pwa.js             Offline, beständig lagring och förslaget att installera appen
 public/js/wizard.js          Guiden första gången: profilen steg för steg innan något sparas

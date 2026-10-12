@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- Appens version (samma som js/version.js; uppdateras av npm run bump). main.js använder den för att se till att
        alla filer kommer från samma version. -->
-  <meta name="app-version" content="0.8.0">
+  <meta name="app-version" content="0.14.3">
   <meta name="description"
     content="Personlig veckoplan för viktnedgång: kalorimål, styrkeprogram med ExRx-övningar, säsongsrecept, fasta 16:8 och logg.">
   <meta name="theme-color" content="#1d5c4c" media="(prefers-color-scheme: light)">
@@ -250,7 +250,7 @@
     href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="css/app.css">
   <!-- ?v= gör att startfilen alltid hämtas på nytt efter en uppdatering, även ur en gammal webbläsarcache -->
-  <script type="module" src="js/main.js?v=0.8.0" onerror="ffvBootFailed()"></script>
+  <script type="module" src="js/main.js?v=0.14.3" onerror="ffvBootFailed()"></script>
 </head>
 
 <body>
@@ -306,6 +306,12 @@
           <div class="timeline" id="td-timeline" role="img"></div>
         </section>
 
+        <aside class="card backup-reminder" id="bk-remind" hidden>
+          <p><b>Säkerhetskopiera dina uppgifter</b> <span id="bk-remind-text"></span></p>
+          <div class="actions"><a class="btn primary" href="#backup">Exportera nu</a><button type="button" class="linkbtn"
+              id="bk-later">Påminn mig om en vecka</button></div>
+        </aside>
+
         <section id="dagens-vikt">
           <form class="card weigh-in" id="qw-form" autocomplete="off">
             <label for="qw-weight">Dagens vikt (kg)</label>
@@ -351,6 +357,7 @@
             <h2>Recept för i dag</h2>
             <p>Tryck på en måltid för att se ingredienser och hur du lagar den.</p>
           </div>
+          <p class="hint" id="td-eaten"></p>
           <div class="list" id="td-food"></div>
           <details class="card form swap-box" id="sw-box">
             <summary>Åt du något annat? Ersätt en måltid</summary>
@@ -384,6 +391,7 @@
           <div class="sec-head"><span class="eyebrow">Dagens träning</span>
             <h2 id="td-train-title">Träning</h2>
             <p id="td-train-sub"></p>
+            <ul class="advice" id="td-advice"></ul>
           </div>
           <div id="td-training"></div>
           <div id="td-supps-box" hidden>
@@ -446,8 +454,8 @@
           <section id="fusk">
             <div class="sec-head">
               <span class="eyebrow">Fri måltid</span>
-              <h2>Fuska på lördagen, en måltid</h2>
-              <p>Lördagens eftermiddagsmåltid med efterrätt och godis är enligt planen ca <b class="num"
+              <h2>Fuska på <span data-cheat="def">lördagen</span>, en måltid</h2>
+              <p><span data-cheat="Gen">Lördagens</span> eftermiddagsmåltid med efterrätt och godis är enligt planen ca <b class="num"
                   id="cheat-plan">–</b> kcal. Vill du fuska byter du ut just den måltiden. Så mycket av veckans
                 underskott kostar det:</p>
             </div>
@@ -457,13 +465,13 @@
             <div class="rules">
               <div class="rule">
                 <h3>När</h3>
-                <p>En gång i veckan, på lördagens eftermiddagsmåltid och inom ätfönstret. En måltid, inte en hel dag.
+                <p>En gång i veckan, på <span data-cheat="gen">lördagens</span> eftermiddagsmåltid och inom ätfönstret. En måltid, inte en hel dag.
                   Fastan dagen efter är som vanligt.</p>
               </div>
               <div class="rule">
                 <h3>Vad</h3>
                 <p>Vad du vill: pizza, hamburgare, tacos eller en restaurangmiddag. Börja med proteinet och ät dig mätt
-                  men inte proppmätt. Lördagsgodiset utgår den veckan.</p>
+                  men inte proppmätt. <span data-cheat="Treat">Lördagsgodiset</span> utgår den veckan.</p>
               </div>
               <div class="rule">
                 <h3>Inga straff</h3>
@@ -472,7 +480,7 @@
               </div>
               <div class="rule">
                 <h3>Hoppa över</h3>
-                <p>Om viktnedgången stått still i 2–3 veckor: behåll lördagsgodiset men skippa den fria måltiden tills
+                <p>Om viktnedgången stått still i 2–3 veckor: behåll <span data-cheat="treat">lördagsgodiset</span> men skippa den fria måltiden tills
                   kurvan rör sig igen.</p>
               </div>
             </div>
@@ -494,7 +502,7 @@
             <div class="list" id="r-breakfast"></div>
             <h3>Efterrätter och tillägg <span class="eyebrow">· äts direkt efter eftermiddagsmåltiden</span></h3>
             <div class="list" id="r-other"></div>
-            <h3>Lördagsgodis <span class="eyebrow">· i stället för godispåsen, som efterrätt på lördagen</span></h3>
+            <h3><span data-cheat="Name">Lördagsgodis</span> <span class="eyebrow">· i stället för godispåsen, som efterrätt på <span data-cheat="def">lördagen</span></span></h3>
             <div class="list" id="r-treat"></div>
             <p class="note">Näringsvärdena är uppskattningar från standardvärden för råvarorna (rå vikt för kött, fisk,
               ris, pasta och potatis; torr vikt för gryn, linser och pasta). Exakta värden finns i Livsmedelsverkets
@@ -558,6 +566,7 @@
               <button type="button" class="weeknav-arrow" id="shop-next" aria-label="Nästa veckas inköpslista">›</button>
               <button type="button" class="btn small weeknav-today" id="shop-wk-default" hidden>Till denna vecka</button>
             </div>
+            <p class="hint" id="shop-skipped"></p>
             <div class="shop-bar"><span class="num" id="shop-progress"></span><button type="button" class="btn"
                 id="shop-clear" hidden>Avmarkera alla</button></div>
             <div class="shop" id="shop"></div>
@@ -865,6 +874,12 @@
                 <label><input type="radio" name="rate" value="1" checked><span>1 %/v max</span></label>
               </div>
             </div>
+            <div class="field" data-step="5">
+              <label for="kcal">Eget kalorimål per dag <small>valfritt</small></label>
+              <input type="text" inputmode="decimal" data-decimal id="kcal" min="800" max="5000" placeholder="beräknas">
+              <small>Orkar du inte äta det beräknade målet kan du sätta ett lägre. Portionerna skalas efter det. Lägst
+                1 500 kcal för män och 1 200 kcal för kvinnor utan medicinsk uppföljning.</small>
+            </div>
             <div class="field" data-step="6">
               <span class="label">Utrustning</span>
               <div class="seg" role="radiogroup" aria-label="Utrustning">
@@ -885,8 +900,7 @@
                 <label><input type="checkbox" data-day="6"><span>Sön</span></label>
               </div>
               <input type="hidden" id="tdays-val" value="0,2,4">
-              <small id="tdays-msg">Välj 3 eller 4 dagar. 3 dagar ger helkropp, överkropp och ben; 4 dagar ger över- och
-                underkropp två gånger var.</small>
+              <small id="tdays-msg">3–4 dagar rekommenderas: 3 ger helkropp, överkropp och ben; 4 ger över- och underkropp två gånger var. Du kan välja fler eller färre.</small>
             </div>
             <div class="field" data-step="6">
               <label for="exswap">Byt övningar</label>
@@ -930,13 +944,8 @@
             <p class="hint" id="saved-hint">Uppgifterna sparas bara i den här webbläsaren när du ändrar något. De
               skickas ingenstans.</p>
           </form>
-          <div class="card form" id="tt-box">
-            <span class="label">Träningstider</span>
-            <p class="hint">Tränar du olika tider olika dagar, t.ex. 16:00–18:00 på tisdagar men 11:00–13:00 på lördagar,
-              fyller du i det här. Tomt = planens tid, räknat från frukosten. Idag, veckoschemat och tillskottstipsen
-              följer tiderna.</p>
-            <div class="tt-list" id="tt-list"></div>
-          </div>
+          <p class="hint">Tider för gympass, intervaller och promenad, t.ex. träning 16:00 på tisdagar och torsdagar,
+            ställer du in under <a href="#veckoschema">Inställningar → Veckoschema</a>.</p>
         </section>
 
         <section id="mal">
@@ -1050,15 +1059,69 @@
             <p>Anpassa appen efter dig. Dina uppgifter, ditt mål och dina träningsdagar ändrar du under <a href="#profil">Profil</a>.</p>
           </div>
           <nav class="settings-menu" aria-label="Inställningar">
+            <a href="#veckoschema"><span><b>Veckoschema</b><small>Tider för gympass, intervaller, promenad och egna aktiviteter, dag för dag</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#maltider"><span><b>Måltider</b><small>Efterrätt vilka veckodagar och fuskdag med godis</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#anpassa"><span><b>Allergier och livsmedel</b><small>Allergener, ingredienser du inte äter och egna livsmedel</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#mina-recept"><span><b>Mina recept</b><small>Egna recept, i valfria mått, som kan komma med i menyn</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#tillskott"><span><b>Tillskott</b><small>Vilka tillskott du tar, och egna tillskott som BCAA</small></span><span class="chev" aria-hidden="true">›</span></a>
-            <a href="#inkopslista"><span><b>Inköpslista</b><small>Vilken vecka inköpslistan visar, t.ex. alltid nästa vecka</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#inkopslista"><span><b>Inköpslista</b><small>Vilken vecka inköpslistan visar och billiga råvaror</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#sakerhetskopia"><span><b>Säkerhetskopia och delning</b><small>Dela din plan med vänner, spara och flytta allt, radera all data</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#installera"><span><b>Installera appen</b><small>Öppna appen som en egen app, även offline</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#om"><span><b>Om appen och villkor</b><small>Vad appen bygger på, villkor, dataskydd och källkod</small></span><span class="chev" aria-hidden="true">›</span></a>
           </nav>
         </section>
+
+        <div class="settings-page" data-page="veckoschema" hidden>
+          <a class="back-link" href="#installningar">‹ Inställningar</a>
+        <section id="veckoschema">
+          <div class="sec-head">
+            <span class="eyebrow">Ditt schema</span>
+            <h2>Veckoschema</h2>
+            <p>Bestäm själv när du tränar, kör intervaller, går (t.ex. till och från jobbet) och gör annat, dag för dag.
+              Tomma tider visar appens förslag, räknat från frukosten. Under varje dag får du råd om vad som är bra och
+              varför, men du bestämmer: inget blockeras. Vilka dagar som är gymdagar styr du med kryssrutan Gympass (samma
+              som Gymdagar i Profil). Idag, veckoschemat under Mat och tillskottstipsen följer det du anger här.</p>
+          </div>
+          <div class="card form sched-work" id="work-box">
+            <span class="label">Arbetstid</span>
+            <p class="hint">Fyll i när du jobbar, så lägger appen sina förslag utanför arbetstiden och varnar om något
+              krockar med den.</p>
+            <div class="sched-times"><input type="text" inputmode="numeric" data-clock id="work-from" placeholder="08:00"
+                aria-label="Arbetsdagen börjar"><span aria-hidden="true">–</span><input type="text" inputmode="numeric"
+                data-clock id="work-to" placeholder="17:00" aria-label="Arbetsdagen slutar"></div>
+            <div class="daypick" id="work-days" role="group" aria-label="Arbetsdagar">
+              <label><input type="checkbox" data-work-day="0"><span>Mån</span></label><label><input type="checkbox"
+                  data-work-day="1"><span>Tis</span></label><label><input type="checkbox" data-work-day="2"><span>Ons</span></label><label><input
+                  type="checkbox" data-work-day="3"><span>Tor</span></label><label><input type="checkbox" data-work-day="4"><span>Fre</span></label><label><input
+                  type="checkbox" data-work-day="5"><span>Lör</span></label><label><input type="checkbox" data-work-day="6"><span>Sön</span></label>
+            </div>
+            <button type="button" class="linkbtn" id="work-clear" hidden>Ingen arbetstid</button>
+          </div>
+          <div class="sched-list" id="sched-list"></div>
+        </section>
+        </div>
+
+        <div class="settings-page" data-page="maltider" hidden>
+          <a class="back-link" href="#installningar">‹ Inställningar</a>
+        <section id="maltider">
+          <div class="sec-head">
+            <span class="eyebrow">Mat</span>
+            <h2>Måltider</h2>
+            <p>Välj vilka dagar du vill ha efterrätt och vilken dag du fuskar (godis och fri måltid). Billiga
+              råvaror väljer du under <a href="#inkopslista">Inköpslista</a>. Utan efterrätt läggs kalorierna på huvudmåltiderna så att du når ditt kalorimål. Vill du äta
+              mindre totalt sänker du kalorimålet under <a href="#profil">Profil</a>.</p>
+          </div>
+          <div class="card form">
+            <label class="terms-accept"><input type="checkbox" id="ml-dessert-on"><span>Efterrätt till eftermiddagsmåltiden</span></label>
+            <div class="daypick" id="ml-dessert-days" role="group" aria-label="Dagar med efterrätt"><label><input type="checkbox" data-dessert-day="0"><span>Mån</span></label><label><input type="checkbox" data-dessert-day="1"><span>Tis</span></label><label><input type="checkbox" data-dessert-day="2"><span>Ons</span></label><label><input type="checkbox" data-dessert-day="3"><span>Tor</span></label><label><input type="checkbox" data-dessert-day="4"><span>Fre</span></label><label><input type="checkbox" data-dessert-day="5"><span>Lör</span></label><label><input type="checkbox" data-dessert-day="6"><span>Sön</span></label></div>
+            <small>T.ex. måndag och onsdag om efterrätten görs i en större sats som räcker två dagar.</small>
+            <div class="field"><label for="ml-cheat-day">Fuskdag: godis och fri måltid</label><select id="ml-cheat-day" data-days></select></div>
+            <label class="terms-accept"><input type="checkbox" id="ml-treat"><span>Godis på fuskdagen (<span data-cheat="Name">Lördagsgodis</span>)</span></label>
+
+            <p class="hint" id="ml-msg"></p>
+          </div>
+        </section>
+        </div>
 
         <div class="settings-page" data-page="anpassa" hidden>
           <a class="back-link" href="#installningar">‹ Inställningar</a>
@@ -1132,8 +1195,8 @@
             <span class="eyebrow">Egna recept</span>
             <h2>Mina recept</h2>
             <p>Bygg ett eget recept av livsmedel och gram per portion. Ett eget frukostrecept kan du sedan välja som
-              frukost varje dag under Profil. Mängderna skalas efter dina mål precis som i de andra recepten, och
-              ingredienserna hamnar i inköpslistan.</p>
+              frukost varje dag under Profil. Receptet används precis som du har skrivit det (övriga
+              måltider anpassas efter dina mål runt det), och ingredienserna hamnar i inköpslistan.</p>
           </div>
           <form class="card form" id="mr" autocomplete="off">
             <div class="row2">
@@ -1189,11 +1252,16 @@
             <span class="eyebrow">Mat</span>
             <h2>Inköpslista</h2>
             <p>Inköpslistan under <a href="#inkop">Mat → Handla</a> visar en vecka i taget, och du kan alltid bläddra
-              mellan veckorna med pilarna. Här väljer du vilken vecka den öppnas på.</p>
+              mellan veckorna med pilarna. Här väljer du vilken vecka den öppnas på, och om veckans rätter ska byggas på
+              billiga råvaror.</p>
           </div>
           <div class="card form">
             <label class="terms-accept"><input type="checkbox" id="shop-next-week"><span>Visa alltid nästa veckas
                 inköpslista, t.ex. om du handlar på söndagen inför veckan</span></label>
+            <label class="terms-accept"><input type="checkbox" id="ml-cheap"><span>Billiga råvaror: kycklingfärs i stället
+                för älgfärs, sej i stället för torsk och lax, kyckling i stället för fläskfilé och kalkon. Rätter med räkor,
+                renskav, älgskav eller älgkött tas inte med.</span></label>
+            <p class="hint" id="ml-cheap-msg"></p>
           </div>
         </section>
         </div>

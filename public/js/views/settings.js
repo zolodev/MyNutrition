@@ -5,7 +5,7 @@ import { FOOD, CATEGORIES, SUBSTITUTES, ALLERGENS, EXTRA_PRODUCTS, categoryOf } 
 import { RECIPES, SEASONAL, SEASONS } from "../data/recipes.js";
 import { exclusions, myFoods, isExcluded } from "../preferences.js";
 import { adaptRecipe, allDinnersIn, seasonOf, inSeason, fillSeasonalNames } from "../menu.js";
-import { myRecipes, RECIPE_TYPES } from "../myrecipes.js";
+import { myRecipes, RECIPE_TYPES, unreadableRecipes } from "../myrecipes.js";
 import { SUPPLEMENTS, using, mySupps, SUPP_WHEN } from "../supplements.js";
 import { macros, UNITS, unitsFor, gramsOf, formatQuantity } from "../nutrition.js";
 
@@ -121,7 +121,9 @@ function renderMyRecipes() {
   if (!$("mr-type").options.length) $("mr-type").innerHTML = RECIPE_TYPES.map(([g, n]) => `<option value="${g}">${n}</option>`).join("");
   if (!$("mr-items").children.length) $("mr-items").innerHTML = recipeItemRow() + recipeItemRow();
   const typeName = Object.fromEntries(RECIPE_TYPES);
-  $("mr-list").innerHTML = myRecipes.map((r) => {
+  const unreadable = unreadableRecipes();
+  $("mr-list").innerHTML = (unreadable.length ? `<p class="hint">${unreadable.length === 1 ? "Ett sparat recept" : `${unreadable.length} sparade recept`} (${unreadable.map(esc).join(", ")}) kunde inte läsas in. De ligger kvar orörda och följer med när du exporterar.</p>` : "") +
+    myRecipes.map((r) => {
     const m = macros(r.items.filter(([f]) => FOOD[f]));
     return `<div class="row my-food"><span class="main"><b>${esc(r.t)}</b><small>${typeName[r.g]} · ${fmt(m.k)} kcal · ${fmt(m.p)} g protein per portion</small>` +
       `<small>${[...r.items.map(([f, g, q, u]) => `${esc(FOOD[f]?.n || f)} ${q ? `${formatQuantity(q, u)} ${u}` : `${fmt(g)} g`}`),

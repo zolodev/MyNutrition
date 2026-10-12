@@ -3,7 +3,7 @@
 // cirka 30 min före passet; proteintajming spelar liten roll när dagsbehovet av protein redan täcks.
 
 import { MEAL_AT, STRENGTH, INTERVALS, WINDOW } from "./day.js";
-import { load, save } from "./util.js";
+import { load, save, readList, stableId } from "./util.js";
 import { formatClock, parseClock } from "./fasting.js";
 import { exclusions } from "./preferences.js";
 
@@ -35,14 +35,18 @@ export function cleanMySupp(m) {
     n, dose: typeof m.dose === "string" ? m.dose.trim().slice(0, 40) : "", when: m.when, at, kcal: !!m.kcal,
   };
 }
-export let mySupps = (load(MY_KEY, []) || []).map(cleanMySupp).filter(Boolean);
+const readSupps = readList(load(MY_KEY, []), (m, i) =>
+  cleanMySupp(m && !/^ms_[\w-]+$/.test(m.id) ? { ...m, id: stableId("ms_", `${i}:${m.n}`) } : m));
+export let mySupps = readSupps.kept;
+const unreadableSupps = readSupps.rejected; // ligger kvar orörda och skrivs tillbaka vid sparning
+const saveMySupps = () => save(MY_KEY, [...mySupps, ...unreadableSupps]);
 export function addMySupp(m) {
   mySupps.push(m);
-  save(MY_KEY, mySupps);
+  saveMySupps();
 }
 export function removeMySupp(id) {
   mySupps = mySupps.filter((m) => m.id !== id);
-  save(MY_KEY, mySupps);
+  saveMySupps();
 }
 /** Används något tillskott alls (de inbyggda eller egna)? */
 export const usesSupplements = () => using.size > 0 || mySupps.length > 0;

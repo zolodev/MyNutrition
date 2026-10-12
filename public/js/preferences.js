@@ -1,7 +1,7 @@
 // Allergier, ingredienser användaren inte äter och egna livsmedel. Sparas i webbläsaren.
 
 import { FOOD, CATEGORIES, EXTRA_PRODUCTS, SUBSTITUTES, LEGACY_ALLERGENS, LEGACY_PRODUCTS, allergenById, setCategory } from "./data/foods.js";
-import { load, save } from "./util.js";
+import { load, save, readList, stableId, DAYS } from "./util.js";
 
 const EXCLUSIONS_KEY = "ffv-excl";
 const MY_FOODS_KEY = "ffv-myfoods";
@@ -12,13 +12,42 @@ export const exclusions = { allergens: new Set(), foods: new Set(), words: new S
 /** Egna ord att välja bort (t.ex. "lax"): små bokstäver, 2–40 tecken. */
 export const cleanWord = (w) => (typeof w === "string" ? w.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 40) : "");
 
+// ---------- Måltider: efterrätter, fuskdag med godis och billiga råvaror ----------
+// "ffv-meals" = { dessertDays: [0–6], treat, cheap, cheatDay }. Saknas något gäller som tidigare: efterrätt alla
+// dagar, godis och fri måltid på lördag och vanliga råvaror. Okända fält behålls (se skillen datakompatibilitet).
+const MEALS_KEY = "ffv-meals";
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+function cleanMealPrefs(m) {
+  const saved = m && typeof m === "object" ? m : {};
+  return {
+    ...saved,
+    dessertDays: Array.isArray(saved.dessertDays) ? ALL_DAYS.filter((d) => saved.dessertDays.includes(d)) : ALL_DAYS,
+    treat: saved.treat !== false,
+    cheap: saved.cheap === true,
+    // Fuskdag: dagen för godiset och den fria måltiden (0 = måndag). Lördag som tidigare om inget är valt.
+    cheatDay: Number.isInteger(saved.cheatDay) && saved.cheatDay >= 0 && saved.cheatDay <= 6 ? saved.cheatDay : 5,
+  };
+}
+/** Godiset på fuskdagen heter efter dagen, t.ex. "Fredagsgodis" eller "Lördagsgodis". */
+export const treatName = () => `${DAYS[mealPrefs.cheatDay]}sgodis`;
+export let mealPrefs = cleanMealPrefs(load(MEALS_KEY, null));
+/** Ändra inställningarna för måltider, t.ex. { dessertDays: [0, 2] } eller { cheap: true }. */
+export function setMealPrefs(changes) {
+  mealPrefs = cleanMealPrefs({ ...mealPrefs, ...changes });
+  save(MEALS_KEY, mealPrefs);
+}
+
 /** Egna livsmedel: { id, n, k, p, c, f, cat, allergens, replaces, always } */
 export let myFoods = [];
+let unreadableFoods = [];
 
 export function loadPreferences() {
   const saved = load(EXCLUSIONS_KEY, { v: EXCLUSIONS_VERSION, allergens: [], foods: [] });
   setExclusions(migrateExclusions(saved));
-  myFoods = load(MY_FOODS_KEY, []).map(cleanMyFood).filter(Boolean);
+  const { kept, rejected } = readList(load(MY_FOODS_KEY, []), (m, i) =>
+    cleanMyFood(m && !/^my_[\w-]+$/.test(m.id) ? { ...m, id: stableId("my_", `${i}:${m.n}`) } : m));
+  myFoods = kept;
+  unreadableFoods = rejected; // ligger kvar orörda och skrivs tillbaka vid sparning
   registerMyFoods();
 }
 
@@ -56,7 +85,7 @@ export function removeMyFood(id) {
 
 /** Lägg till egna livsmedel från en import; befintliga med samma id behålls. */
 function saveMyFoods() {
-  save(MY_FOODS_KEY, myFoods);
+  save(MY_FOODS_KEY, [...myFoods, ...unreadableFoods]);
   registerMyFoods();
 }
 

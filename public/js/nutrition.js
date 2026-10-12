@@ -49,25 +49,43 @@ export function computeTargets(p) {
     target = floor;
     deficit = Math.max(0, tdee - target);
   }
+  // Eget kalorimål (Profil): ersätter det beräknade, men aldrig under golvet utan medicinsk uppföljning
+  const own = p.kcal > 0 ? Math.round(p.kcal) : null;
+  if (own) {
+    if (own < floor) flags.push(`Ditt kalorimål ${fmt(own)} kcal är under ${fmt(floor)} kcal, som är det lägsta utan medicinsk uppföljning. Planen använder ${fmt(floor)} kcal; vill du äta mindre, gör det tillsammans med vården.`);
+    else if (own >= tdee) flags.push(`Ditt kalorimål ${fmt(own)} kcal är inte under ditt underhållsbehov på ca ${fmt(tdee)} kcal, så du går inte ner i vikt. Sänk målet till under ${fmt(tdee)} kcal.`);
+    else if (tdee - own > MAX_DEFICIT) flags.push(`Ditt kalorimål ger ett underskott på ca ${fmt(tdee - own)} kcal per dag. Över 1 000 kcal ökar risken att tappa muskler och ork; ät mer protein och styrketräna.`);
+    target = Math.max(own, floor);
+    deficit = Math.max(0, tdee - target);
+  }
   target = Math.round(target / 10) * 10;
-  steps.push(`Underskott för ${String(rate).replace(".", ",")} %/vecka: <code>${fmt((rate / 100) * w, 2)} kg × 7 700 kcal/kg ÷ 7 = ${fmt(wantedDeficit)} kcal/dag</code>${wantedDeficit > MAX_DEFICIT ? " → begränsat till 1 000" : ""}. Kalorimål: <b>${fmt(target)} kcal</b>.`);
+  if (own) steps.push(`Eget kalorimål: <b>${fmt(target)} kcal</b> (beräknat för vald takt: ${fmt(Math.round((tdee - Math.min(wantedDeficit, MAX_DEFICIT)) / 10) * 10)} kcal). Underskott: ca ${fmt(deficit)} kcal per dag.`);
+  else steps.push(`Underskott för ${String(rate).replace(".", ",")} %/vecka: <code>${fmt((rate / 100) * w, 2)} kg × 7 700 kcal/kg ÷ 7 = ${fmt(wantedDeficit)} kcal/dag</code>${wantedDeficit > MAX_DEFICIT ? " → begränsat till 1 000" : ""}. Kalorimål: <b>${fmt(target)} kcal</b>.`);
 
   // 4. Makron: mycket protein, lite fett, resten kolhydrater.
   //    Vid övervikt räknas protein och fett på vikten vid BMI 27, eftersom fettvävnad inte behöver protein.
   const refWeight = Math.min(w, 27 * (h / 100) ** 2);
   let protein;
   let proteinText;
+  // ISSN: 1,4–2,0 g/kg för den som tränar; 2,2 g/kg fettfri massa skyddar musklerna i underskott. Högre värden
+  // (2,8 g/kg fettfri massa) gäller smala idrottare och gav orimligt stora portioner på två måltider.
   if (leanMass) {
-    protein = 2.8 * leanMass;
-    proteinText = `<code>2,8 g × ${fmt(leanMass, 1)} kg fettfri massa</code>`;
+    protein = 2.2 * leanMass;
+    proteinText = `<code>2,2 g × ${fmt(leanMass, 1)} kg fettfri massa</code>`;
   } else {
-    protein = 2.2 * refWeight;
-    proteinText = `<code>2,2 g × ${fmt(refWeight, 1)} kg</code>${refWeight < w ? " (vikten vid BMI 27, eftersom överskottsfett inte behöver protein)" : ""}`;
+    protein = 1.8 * refWeight;
+    proteinText = `<code>1,8 g × ${fmt(refWeight, 1)} kg</code>${refWeight < w ? " (vikten vid BMI 27, eftersom överskottsfett inte behöver protein)" : ""}`;
+  }
+  // Högst 35 % av kalorierna från protein, så att ett lågt kalorimål inte ger ännu större proteinportioner
+  const proteinCap = (0.35 * target) / 4;
+  if (protein > proteinCap) {
+    protein = proteinCap;
+    proteinText += ` (högst 35 % av kalorierna)`;
   }
   protein = Math.round(protein / 5) * 5;
   const fat = Math.round((0.6 * refWeight) / 5) * 5;
   const carbs = Math.max(75, Math.round((target - protein * 4 - fat * 9) / 4 / 5) * 5);
-  steps.push(`Protein ${proteinText} = <b>${protein} g</b>. Högt protein skyddar musklerna i underskott och mättar bäst (ExRx/ISSN: 1,4–2,0 g/kg för tränande, upp till 2,2 g/kg vid underskott). Fett hålls lågt, 0,6 g/kg = <b>${fat} g</b> (ca ${fmt(((fat * 9) / target) * 100)} % av kalorierna; under 0,5 g/kg rekommenderas inte eftersom kroppen behöver fett för hormoner och upptag av vitaminer). Resten blir kolhydrater = <b>${carbs} g</b>, lågt men tillräckligt för styrketräning: ExRx påpekar att styrkepass bara tömmer 25–40 % av musklernas glykogen.`);
+  steps.push(`Protein ${proteinText} = <b>${protein} g</b>. Högt protein skyddar musklerna i underskott och mättar bäst (ExRx/ISSN: 1,4–2,0 g/kg för tränande, ca 2,2 g/kg fettfri massa vid underskott). Fett hålls lågt, 0,6 g/kg = <b>${fat} g</b> (ca ${fmt(((fat * 9) / target) * 100)} % av kalorierna; under 0,5 g/kg rekommenderas inte eftersom kroppen behöver fett för hormoner och upptag av vitaminer). Resten blir kolhydrater = <b>${carbs} g</b>, lågt men tillräckligt för styrketräning: ExRx påpekar att styrkepass bara tömmer 25–40 % av musklernas glykogen.`);
 
   return { target, tdee, bmr, deficit, protein, fat, carbs, weight: w, flags, steps };
 }
@@ -142,6 +160,8 @@ export function solveScaling(scalableItems, fixedItems, targets, days = 7) {
   const d = det3(matrix);
   const solve = (col) => det3(matrix.map((row, i) => row.map((v, k) => (k === col ? rhs[i] : v)))) / d;
 
+  // Räcker inte kolhydraterna och fettet till kalorimålet (taket nått) hamnar veckan något under målet. Det är
+  // avsiktligt: att fylla på med mer protein ger orimligt stora portioner på två måltider.
   const p = clamp(solve(0), 0.8, 2.5);
   const f = clamp(solve(2), 0.5, 3);
   const c = clamp((goal[0] - p * sum.p[0] - f * sum.f[0]) / sum.c[0], 0.3, 2);

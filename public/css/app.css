@@ -501,11 +501,63 @@ textarea { width: 100%; font: inherit; font-size: 1rem; padding: 9px 10px; borde
 .swap-box summary { cursor: pointer; font-weight: 600; }
 .swap-box[open] summary { margin-bottom: 12px; }
 .swap-box form { display: grid; gap: 12px; }
-.chip { font: inherit; font-size: 0.86rem; padding: 7px 11px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--fg); cursor: pointer; }
-.chip:hover { background: var(--accent-soft); }
+.chip-btn { font: inherit; font-size: 0.86rem; padding: 7px 11px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--fg); cursor: pointer; }
+.chip-btn:hover { background: var(--accent-soft); }
 
-/* Profil → Träningstider: en rad per gymdag */
-.tt-list { display: grid; gap: 8px; }
-.tt-row { display: grid; grid-template-columns: 5.5em minmax(0, 1fr) auto minmax(0, 1fr) auto; align-items: center; gap: 8px; }
-.tt-day { font-weight: 600; }
-#tt-box { display: grid; gap: 10px; margin-top: 12px; }
+/* Inställningar → Veckoschema: ett kort per dag. Mobilen först: varje aktivitet är en rad med kryssruta och namn
+   överst och tiderna under; från 640 px ligger allt på en rad. */
+.sched-list { display: grid; gap: 12px; }
+.sched-day { display: grid; gap: 0; padding-block: 12px 14px; }
+.sched-head { display: flex; gap: 10px; align-items: baseline; padding-bottom: 6px; }
+.sched-head h3 { margin: 0; }
+.sched-head small { color: var(--muted); }
+.sched-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+.sched-row.off .sched-times, .sched-row.off .sched-label { opacity: 0.45; }
+.sched-on { display: flex; gap: 10px; align-items: center; font-weight: 600; min-height: 32px; cursor: pointer; }
+.sched-on input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
+.sched-times { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; }
+.sched-times input { text-align: center; font-family: var(--font-data); }
+.sched-other { display: flex; gap: 10px; align-items: center; }
+.sched-other input { flex: 1; min-width: 0; }
+.sched-day > .actions { padding-top: 8px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.sched-day > .advice { margin-top: 10px; }
+.sched-day > .advice:empty { display: none; }
+@media (min-width: 640px) {
+  .sched-row { grid-template-columns: 9.5em minmax(0, 1fr) minmax(0, 15em); align-items: center; }
+  .sched-row:not(:has(.sched-label)) .sched-times { grid-column: 3; }
+  .sched-row[data-kind="other"] { grid-template-columns: minmax(0, 1fr) minmax(0, 15em); }
+}
+
+/* Påminnelse om säkerhetskopia (Idag) */
+.backup-reminder { border-color: var(--spice); background: var(--spice-soft); display: grid; gap: 10px; }
+
+/* Råd om schemat (Idag och Inställningar → Veckoschema): varningar och tips, blockerar aldrig */
+.advice { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.advice li { padding: 8px 10px; border-radius: 8px; font-size: 0.9rem; }
+.advice li.warn { background: var(--warn-soft); color: var(--fg); border-left: 3px solid var(--warn); }
+.advice li.tip { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+.day .chip + .chip { margin-left: 4px; }
+.chip.walk { background: var(--accent-soft); color: var(--accent); }
+.sched-work { display: grid; gap: 10px; margin-bottom: 12px; }
+
+/* Dra och släpp måltider i veckoschemat (Mat → Veckan) */
+.day li { display: flex; align-items: flex-start; gap: 4px; }
+.day li a { flex: 1; min-width: 0; }
+.drag-handle { flex: none; touch-action: none; cursor: grab; border: 0; background: none; color: var(--muted); font-size: 1.1rem; line-height: 1; padding: 8px 4px; margin-left: -4px; border-radius: 6px; }
+.drag-handle:hover, .drag-handle:focus-visible { background: var(--accent-soft); color: var(--accent); }
+.dragging, .dragging * { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+.drag-ghost { position: fixed; z-index: 70; list-style: none; pointer-events: none; background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.2); padding: 4px 8px; font-size: 0.84rem; opacity: 0.95; }
+.day.drop-target { outline: 3px solid var(--accent); outline-offset: -1px; background: var(--accent-soft); }
+.drag-ghost { display: flex; gap: 4px; align-items: flex-start; }
+.drag-ghost a { display: block; color: var(--fg); text-decoration: none; }
+.drag-ghost small { display: block; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.drag-ghost .drag-handle { color: var(--accent); }
+
+/* Bocka av ätna måltider (Idag och veckoschemat) */
+.meal-row { display: flex; align-items: flex-start; gap: 8px; }
+.meal-row > :last-child { flex: 1; min-width: 0; }
+.eat-check { flex: none; display: grid; place-items: center; min-width: 32px; min-height: 40px; cursor: pointer; }
+.eat-check input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
+.meal-row.eaten summary b, .meal-row.eaten .swapped b, .day li.eaten a { text-decoration: line-through; color: var(--muted); }
+.day .eat-check { min-width: 24px; min-height: 30px; }
+.day .eat-check input { width: 18px; height: 18px; }

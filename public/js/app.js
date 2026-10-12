@@ -1,13 +1,13 @@
 // Appens styrning: läser profilen, räknar om och ritar alla vyer, kopplar knappar och formulär och sköter flikarna.
 
-import { $, $$, num, signed, radioValue, setRadio, load, save, remove, todayStr, weekIndexOf, confirmDialog, checkDecimal, isClockText, DAYS_SHORT, DAYS } from "./util.js";
+import { $, $$, num, signed, radioValue, setRadio, load, save, remove, todayStr, weekIndexOf, mondayOf, dateToDay, dayToDate, confirmDialog, toast, checkDecimal, isClockText, DAYS_SHORT, DAYS } from "./util.js";
 import { computeTargets, kgPerWeek, recommendedGoal } from "./nutrition.js";
 import { loadPreferences, exclusions, saveExclusions, setExclusions } from "./preferences.js";
-import { buildWeek, invalidateMenu, initSeed, planRandomness, setPlanRandomness, swapMeals, resetMoves, movesFor } from "./menu.js";
+import { buildWeek, shoppingList, invalidateMenu, initSeed, planRandomness, setPlanRandomness, swapMeals, resetMoves, movesFor } from "./menu.js";
 import { encodePlan, decodePlan, prettyCode, randomSeed } from "./plancode.js";
 import { SEASONS } from "./data/recipes.js";
-import { parseTrainingDays, buildProgram, SWAP_TEXT } from "./training.js";
-import { loadLog, entries, entryFor, upsertEntry, cleanEntry, setMealTimes } from "./log.js";
+import { parseTrainingDays, buildProgram, SWAP_TEXT, trainingDaysAdvice } from "./training.js";
+import { loadLog, entries, entryFor, upsertEntry, cleanEntry, setMealTimes, setEaten } from "./log.js";
 import { renderTargets, renderGoalAdvice } from "./views/profile.js";
 import { renderToday, renderFasting } from "./views/today.js";
 import { renderFastingToday, renderFastingNow, todaysFasting } from "./views/fasting-view.js";
@@ -22,12 +22,13 @@ import { loadMyRecipes } from "./myrecipes.js";
 import { openWizard } from "./wizard.js";
 import { unlockStorage, keys as storageKeys } from "./storage.js";
 import { initNavigation } from "./controllers/navigation.js";
-import { initSettingsForms, syncBreakfastOptions } from "./controllers/settings-forms.js";
+import { initSettingsForms, syncBreakfastOptions, renderMealPrefs } from "./controllers/settings-forms.js";
 import { initLogForm } from "./controllers/log-form.js";
-import { initBackupForms, showImportReceipt } from "./controllers/backup-form.js";
+import { initBackupForms, showImportReceipt, renderBackupReminder } from "./controllers/backup-form.js";
 import { initWorkout } from "./controllers/workout.js";
 import { initMealSwap } from "./controllers/meal-swap.js";
-import { initTrainingTimes, renderTrainingTimes } from "./controllers/training-times.js";
+import { initScheduleEditor, renderSchedule } from "./controllers/schedule-editor.js";
+import { initWeekDrag } from "./controllers/week-drag.js";
 import "./controllers/inputs.js";
 import { APP_VERSION } from "./version.js";
 import "./pwa.js";
@@ -45,7 +46,7 @@ const state = {
 // Sparas som { fältets id: värde } under "ffv", så att äldre sparade uppgifter och exporter fortsätter fungera.
 
 const PROFILE_KEY = "ffv";
-const PROFILE_FIELDS = ["age", "weight", "height", "bf", "act", "bfast", "bmeal", "goal", "tdays-val", "exswap"];
+const PROFILE_FIELDS = ["age", "weight", "height", "bf", "act", "bfast", "bmeal", "goal", "tdays-val", "exswap", "kcal"];
 const PROFILE_RADIOS = ["sex", "rate", "eq"];
 
 function readProfile() {
@@ -64,6 +65,7 @@ function readProfile() {
     breakfastChoice: $("bmeal").value,
     swapPeriod: Number($("exswap").value) || 1,
     goal: num($("goal").value),
+    kcal: num($("kcal").value), // eget kalorimål, annars beräknat
     days,
   };
 }
@@ -125,12 +127,13 @@ function syncDayButtons() {
   for (const el of $$("[data-day]")) el.checked = chosen.has(el.dataset.day);
 }
 
+/** Råd om antalet gymdagar. Allt går att välja; 3–4 rekommenderas och annat ger en varning med motivering. */
 function showTrainingDaysMessage({ valid, picked }) {
   const msg = $("tdays-msg");
-  msg.className = valid ? "" : "bad";
-  msg.textContent = valid
-    ? `${picked.length} dagar: ${picked.length === 3 ? "helkropp, överkropp och ben" : "över- och underkropp två gånger var"}.`
-    : `Välj 3 eller 4 dagar (nu ${picked.length}). Planen använder ${state.trainingDays.map((d) => DAYS_SHORT[d]).join(", ")} så länge.`;
+  const advice = valid ? trainingDaysAdvice(picked.length) : null;
+  msg.className = !valid || advice.level === "warn" ? "bad" : "";
+  msg.textContent = valid ? advice.text
+    : `Välj minst en dag. Planen använder ${state.trainingDays.map((d) => DAYS_SHORT[d]).join(", ")} så länge.`;
 }
 
 // ---------- Rita om allt ----------
@@ -174,7 +177,7 @@ function update() {
   $("wk-title").textContent = `${label.title} · ${SEASONS[week.season].n}`;
   $("wk-range").textContent = label.range + relativeWeek(state.week);
   $("wk-today").hidden = state.week === TODAY_WEEK;
-  renderWeekGrid(week, program.schedule, profile.breakfastHour);
+  renderWeekGrid(week, program.schedule, profile.breakfastHour, state.week);
   renderCheatTable(week, targets);
   renderRecipes(week, targets, profile.breakfastHour, label.title);
   renderShoppingWeek(profile, targets, week);
@@ -187,7 +190,10 @@ function update() {
   renderSettings(state.week);
   renderPlanCode(profile);
   renderQuickWeight();
-  renderTrainingTimes(profile.days.days, profile.breakfastHour);
+  renderBackupReminder();
+  renderMealPrefs();
+  $("kcal").placeholder = `${computeTargets({ ...profile, kcal: null }).target} (beräknat)`;
+  renderSchedule(program, profile.breakfastHour);
   $("mv-reset").hidden = !movesFor(state.week).length;
   showGoalAdvice();
   renderReport({
@@ -386,7 +392,12 @@ $("pc-form").addEventListener("submit", (ev) => {
 /** Inköpslistan har en egen vecka, så att den kan visa nästa vecka medan Veckan visar den här. */
 function renderShoppingWeek(profile, targets, shownWeek) {
   state.shopWeek ??= defaultShopWeek();
-  const week = state.shopWeek === state.week ? shownWeek : buildWeek(state.shopWeek, targets, profile.breakfastChoice);
+  const built = state.shopWeek === state.week ? shownWeek : buildWeek(state.shopWeek, targets, profile.breakfastChoice);
+  // Måltider som ersattes med något annat (t.ex. Huel) och inte flyttades handlas inte
+  const monday = dateToDay(mondayOf(state.shopWeek).toISOString().slice(0, 10));
+  const skip = [0, 1, 2, 3, 4, 5, 6].flatMap((d) => (entryFor(dayToDate(monday + d))?.swaps || []).filter((x) => x.moved == null).map((x) => [d, x.meal]));
+  const week = { ...built, ...shoppingList(built, skip) };
+  $("shop-skipped").textContent = skip.length ? `${skip.length} ${skip.length === 1 ? "måltid" : "måltider"} som du har ersatt med något annat är borträknade.` : "";
   const label = weekLabel(state.shopWeek);
   const preferred = defaultShopWeek();
   $("shop-wk-title").textContent = label.title;
@@ -422,6 +433,25 @@ $("mv-form").addEventListener("submit", (ev) => {
   update();
   $("mv-msg").textContent = `${$("mv-meal").selectedOptions[0].textContent} på ${DAYS[a].toLowerCase()} och ${DAYS[b].toLowerCase()} har bytt plats.`;
 });
+// Bocka av ätna måltider: på Idag gäller kryssrutan i dag, i veckoschemat dagen den står på
+for (const id of ["td-food", "week"]) {
+  $(id).addEventListener("change", (ev) => {
+    const meal = ev.target.dataset?.eaten;
+    if (meal == null) return;
+    setEaten(ev.target.dataset.date || todayStr(), Number(meal), ev.target.checked);
+    update();
+  });
+}
+
+// Dra och släpp i veckoschemat byter plats på samma sätt
+initWeekDrag({
+  swap(meal, a, b) {
+    swapMeals(state.week, meal, a, b);
+    update();
+    $("mv-msg").textContent = "";
+    toast(`${["Frukosten", "Eftermiddagsmåltiden", "Efterrätten"][meal]} på ${DAYS[a].toLowerCase()} och ${DAYS[b].toLowerCase()} har bytt plats.`);
+  },
+});
 $("mv-reset").addEventListener("click", () => {
   resetMoves(state.week);
   update();
@@ -454,7 +484,19 @@ initLogForm({ update });
 initBackupForms({ acceptTerms });
 initWorkout({ update });
 initMealSwap({ update });
-initTrainingTimes({ update });
+initScheduleEditor({
+  update,
+  // Gympass på/av i Veckoschema ändrar Gymdagar i profilen
+  setGymDay(day, on) {
+    const chosen = new Set(String($("tdays-val").value).split(",").filter((x) => x !== ""));
+    if (on) chosen.add(String(day));
+    else chosen.delete(String(day));
+    $("tdays-val").value = [...chosen].sort().join(",");
+    syncDayButtons();
+    saveProfile();
+    update();
+  },
+});
 syncBreakfastOptions();
 syncDayButtons();
 

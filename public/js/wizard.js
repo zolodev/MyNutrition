@@ -92,7 +92,7 @@ export function openWizard({ allergens = new Set(), termsOnly = false, onStep = 
       return false;
     }
     if (steps[step].key === "training" && !parseTrainingDays($("tdays-val").value, []).valid) {
-      $("wz-msg").textContent = "Välj 3 eller 4 gymdagar.";
+      $("wz-msg").textContent = "Välj minst en gymdag.";
       return false;
     }
     return true;

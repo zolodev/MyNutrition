@@ -1,8 +1,8 @@
 // Veckomenyn: säsong, anpassning efter allergier, veckorotation, portionsskalning och inköpslista.
 
-import { FOOD, GASSY, DIGESTIVE_FRUITS } from "./data/foods.js";
+import { FOOD, GASSY, DIGESTIVE_FRUITS, CHEAP, TEXT_FORMS } from "./data/foods.js";
 import { RECIPES, SEASONAL, NONE } from "./data/recipes.js";
-import { substituteFor, adaptInstructions, isExcluded } from "./preferences.js";
+import { substituteFor, adaptInstructions, isExcluded, mealPrefs } from "./preferences.js";
 import { macros, scaleItems, solveScaling } from "./nutrition.js";
 import { DAY_MS, DAYS, mondayOf, seededRandom, shuffle, load, save } from "./util.js";
 
@@ -54,12 +54,17 @@ export function invalidateMenu() {
  * och hela rätten stryks (ok: false) om en huvudingrediens saknar ersättare.
  */
 export function adaptRecipe(id, season) {
-  const key = season + "|" + id;
+  const cheap = mealPrefs.cheap && !RECIPES[id].mine; // egna recept lämnas som användaren skrev dem
+  const key = season + "|" + id + (cheap ? "|billigt" : "");
   if (adaptedCache[key]) return adaptedCache[key];
   const items = RECIPES[id].items.map(([f, g]) => [resolveSeasonal(f, season), g]);
+  // Billiga råvaror: rätter med en dyr råvara utan bra ersättare tas inte med; övriga dyra byts mot billigare
+  if (cheap && items.some(([f]) => CHEAP.skip.includes(f))) return (adaptedCache[key] = { ok: false, items: [], subs: [], dropped: [] });
   const total = macros(items);
   const result = { ok: true, items: [], subs: [], dropped: [] };
-  for (const [food, grams] of items) {
+  for (const [original, grams] of items) {
+    const food = cheap && CHEAP.swap[original] ? CHEAP.swap[original] : original;
+    if (food !== original) result.subs.push([original, food]);
     const replacement = substituteFor(food);
     if (replacement === food) result.items.push([food, grams]);
     else if (replacement) {
@@ -178,6 +183,20 @@ export function resetMoves(week) {
   save(MOVES_KEY, moves);
 }
 
+/**
+ * Ta bort efterrätten de dagar användaren inte vill ha någon, och lägg godiset på fuskdagen (eller ta bort det om det
+ * är avstängt). Görs efter att
+ * veckans rätter har slumpats, så att rätterna de andra dagarna blir desamma som tidigare.
+ */
+function withMealPrefs(plan) {
+  // Godiset slumpas alltid för lördagen (så att veckans rätter blir desamma) och flyttas sedan till fuskdagen
+  const treat = mealPrefs.treat ? plan[SATURDAY][3] : NONE;
+  return plan.map((day, d) => {
+    const meals = day.slice(0, 3).map((id, meal) => (meal === 2 && !mealPrefs.dessertDays.includes(d) ? NONE : id));
+    return d === mealPrefs.cheatDay ? [...meals, treat] : meals;
+  });
+}
+
 function applyMoves(week, plan) {
   const result = plan.map((day) => day.slice());
   for (const [meal, a, b] of movesFor(week)) [result[a][meal], result[b][meal]] = [result[b][meal], result[a][meal]];
@@ -190,6 +209,27 @@ function applyMoves(week, plan) {
  * Bygg veckans meny: säsongsanpassade och skalade recept, dagssummor och inköpslista.
  * Returnerar { season, plan, recipes, factors, shopping, extras }. `extras` är egna ingredienser { "x:namn": { n, amounts } }. `recipes[id]` har t, how, items, m (makron), subs, dropped.
  */
+/**
+ * Skriv om utbytta råvaror i receptets namn och text, t.ex. [["bulgur", "ris"]]: "med bulgur" → "med ris",
+ * "Koka bulguren" → "Koka riset", "Kycklingfärsbiffar" → "Älgfärsbiffar". Bestämd form ersätts före obestämd, och
+ * stor bokstav behålls. Korta ord (som "ris") ersätts bara som hela ord, så att t.ex. "riven" inte påverkas.
+ */
+export function renameInText(text, subs) {
+  let out = text;
+  for (const [from, to] of subs || []) {
+    const a = TEXT_FORMS[from], b = TEXT_FORMS[to];
+    // Saknas formerna, eller är ersättaren en variant av samma råvara (glutenfria havregryn), behålls texten
+    if (!a || !b || b[0].includes(a[0])) continue;
+    for (const i of [1, 0]) {
+      const word = a[i];
+      const short = word.length <= 4;
+      const re = new RegExp(`${short ? "(^|[^a-zåäöé])" : "()"}(${word})${short ? "(?=$|[^a-zåäöé])" : ""}`, "gi");
+      out = out.replace(re, (_, before, found) => before + (found[0] === found[0].toUpperCase() ? b[i][0].toUpperCase() + b[i].slice(1) : b[i]));
+    }
+  }
+  return out;
+}
+
 /** Vilken frukt med enzymer en rätt får en viss vecka: olika för olika rätter och veckor, aldrig en bortvald. */
 function digestiveFruit(recipeId, week) {
   const start = [...recipeId].reduce((h, c) => h + c.charCodeAt(0), 0) + week;
@@ -202,50 +242,61 @@ function digestiveFruit(recipeId, week) {
 
 export function buildWeek(week, targets, breakfastChoice) {
   const season = seasonOf(week);
-  const plan = applyMoves(week, weekPlan(week, breakfastChoice));
+  const plan = withMealPrefs(applyMoves(week, weekPlan(week, breakfastChoice)));
 
   // Säsongsanpassa och anpassa efter bortval. Måltider med ägg, kål eller baljväxter får 100 g frukt med enzymer;
-  // frukten växlar mellan rätterna och veckorna, och bortvalda frukter hoppas över.
+  // frukten växlar mellan rätterna och veckorna, och bortvalda frukter hoppas över. Egna recept får ingen frukt.
   const base = {};
   for (const id of Object.keys(RECIPES)) {
     const recipe = RECIPES[id];
     const adapted = adaptRecipe(id, season);
     const items = adapted.ok ? adapted.items.slice() : [];
-    if ((recipe.g === "b" || recipe.g === "d") && items.some(([f]) => GASSY.has(f))) {
+    if (!recipe.mine && (recipe.g === "b" || recipe.g === "d") && items.some(([f]) => GASSY.has(f))) {
       const fruit = digestiveFruit(id, week);
       if (fruit) items.push([fruit, 100]);
     }
     base[id] = {
       ...recipe, id, items, subs: adapted.subs, dropped: adapted.dropped,
-      t: fillSeasonalNames(recipe.t, season),
-      how: adaptInstructions(fillSeasonalNames(recipe.how, season)),
+      t: renameInText(fillSeasonalNames(recipe.t, season), adapted.subs),
+      how: adaptInstructions(renameInText(fillSeasonalNames(recipe.how, season), adapted.subs)),
     };
   }
 
-  // Skala allt utom lördagsgodiset så att veckan träffar målen
+  // Skala allt utom lördagsgodiset och egna recept så att veckan träffar målen. Egna recept äts som användaren skrev
+  // dem (skalningen ändrar protein, kolhydrater och fett var för sig och skulle ändra receptets proportioner).
   const eaten = plan.flat();
-  const scalable = eaten.filter((id) => base[id].g !== "x").flatMap((id) => base[id].items);
-  const fixed = eaten.filter((id) => base[id].g === "x").flatMap((id) => base[id].items);
+  const isFixed = (id) => base[id].g === "x" || base[id].mine;
+  const scalable = eaten.filter((id) => !isFixed(id)).flatMap((id) => base[id].items);
+  const fixed = eaten.filter(isFixed).flatMap((id) => base[id].items);
   const factors = solveScaling(scalable, fixed, targets);
 
   const recipes = {};
   for (const id of Object.keys(base)) {
-    const items = base[id].g === "x" ? base[id].items : scaleItems(base[id].items, factors);
+    const items = isFixed(id) ? base[id].items : scaleItems(base[id].items, factors);
     recipes[id] = { ...base[id], items, m: macros(items) };
   }
 
+  const { shopping, extras } = shoppingList({ plan, recipes });
+
+  return { season, plan, recipes, factors, shopping, extras };
+}
+
+/**
+ * Inköpslistan för en vecka: { shopping: { livsmedel: gram }, extras: { "x:namn": { n, amounts } } }.
+ * `skip` = [[dag, måltid], …] som inte ska handlas, t.ex. måltider som ersattes med något annat (Huel). Kryddor och
+ * egna ingredienser (`extra` i recepten) slås ihop per namn och summeras per mått.
+ */
+export function shoppingList({ plan, recipes }, skip = []) {
+  const skipped = new Set(skip.map(([d, m]) => `${d}:${m}`));
+  const eaten = plan.flatMap((day, d) => day.filter((id, m) => id !== NONE && !skipped.has(`${d}:${m}`)));
   const shopping = {};
   for (const id of eaten) for (const [food, grams] of recipes[id].items) shopping[food] = (shopping[food] || 0) + grams;
-
-  // Egna ingredienser i egna recept (t.ex. parmesan, salt) ingår inte i näringen och skalas inte, men ska handlas.
-  // Samma namn slås ihop; mängderna summeras per mått.
   const extras = {};
   for (const id of eaten) for (const x of recipes[id].extra || []) {
     const item = (extras[`x:${x.n.toLowerCase()}`] ??= { n: x.n, amounts: {} });
     if (x.q) item.amounts[x.u] = (item.amounts[x.u] || 0) + x.q;
   }
-
-  return { season, plan, recipes, factors, shopping, extras };
+  return { shopping, extras };
 }
 
 /** Summa kcal, protein, kolhydrater och fett för en lista recept-id. */

@@ -1,8 +1,9 @@
 // Idag: dagens måltider och träning, samt tidslinjerna för fasta och träning.
 
-import { $, esc, fmt, hhmm, todayIndex, DAYS } from "../util.js";
-import { strengthTime } from "../trainingtimes.js";
-import { MEAL_NAMES } from "../log.js";
+import { $, esc, fmt, hhmm, todayIndex, todayStr, DAYS } from "../util.js";
+import { daySchedule, scheduleAdvice, workoutOf, workOn } from "../schedule.js";
+import { MEAL_NAMES, entryFor } from "../log.js";
+import { treatName } from "../preferences.js";
 import { NONE } from "../data/recipes.js";
 import { totals } from "../menu.js";
 import { MEAL_AT, WINDOW, STRENGTH, INTERVALS } from "../day.js";
@@ -40,25 +41,37 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
     tile({ label: "Protein", value: fmt(sum.p), unit: "g", sub: `Mål ${fmt(targets.protein)} g` }) +
     tile({ label: "Fasta", value: 16, unit: "h", sub: `${t(WINDOW)}–${t(0)}` });
 
-  // Dagens tidslinje: ätfönstret och, på träningsdagar, när passet ska ligga
-  const gym = strengthTime(index, breakfast); // egen tid för veckodagen, annars räknat från frukosten
-  const gymText = `${formatClock(gym.from)}–${formatClock(gym.to)}`;
-  const workout = training.kind === "str" ? { from: gym.from, to: gym.to, cls: "str", label: `Styrkepass ${gymText}` }
-    : training.kind === "int" ? { from: at(INTERVALS[0]), to: at(INTERVALS[1]), cls: "int", label: `Intervaller ${t(INTERVALS[0])}–${t(INTERVALS[1])}` }
-    : { from: at(WINDOW), to: at(WINDOW + 0.5), cls: "walk", label: `Promenad ${t(WINDOW)}` };
-  renderTimeline($("td-timeline"), [{ from: at(0), to: at(WINDOW), cls: "eat", label: `Ätfönster ${t(0)}–${t(WINDOW)}` }, workout],
-    [{ at: at(0), label: `Frukost ${t(0)}` }, { at: at(MEAL_AT), label: `Måltid ${t(MEAL_AT)}` }]);
+  // Dagens tidslinje: ätfönstret och dagens aktiviteter enligt veckoschemat (egna tider, annars planens förslag)
+  const items = daySchedule(index, training.kind, breakfast);
+  const span = (x) => `${formatClock(x.from)}–${formatClock(x.to)}`;
+  renderTimeline($("td-timeline"), [{ from: at(0), to: at(WINDOW), cls: "eat", label: `Ätfönster ${t(0)}–${t(WINDOW)}` },
+    ...items.map((x) => ({ from: x.from, to: x.to, cls: x.kind === "other" ? "walk" : x.kind, label: `${x.label} ${span(x)}` }))],
+  [{ at: at(0), label: `Frukost ${t(0)}` }, { at: at(MEAL_AT), label: `Måltid ${t(MEAL_AT)}` }]);
+  const next = program.schedule[(index + 1) % 7];
+  const advice = scheduleAdvice(items, { work: workOn(index), eat: { from: at(0), to: at(WINDOW) }, nextIsLegs: next.kind === "str" && program.legSessions.includes(next.session) });
+  $("td-advice").innerHTML = advice.map((a) => `<li class="${a.level}">${esc(a.text)}</li>`).join("");
 
   // Dagens recept, fullständiga
-  const meals = [[t(0), "Frukost"], [t(MEAL_AT), "Måltid"], [t(MEAL_AT), "Efterrätt"], [t(MEAL_AT), "Lördagsgodis"]];
+  const meals = [[t(0), "Frukost"], [t(MEAL_AT), "Måltid"], [t(MEAL_AT), "Efterrätt"], [t(MEAL_AT), treatName()]];
+  // Varje måltid har en kryssruta för att bocka av den som ätit (sparas i dagens logg, se setEaten i log.js)
+  const eaten = new Set(entryFor(todayStr())?.eaten || []);
+  const check = (i) => `<label class="eat-check" title="Ätit"><input type="checkbox" data-eaten="${i}"${eaten.has(i) ? " checked" : ""} aria-label="Ätit ${MEAL_NAMES[i].toLowerCase()}"></label>`;
   $("td-food").innerHTML = day.map((id, i) => {
     if (id === NONE) return "";
     const swap = swapOf(i);
-    if (!swap) return recipeRow(week.recipes[id], `${meals[i][0]} ${meals[i][1]}`, false);
-    return `<div class="row swapped"><span class="kind">${meals[i][0]} ${meals[i][1]}</span><span class="main"><b>${esc(swap.n)}</b>` +
+    const done = eaten.has(i) ? " eaten" : "";
+    if (!swap) return `<div class="meal-row${done}">${check(i)}${recipeRow(week.recipes[id], `${meals[i][0]} ${meals[i][1]}`, false)}</div>`;
+    return `<div class="meal-row${done}">${check(i)}<div class="row swapped"><span class="kind">${meals[i][0]} ${meals[i][1]}</span><span class="main"><b>${esc(swap.n)}</b>` +
       `<small>I stället för ${esc(swap.was || week.recipes[id].t)}${swap.moved != null ? `, som är flyttad till ${DAYS[swap.moved].toLowerCase()}` : ""}</small></span><span class="end">${fmt(swap.k)} kcal · ${fmt(swap.p)} g P ` +
-      `<button type="button" class="linkbtn" data-unswap="${i}">Ångra</button></span></div>`;
+      `<button type="button" class="linkbtn" data-unswap="${i}">Ångra</button></span></div></div>`;
   }).join("");
+  // Hur mycket av dagen som är ätet
+  const mealKcal = (i) => swapOf(i) ? { k: swapOf(i).k, p: swapOf(i).p } : week.recipes[day[i]].m;
+  const ate = [...eaten].filter((i) => day[i] && day[i] !== NONE).reduce((sum, i) => ({ k: sum.k + mealKcal(i).k, p: sum.p + mealKcal(i).p }), { k: 0, p: 0 });
+  const mealCount = day.filter((id) => id !== NONE).length;
+  $("td-eaten").textContent = eaten.size
+    ? `Ätit ${[...eaten].filter((i) => day[i] && day[i] !== NONE).length} av ${mealCount} måltider: ${fmt(ate.k)} av ${fmt(sum.k)} kcal och ${fmt(ate.p)} av ${fmt(sum.p)} g protein.`
+    : "Bocka av måltiderna när du har ätit dem.";
   // Formuläret för att ersätta en måltid: dagens måltider att välja bland, och senast använda ersättningar
   $("sw-meal").innerHTML = day.map((id, i) => (id === NONE ? "" : `<option value="${i}">${MEAL_NAMES[i]}${swapOf(i) ? " (ersatt)" : ""}</option>`)).join("");
   if (day[1] !== NONE && !swapOf(1)) $("sw-meal").value = "1"; // oftast eftermiddagsmåltiden
@@ -66,28 +79,28 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   fillMoveOptions(Number($("sw-meal").value));
 
   // Dagens träning
-  if (training.kind === "str") {
+  const gym = items.find((x) => x.kind === "str"), int = items.find((x) => x.kind === "int"), walk = items.find((x) => x.kind === "walk");
+  const walkText = walk ? ` ${walk.label} ${span(walk)}.` : "";
+  if (training.kind === "str" && gym) {
     const session = program.sessions.find((s) => s.id === training.session);
     $("td-train-title").textContent = session.name;
-    const afterWindow = gym.from >= at(WINDOW);
-    $("td-train-sub").textContent = (gym.custom
-      ? `Din tid i dag: ${gymText}. ` + (afterWindow
-        ? `Passet ligger efter att ätfönstret stängt ${t(WINDOW)}. Vill du äta efter passet kan du flytta frukosten senare under Profil, så flyttas ätfönstret med. `
-        : gym.to <= at(MEAL_AT) ? `Eftermiddagsmåltiden ${t(MEAL_AT)} blir din återhämtningsmåltid. ` : "")
-      : `Helst ${gymText}, så blir eftermiddagsmåltiden ${t(MEAL_AT)} din återhämtningsmåltid. `) + "Tryck på en övning för att se utförandet i ExRx.";
+    $("td-train-sub").textContent = `${gym.custom ? "Din tid i dag" : "Förslag"}: ${span(gym)}.` +
+      (gym.to <= at(MEAL_AT) ? ` Eftermiddagsmåltiden ${t(MEAL_AT)} blir din återhämtningsmåltid.` : "") + walkText +
+      " Tider ändrar du under Inställningar → Veckoschema. Tryck på en övning för att se utförandet i ExRx.";
     $("td-training").innerHTML = sessionBlock(session);
-  } else if (training.kind === "int") {
+  } else if (int) {
     $("td-train-title").textContent = "Intervaller";
-    $("td-train-sub").textContent = `Helst ${t(INTERVALS[0])}–${t(INTERVALS[1])}, när frukosten har lagt sig.`;
+    $("td-train-sub").textContent = `${int.custom ? "Din tid i dag" : "Förslag"}: ${span(int)}.${walkText} Tider ändrar du under Inställningar → Veckoschema.`;
     $("td-training").innerHTML = `<div class="card plan-steps"><ol><li>5 minuter lugn uppvärmning på cykel, i backe eller rask promenad.</li><li>8 omgångar: 30 sekunder hårt, 90 sekunder lugnt.</li><li>5 minuter lugnt avslut.</li></ol><p class="note">Gå dessutom dina 8 000–10 000 steg, gärna en promenad efter eftermiddagsmåltiden.</p></div>`;
   } else {
     $("td-train-title").textContent = "Vila";
-    $("td-train-sub").textContent = "Ingen styrketräning i dag. Musklerna växer och återhämtar sig mellan passen.";
-    $("td-training").innerHTML = `<div class="card plan-steps"><ol><li>Gå 8 000–10 000 steg.</li><li>Ta en promenad på 20–30 minuter efter eftermiddagsmåltiden ${t(MEAL_AT)}, det sänker blodsockret.</li></ol></div>`;
+    $("td-train-sub").textContent = "Ingen styrketräning i dag. Musklerna växer och återhämtar sig mellan passen." + walkText;
+    $("td-training").innerHTML = `<div class="card plan-steps"><ol><li>Gå 8 000–10 000 steg.</li>${walk ? `<li>${esc(walk.label)} ${span(walk)}.</li>` : `<li>Ta en promenad på 20–30 minuter efter eftermiddagsmåltiden ${t(MEAL_AT)}, det sänker blodsockret.</li>`}</ol></div>`;
   }
 
   // Dagens tillskott, med klockslag
-  const tips = supplementTips({ start: breakfast, kind: training.kind, weight, workout: training.kind === "str" ? gym : null });
+  const pass = workoutOf(items);
+  const tips = supplementTips({ start: breakfast, kind: pass ? pass.kind : "rest", weight, workout: pass });
   $("td-supps-box").hidden = !usesSupplements();
   $("td-supps").innerHTML = tips.map((tip) => `<li><b>${formatClock(tip.at)} ${tip.name}</b> ${tip.text}</li>`).join("") +
     generalNotes().map((n) => `<li>${n}</li>`).join("");
