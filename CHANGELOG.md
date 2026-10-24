@@ -6,6 +6,16 @@ MINOR höjs för nya funktioner, PATCH för rättningar. Höj versionen med `npm
 
 ## [Ej släppt]
 
+## [0.19.2] - 2026-10-24
+
+### Tillagt
+- Rapporten har en prognos för målvikten med datum: när du når den om du följer appens kalorimål och träning,
+  räknat från ditt 7-dagarssnitt, och jämfört med din takt de senaste veckorna.
+
+### Rättat
+- Att hålla fingret på viktkurvan under Logg för att läsa av den markerar inte längre text och öppnar ingen meny på
+  mobilen. Dra i sidled för att flytta markeringen; sidan rullar som vanligt uppåt och nedåt.
+
 ## [0.19.1] - 2026-10-24
 
 ### Rättat

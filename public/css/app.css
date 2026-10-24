@@ -221,6 +221,7 @@ small.block { display: block; color: var(--muted); font-size: 0.75rem; }
 .tiles.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 640px) { .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .tile { background: var(--surface); padding: 14px; display: grid; gap: 2px; min-width: 0; }
+.tile.wide { grid-column: 1 / -1; }
 .tile .v { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
 .tile .v small { font-family: var(--font-body); font-size: 0.85rem; font-weight: 600; color: var(--muted); letter-spacing: 0; }
 .tile .sub { font-size: 0.8rem; color: var(--muted); }
@@ -365,6 +366,10 @@ details.recipe[open] { border-color: var(--accent); }
 @media (max-width: 1000px) { .log-grid { grid-template-columns: minmax(0, 1fr); } }
 .log-stats { display: grid; gap: 12px; min-width: 0; }
 .chart { position: relative; padding: 8px; }
+/* Viktkurvan läses av genom att hålla fingret på den: ingen textmarkering eller meny på mobilen, och sidan rullar
+   fortfarande uppåt och nedåt (dra i sidled för att flytta markeringen) */
+#l-chart, #l-tip { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#l-chart .hit { touch-action: pan-y; }
 :is(#l-chart, #rp-chart) { width: 100%; height: auto; display: block; font-family: var(--font-data); }
 :is(#l-chart, #rp-chart) .grid { stroke: var(--line); stroke-width: 1; }
 :is(#l-chart, #rp-chart) .axis { fill: var(--muted); font-size: 11px; }

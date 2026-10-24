@@ -583,6 +583,12 @@ $("l-date").value = "2026-13-40"; fire($("logf"), "submit");
 check("Ogiltigt datum avvisas", text("l-msg").startsWith("Skriv datumet som ÅÅÅÅ-MM-DD"));
 check("Viktkurvan visar senaste månaden från början, med knappar för period", $("l-range").querySelector('[aria-pressed="true"]').dataset.range === "30" && $("l-range").querySelectorAll("[data-range]").length === 4);
 fire($("l-range").querySelector('[data-range="0"]'), "click");
+{
+  const css = fs.readFileSync(new URL("../public/css/app.css", import.meta.url), "utf8");
+  const menu = new win.MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+  $("l-chart").dispatchEvent(menu);
+  check("Att hålla fingret på viktkurvan markerar ingen text och öppnar ingen meny", menu.defaultPrevented && /#l-chart, #l-tip \{[^}]*user-select: none[^}]*-webkit-touch-callout: none/.test(css) && /#l-chart \.hit \{ touch-action: pan-y/.test(css));
+}
 check("Grafen visar planen hela vägen ner till målvikten", !!$("l-chart").querySelector(".plan-end") && /målvikten ca \d{4}-\d{2}-\d{2}/.test(text("l-key")));
 const planLine = $("l-chart").querySelector(".plan"), planEnd = $("l-chart").querySelector(".plan-end");
 check("Planlinjen slutar vid målvikten", Math.abs(Number(planLine.getAttribute("x2")) - Number(planEnd.getAttribute("cx"))) < 0.01 && Math.abs(Number(planLine.getAttribute("y2")) - Number(planEnd.getAttribute("cy"))) < 0.01);
@@ -1029,6 +1035,11 @@ check("Logg länkar till rapporten", !!$("logg").querySelector('a[href="#rapport
 go("rapport");
 check("Rapporten är en egen sida och Logg är markerad i menyn", visible() === "rapport" && win.document.querySelector('a[data-tab="logg"]').getAttribute("aria-current") === "page");
 check("Rapporten sammanfattar vikt, förändring, midja, BMI, mål, mående, kondition och intensitetsminuter", ["Startvikt", "Nu, 7-dagarssnitt", "Förändring", "Midja", "BMI", "Målvikt", "Mående", "Konditionspass", "Intensitetsminuter"].every((t) => text("rp-tiles").includes(t)));
+{
+  const tileEl = $("rp-tiles").querySelector(".tile.wide");
+  const text2 = tileEl?.textContent || "";
+  check("Rapporten har en prognos med datum för målvikten om man följer appen", tileEl && text2.startsWith("Prognos för målvikten") && (/\d{4}-\d{2}-\d{2}/.test(text2) && /om du följer appens kalorimål och träning \([\d,]+ kg\/vecka\)/.test(text2) || text2.includes("Nådd") || text2.includes("Fyll i en målvikt")));
+}
 check("Rapporten visar perioden och antal loggade dagar", /\d{4}-\d{2}-\d{2} – \d{4}-\d{2}-\d{2} · \d+ loggade dagar/.test(text("rp-period-text")));
 check("Vecka för vecka har rader med veckonummer", $("rp-weeks").querySelectorAll("tbody tr").length >= 1 && /v\. \d+/.test(text("rp-weeks")));
 check("Kondition per aktivitet med tempo och maxpuls", text("rp-cardio").includes("Löpning") && text("rp-cardio").includes("/km") && text("rp-cardio").includes("Högsta maxpuls"));

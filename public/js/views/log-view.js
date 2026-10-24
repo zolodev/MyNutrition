@@ -225,6 +225,8 @@ function drawChart(s, planStartWeight) {
   };
   hit.addEventListener("pointermove", show);
   hit.addEventListener("pointerdown", show);
+  // Ett långt tryck ska visa vägningen, inte öppna telefonens meny för markering
+  svg.oncontextmenu = (ev) => ev.preventDefault();
   hit.addEventListener("pointerleave", () => {
     cross.setAttribute("visibility", "hidden");
     tip.hidden = true;

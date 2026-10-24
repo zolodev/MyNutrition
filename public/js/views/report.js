@@ -2,9 +2,9 @@
 // läkare. Sidan har en egen utskriftslayout, så den kan skrivas ut eller sparas som PDF.
 
 import { $, esc, fmt, signed, todayStr, dateToDay, dayToDate, mondayOf, isoWeekNumber, DAY_MS } from "../util.js";
-import { entries, sevenDayAverage, CARDIO, paceText, secondsPerKm, cardioText, intensityMinutes, WEEKLY_INTENSITY_GOAL, formatHms } from "../log.js";
+import { entries, sevenDayAverage, logStats, CARDIO, paceText, secondsPerKm, cardioText, intensityMinutes, WEEKLY_INTENSITY_GOAL, formatHms } from "../log.js";
 import { parseClock, fastingHours, formatDuration } from "../fasting.js";
-import { bmiOf } from "../nutrition.js";
+import { bmiOf, kgPerWeek } from "../nutrition.js";
 import { tile } from "./components.js";
 
 const EPOCH_DAY = Date.UTC(2024, 0, 1) / DAY_MS; // veckor räknas från måndagen 2024-01-01, som i util.js
@@ -69,7 +69,30 @@ function renderSummary(weighIns, allWeighIns, list, profile, targets) {
     tile({ label: "Mående", value: moods.length ? fmt(average(moods), 1) : "–", unit: moods.length ? "av 5" : "", sub: `${moods.length} dagar loggade` }) +
     tile({ label: "Konditionspass", value: passes.length, sub: passes.length ? `${fmt(passes.reduce((a, c) => a + c.km, 0), 1)} km på ${formatHms(passes.reduce((a, c) => a + c.s, 0))}` : "Inga pass loggade" }) +
     tile({ label: "Intensitetsminuter", value: im.length ? fmt(im.reduce((a, b) => a + b, 0) / imWeeks) : "–", unit: im.length ? "min/vecka" : "",
-      sub: im.length ? `snitt per vecka · WHO rekommenderar minst ${WEEKLY_INTENSITY_GOAL}` : "Inte loggade" });
+      sub: im.length ? `snitt per vecka · WHO rekommenderar minst ${WEEKLY_INTENSITY_GOAL}` : "Inte loggade" }) +
+    forecastTile(allWeighIns, profile, targets);
+}
+
+/**
+ * Prognos för målvikten: när den nås om man följer appens kalorimål (planens takt), räknat från dagens 7-dagarssnitt
+ * (eller profilens vikt utan vägningar). Med en tydlig nedgång de senaste tre veckorna visas också datumet i den takten.
+ */
+function forecastTile(allWeighIns, profile, targets) {
+  const goal = profile.goal;
+  const last = allWeighIns[allWeighIns.length - 1];
+  const now = last ? sevenDayAverage(allWeighIns, last.day) : targets.weight;
+  const perWeek = kgPerWeek(targets.deficit);
+  const today = dateToDay(todayStr());
+  if (!goal || !(now > 0)) return tile({ label: "Prognos för målvikten", value: "–", sub: "Fyll i en målvikt under Profil", wide: true });
+  if (now <= goal) return tile({ label: "Prognos för målvikten", value: "Nådd", sub: `Målvikten ${fmt(goal, 1)} kg är nådd`, wide: true });
+  if (!(perWeek > 0)) return tile({ label: "Prognos för målvikten", value: "–", sub: "Kalorimålet ger ingen nedgång", wide: true });
+  const weeks = (now - goal) / perWeek;
+  const date = dayToDate(Math.round(today + weeks * 7));
+  const rate = logStats(perWeek, goal).rateKgPerWeek;
+  const trend = rate != null && rate < -0.05 ? ` I din takt de senaste veckorna (${fmt(-rate, 2)} kg/vecka): ${dayToDate(Math.round(today + ((now - goal) / -rate) * 7))}.` : "";
+  return tile({ label: "Prognos för målvikten", value: date, wide: true,
+    sub: `${fmt(goal, 1)} kg om ca ${fmt(Math.ceil(weeks))} veckor om du följer appens kalorimål och träning (${fmt(perWeek, 2)} kg/vecka).${trend} ` +
+      "Nedgången brukar avta när vikten minskar, så se det som en grov uppskattning." });
 }
 
 function drawChart(weighIns, allWeighIns, goal) {
