@@ -6,6 +6,16 @@ MINOR höjs för nya funktioner, PATCH för rättningar. Höj versionen med `npm
 
 ## [Ej släppt]
 
+## [0.19.1] - 2026-10-24
+
+### Rättat
+- Idag visar vad du har ätit i stället för hela dagens plan: rutorna heter Ätit i dag och Protein och visar
+  avbockade och ersatta måltider, med dagens plan och målet under. En ersatt måltid (Åt något annat) räknas som
+  äten och bockas av. Avbockningarna sparas som förut.
+- Fälten Första måltiden och Sista måltiden klar under Fastan i dag ligger i linje igen. När tiden var ifylld
+  blev hjälptexten under Sista måltiden längre, och då hamnade det vänstra fältet längre ner (gällde alla fält
+  som står bredvid varandra).
+
 ## [0.19.0] - 2026-10-24
 
 ### Tillagt

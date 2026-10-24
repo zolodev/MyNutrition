@@ -36,9 +36,13 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   const swapOf = (i) => swaps.find((x) => x.meal === i);
   const planned = totals(day.filter((id, i) => id !== NONE && !swapOf(i)), week.recipes);
   const sum = swaps.reduce((acc, x) => (day[x.meal] && day[x.meal] !== NONE ? { ...acc, k: acc.k + x.k, p: acc.p + x.p } : acc), planned);
+  // Ätet hittills: avbockade måltider och ersatta (en ersättning är något man har ätit i stället)
+  const eaten = new Set([...(entryFor(todayStr())?.eaten || []), ...swaps.map((x) => x.meal)].filter((i) => day[i] && day[i] !== NONE));
+  const mealKcal = (i) => swapOf(i) ? { k: swapOf(i).k, p: swapOf(i).p } : week.recipes[day[i]].m;
+  const ate = [...eaten].reduce((acc, i) => ({ k: acc.k + mealKcal(i).k, p: acc.p + mealKcal(i).p }), { k: 0, p: 0 });
   $("td-targets").innerHTML =
-    tile({ label: "Kalorier i dag", value: fmt(sum.k), sub: `Mål ${fmt(targets.target)} kcal`, main: true }) +
-    tile({ label: "Protein", value: fmt(sum.p), unit: "g", sub: `Mål ${fmt(targets.protein)} g` }) +
+    tile({ label: "Ätit i dag", value: fmt(ate.k), unit: "kcal", sub: `av ${fmt(sum.k)} planerat · mål ${fmt(targets.target)}`, main: true }) +
+    tile({ label: "Protein", value: fmt(ate.p), unit: "g", sub: `av ${fmt(sum.p)} g planerat · mål ${fmt(targets.protein)}` }) +
     tile({ label: "Fasta", value: 16, unit: "h", sub: `${t(WINDOW)}–${t(0)}` });
 
   // Dagens tidslinje: ätfönstret och dagens aktiviteter enligt veckoschemat (egna tider, annars planens förslag)
@@ -54,8 +58,8 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   // Dagens recept, fullständiga
   const meals = [[t(0), "Frukost"], [t(MEAL_AT), "Måltid"], [t(MEAL_AT), "Efterrätt"], [t(MEAL_AT), treatName()], [t(MEAL_AT), "Tillbehör"]];
   // Varje måltid har en kryssruta för att bocka av den som ätit (sparas i dagens logg, se setEaten i log.js)
-  const eaten = new Set(entryFor(todayStr())?.eaten || []);
-  const check = (i) => `<label class="eat-check" title="Ätit"><input type="checkbox" data-eaten="${i}"${eaten.has(i) ? " checked" : ""} aria-label="Ätit ${MEAL_NAMES[i].toLowerCase()}"></label>`;
+  // En ersatt måltid räknas som ätit och kan inte bockas ur (Ångra tar bort ersättningen)
+  const check = (i) => `<label class="eat-check" title="Ätit"><input type="checkbox" data-eaten="${i}"${eaten.has(i) ? " checked" : ""}${swapOf(i) ? " disabled" : ""} aria-label="Ätit ${MEAL_NAMES[i].toLowerCase()}"></label>`;
   $("td-food").innerHTML = day.map((id, i) => {
     if (id === NONE) return "";
     const swap = swapOf(i);
@@ -68,11 +72,9 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
       `<button type="button" class="linkbtn" data-unswap="${i}">Ångra</button></span></div></div>`;
   }).join("");
   // Hur mycket av dagen som är ätet
-  const mealKcal = (i) => swapOf(i) ? { k: swapOf(i).k, p: swapOf(i).p } : week.recipes[day[i]].m;
-  const ate = [...eaten].filter((i) => day[i] && day[i] !== NONE).reduce((sum, i) => ({ k: sum.k + mealKcal(i).k, p: sum.p + mealKcal(i).p }), { k: 0, p: 0 });
   const mealCount = day.filter((id) => id !== NONE).length;
   $("td-eaten").textContent = eaten.size
-    ? `Ätit ${[...eaten].filter((i) => day[i] && day[i] !== NONE).length} av ${mealCount} måltider: ${fmt(ate.k)} av ${fmt(sum.k)} kcal och ${fmt(ate.p)} av ${fmt(sum.p)} g protein.`
+    ? `Ätit ${eaten.size} av ${mealCount} måltider: ${fmt(ate.k)} av ${fmt(sum.k)} kcal och ${fmt(ate.p)} av ${fmt(sum.p)} g protein.`
     : "Bocka av måltiderna när du har ätit dem.";
   // Formuläret för att ersätta en måltid: dagens måltider att välja bland, och senast använda ersättningar
   $("sw-meal").innerHTML = day.map((id, i) => (id === NONE ? "" : `<option value="${i}">${MEAL_NAMES[i]}${swapOf(i) ? " (ersatt)" : ""}</option>`)).join("");

@@ -940,6 +940,7 @@ check("Ingen region skrivs ut (säsongen gäller hela Sverige)", !/norrland/i.te
   const small = [...css.matchAll(/([^{}]*(?:input|select|textarea|backup-text)[^{}]*)\{[^}]*font-size:\s*0\.\d+rem/g)].map((m) => m[1].trim());
   check("Inga textfält har mindre text än 16 px (iPhone zoomar annars in)", small.length === 0);
   check("Pekskärmar har minst 16 px i alla fält", /@media \(pointer: coarse\)[^@]*max\(1rem, 16px\) !important/.test(css));
+  check("Fält bredvid varandra ligger i linje även när hjälptexten under det ena är längre (Första och Sista måltiden)", /\.field \{[^}]*align-content: start/.test(css) && $("fs-first").closest(".row2") === $("fs-last").closest(".row2"));
 }
 check("Inga AM/PM någonstans", !/\b(AM|PM)\b/.test(win.document.body.textContent));
 fire($("fs-reset"), "click");
@@ -1168,7 +1169,8 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   fire($("sw-form"), "submit");
   const swapped = $("td-food").querySelector(".row.swapped");
   check("Ersatt måltid visas i stället för receptet", swapped?.textContent.includes("Huel shake") && swapped.textContent.includes(`I stället för ${dinner}`) && swapped.textContent.includes("400 kcal"));
-  check("Dagens kalorier räknas om med ersättningen", kcalToday() !== before && Number.isFinite(kcalToday()));
+  check("Ätit i dag räknar ersättningen som äten (400 kcal), inte hela dagens plan", kcalToday() === before + 400 && text("td-targets").includes("planerat") && text("td-eaten").includes("Ätit 1 av"));
+  check("En ersatt måltid är avbockad och kan inte bockas ur", $("td-food").querySelector('[data-eaten="1"]').checked && $("td-food").querySelector('[data-eaten="1"]').disabled);
   const logged = JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === todayStr());
   check("Inköpslistan räknar bort den ersatta måltiden", text("shop-skipped").includes("1 måltid som du har ersatt"));
   check("Ersättningen sparas i dagens logg", logged?.swaps?.[0]?.n === "Huel shake" && logged.swaps[0].meal === 1 && logged.swaps[0].k === 400);
