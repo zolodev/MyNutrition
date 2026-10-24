@@ -6,6 +6,93 @@ MINOR höjs för nya funktioner, PATCH för rättningar. Höj versionen med `npm
 
 ## [Ej släppt]
 
+## [0.19.0] - 2026-10-24
+
+### Tillagt
+- Löpmål under Logg: veckomål i kilometer och antal pass (måndag–söndag) med framsteg för veckan och de senaste
+  veckorna, och ett tidsmål som 5 km på 30:00. Din bästa tid de senaste 8 veckorna räknas ut från loggade löppass
+  (Riegels formel från pass på minst halva distansen). Sparas i `ffv-goals` och följer med i exporten.
+- Zoom i viktkurvan: välj 2 veckor, månad, 3 månader eller hela planen. Inzoomat anpassas skalan efter de synliga
+  vägningarna, så att trenden syns tydligt. Månad är förvald.
+- Knapp för att styra fastan själv under läget just nu på Idag: Starta fastan nu, Bryt fastan nu eller, efter att
+  ha ätit sent, starta om fastan nu.
+- Knappen "Åt något annat? Ersätt" under varje måltid på Idag öppnar formuläret med den måltiden vald.
+
+### Ändrat
+- Åt du sent i går (t.ex. 21:00) och har inte loggat dagens första måltid flyttas dagens start fram tills fastan
+  är klar (13:00), i stället för att timern börjar om vid den planerade frukosten.
+- Formuläret för att ersätta en måltid har numrerade steg, och Huels produkter ligger ihopfällda.
+- Profil → Gymdagar länkar till upplägget Helkropp varje pass.
+
+### Rättat
+- På smala skärmar låg rättens namn och kalorierna ovanpå varandra i måltidsraderna. Tid och måltid ligger nu på
+  en egen rad överst.
+
+## [0.18.2] - 2026-10-18
+
+### Tillagt
+- Appen märker själv när en ny version är publicerad: när den visas igen (t.ex. öppnas från iPhones hemskärm
+  efter att ha legat i bakgrunden) frågar den servern och erbjuder "Uppdatera nu". Omladdningen hämtar bara nya
+  app-filer; sparad data rörs inte. Gäller från den här versionen och framåt.
+
+## [0.18.1] - 2026-10-18
+
+### Rättat
+- Tiden för ett konditionspass går att knappa in med bara siffror, som på iPhones sifferknappsats: 003516 blir
+  00:35:16. Tidigare slutade kolonerna sättas efter tredje siffran, så tiden gick inte att spara.
+
+## [0.18.0] - 2026-10-15
+
+### Tillagt
+- Upplägg för träningspassen under Inställningar → Veckoschema: Appens förslag (som förut) eller Helkropp varje
+  pass, hur många gymdagar du än har, t.ex. alla sju. Tränas samma muskler flera dagar i rad visas en varning
+  med motivering, men inget blockeras. Valet sparas i `ffv-schedule` (`split`) och följer med i exporten; egna
+  val av pass per dag ligger kvar och gäller igen när du byter tillbaka.
+
+## [0.17.1] - 2026-10-15
+
+### Ändrat
+- Träningspassen flyttas nu under Inställningar → Veckoschema i stället för under Mat → Veckan: en ruta per dag
+  där du drar ett pass (⠿) till en annan dag, med pilar för att byta vecka. Som förut väljer du om flytten bara
+  gäller den veckan (t.ex. vid förhinder) eller alla veckor. Under Mat visas passen som förut men utan handtag,
+  och en rad med länk när passen är flyttade. Ingen sparad data ändras.
+- "Lägg tillbaka i planens ordning" under Mat → Veckan återställer bara måltiderna; flyttade pass läggs tillbaka
+  under Veckoschema.
+
+## [0.17.0] - 2026-10-15
+
+### Tillagt
+- Tillbehör till eftermiddagsmåltiden, t.ex. pizzasallad: skapa ett eget recept under Mina recept med Måltid
+  "Tillbehör till eftermiddagsmåltiden" och välj vilka veckodagar under Inställningar → Måltider. Tillbehöret visas
+  som en egen måltid i veckan och på Idag (med kryssruta), räknas in i dagens kalorier och kommer med i
+  inköpslistan. Har du flera tillbehör turas de om.
+- Byt enskilda råvaror mot billigare alternativ under Inställningar → Inköpslista, t.ex. älgfärs mot kycklingfärs
+  eller nötfärs, och renskav eller älgskav mot kyckling eller fläskfilé. Valet gäller alla inbyggda recept, även
+  namn och text.
+- Nya livsmedel: spetskål och nötfärs 10 %.
+- Valen sparas i "ffv-meals" (nya fälten `sideDays` och `swaps`); tillbehören är egna recept med typen `s`. Ingen
+  sparad data ändras.
+
+## [0.16.0] - 2026-10-13
+
+### Tillagt
+- Flytta ett gympass bara en vecka, t.ex. när något kommer emellan: dra passet (⠿) under Mat → Veckan till en annan
+  dag och välj "Bara den här veckan". Gymdagarna i profilen ändras inte, och nästa vecka ligger passen som vanligt.
+  "Alla veckor" ändrar gymdagarna som tidigare. Flyttade pass syns på Idag och Träning, och "Lägg tillbaka passen
+  enligt planen" ångrar veckans flyttar.
+- Veckans flyttar sparas i en ny nyckel (`ffv-trainmoves`) som följer med i exporten. Ingen sparad data ändras.
+
+## [0.15.0] - 2026-10-13
+
+### Tillagt
+- Flytta gympassen med dra och släpp under Mat → Veckan: dra passet i handtaget (⠿) till en annan dag. Släpps det
+  på en annan gymdag byter passen plats (t.ex. helkropp till lördag och ben till måndag); släpps det på en vilodag
+  flyttas passet dit och gymdagarna i profilen ändras. Övriga pass ligger kvar där de var.
+- Under Inställningar → Veckoschema kan du också välja vilket pass som körs varje gymdag, och få en varning om samma
+  muskler tränas två dagar i rad (inget blockeras).
+- Valet sparas i veckoschemat (`ffv-schedule`, nytt fält `session` per dag) och följer med i exporten. Ingen sparad
+  data ändras.
+
 ## [0.14.3] - 2026-10-11
 
 ### Rättat

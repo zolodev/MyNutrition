@@ -12,7 +12,7 @@ import { MEAL_AT } from "../day.js";
 import { daySchedule } from "../schedule.js";
 import { formatClock } from "../fasting.js";
 
-const MEALS = ["Frukost", "Eftermiddagsmåltid", "Efterrätt", "Godis"]; // "Godis" visas som t.ex. Fredagsgodis
+const MEALS = ["Frukost", "Eftermiddagsmåltid", "Efterrätt", "Godis", "Tillbehör"]; // "Godis" visas som t.ex. Fredagsgodis
 const mealName = (m) => (m === 3 ? treatName() : MEALS[m]);
 
 export function weekLabel(week) {
@@ -26,7 +26,7 @@ export function weekLabel(week) {
 
 export function renderWeekGrid(week, schedule, breakfast, weekIndex) {
   const monday = dateToDay(mondayOf(weekIndex).toISOString().slice(0, 10));
-  const times = [hhmm(breakfast), hhmm(breakfast + MEAL_AT)];
+  const times = [hhmm(breakfast), hhmm(breakfast + MEAL_AT), null, null, hhmm(breakfast + MEAL_AT)];
   $("week").innerHTML = week.plan
     .map((day, i) => {
       const sum = totals(day, week.recipes);
@@ -42,7 +42,10 @@ export function renderWeekGrid(week, schedule, breakfast, weekIndex) {
         .join("");
       // Dagens aktiviteter med tider enligt veckoschemat (egna tider, annars planens förslag)
       const activities = daySchedule(i, schedule[i].kind, breakfast).map((x) =>
-        `<span class="chip ${x.kind === "other" ? "walk" : x.kind}">${esc(x.kind === "str" ? schedule[i].label : x.label)} · ${formatClock(x.from)}–${formatClock(x.to)}</span>`).join("");
+        x.kind === "str"
+          // Gympassen flyttas under Inställningar → Veckoschema
+          ? `<span class="chip str">${esc(schedule[i].label)} · ${formatClock(x.from)}–${formatClock(x.to)}</span>`
+          : `<span class="chip ${x.kind === "other" ? "walk" : x.kind}">${esc(x.label)} · ${formatClock(x.from)}–${formatClock(x.to)}</span>`).join("");
       return `<div class="day" data-week-day="${i}"><h3>${DAYS[i]}</h3>${activities || `<span class="chip rest">${esc(schedule[i].label)}</span>`}<ul>${meals}</ul>` +
         `<div class="tot num">${fmt(sum.k)} kcal · ${fmt(sum.p)} g P · ${fmt(sum.c)} g K</div></div>`;
     })
@@ -114,12 +117,12 @@ export function renderRecipes(week, targets, breakfast, weekTitle) {
     withId.add(id);
     return recipeRow(recipes[id], kind, usedOn[id]?.join(", "), first);
   };
-  const unique = (meal) => [...new Set(plan.map((day) => day[meal]))].filter((id) => id !== NONE);
+  const unique = (meal) => [...new Set(plan.map((day) => day[meal]))].filter((id) => id && id !== NONE);
   const treat = plan[mealPrefs.cheatDay][3] ?? NONE;
 
   $("r-dinner").innerHTML = plan.map((day, d) => (day[1] === NONE ? "" : row(day[1], `${DAYS[d].slice(0, 3)} ${hhmm(breakfast + MEAL_AT)}`))).join("");
   $("r-breakfast").innerHTML = unique(0).map((id) => row(id, `Frukost ${hhmm(breakfast)}`)).join("");
-  $("r-other").innerHTML = unique(2).map((id) => row(id, "Efterrätt")).join("");
+  $("r-other").innerHTML = unique(2).map((id) => row(id, "Efterrätt")).join("") + unique(4).map((id) => row(id, "Tillbehör")).join("");
   $("r-treat").innerHTML = [treat, ...recipesFor("x", season).filter((id) => id !== treat)]
     .filter((id) => id !== NONE)
     .map((id) => row(id, id === treat ? DAYS[mealPrefs.cheatDay] : "Alternativ"))

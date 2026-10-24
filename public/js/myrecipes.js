@@ -9,7 +9,8 @@ import { load, save, readList, stableId } from "./util.js";
 import { UNITS } from "./nutrition.js";
 
 const KEY = "ffv-myrecipes";
-export const RECIPE_TYPES = [["b", "Frukost"], ["m", "Efterrätt eller tillägg"], ["d", "Eftermiddagsmåltid"]];
+// "s" (från 0.17.0): tillbehör till eftermiddagsmåltiden, t.ex. pizzasallad; vilka dagar väljs under Inställningar → Måltider
+export const RECIPE_TYPES = [["b", "Frukost"], ["m", "Efterrätt eller tillägg"], ["d", "Eftermiddagsmåltid"], ["s", "Tillbehör till eftermiddagsmåltiden"]];
 export let myRecipes = [];
 let unreadable = []; // sparade recept som inte går att läsa; ligger kvar orörda och skrivs tillbaka vid sparning
 

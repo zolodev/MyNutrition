@@ -1,9 +1,10 @@
 // Inställningarnas formulär: allergier och livsmedel (anpassa), Mina recept och Tillskott.
 // Undersidorna i sig styrs av navigation.js; listorna ritas i views/settings.js.
 
-import { $, $$, num, confirmDialog, scrollToElement, DAYS } from "../util.js";
+import { $, $$, esc, num, confirmDialog, scrollToElement, DAYS } from "../util.js";
 import { exclusions, saveExclusions, myFoods, addMyFood, removeMyFood, cleanMyFood, cleanWord, mealPrefs, setMealPrefs, treatName } from "../preferences.js";
 import { invalidateMenu } from "../menu.js";
+import { FOOD, ALTERNATIVES } from "../data/foods.js";
 import { renderIngredientPicker, recipeItemRow, readRecipeItems, updateRecipeSum, syncItemUnits, fillRecipeForm } from "../views/settings.js";
 import { myRecipes, addMyRecipe, updateMyRecipe, removeMyRecipe, cleanRecipe } from "../myrecipes.js";
 import { setUsing, cleanMySupp, addMySupp, removeMySupp, mySupps } from "../supplements.js";
@@ -121,7 +122,8 @@ $("mr").addEventListener("submit", (ev) => {
   if (edited) saveProfile(); // ett ändrat frukostrecept är fortfarande valt
   resetRecipeForm();
   $("mr-msg").textContent = edited ? `Ändringarna i ${recipe.t} är sparade.`
-    : recipe.g === "b" ? `${recipe.t} är sparat. Välj det som frukost under Profil.` : `${recipe.t} är sparat och kan komma med i veckans meny.`;
+    : recipe.g === "b" ? `${recipe.t} är sparat. Välj det som frukost under Profil.`
+    : recipe.g === "s" ? `${recipe.t} är sparat. Välj vilka dagar du vill ha tillbehör under Inställningar → Måltider.` : `${recipe.t} är sparat och kan komma med i veckans meny.`;
   invalidateMenu();
   update();
 });
@@ -185,6 +187,19 @@ export function renderMealPrefs() {
     el.checked = dessertDays.includes(Number(el.dataset.dessertDay));
     el.disabled = !dessertDays.length;
   }
+  // Tillbehör: egna recept av typen tillbehör, de valda dagarna
+  const sides = myRecipes.filter((r) => r.g === "s");
+  $("ml-side-on").checked = mealPrefs.sideDays.length > 0;
+  for (const el of $$("[data-side-day]")) {
+    el.checked = mealPrefs.sideDays.includes(Number(el.dataset.sideDay));
+    el.disabled = !mealPrefs.sideDays.length;
+  }
+  $("ml-side-hint").innerHTML = sides.length
+    ? `Dina tillbehör: ${sides.map((r) => esc(r.t)).join(", ")}${sides.length > 1 ? " (de turas om)" : ""}. Ändra eller lägg till fler under <a href="#mina-recept">Mina recept</a>.`
+    : `Du har inga tillbehör än. Lägg till ett under <a href="#mina-recept">Mina recept</a> och välj Måltid: Tillbehör till eftermiddagsmåltiden.`;
+  $("ml-swaps").innerHTML = Object.entries(ALTERNATIVES).map(([from, alts]) =>
+    `<label class="swap-row"><span>${esc(FOOD[from].n)}</span><select data-swap-food="${from}" aria-label="Byt ${esc(FOOD[from].n.toLowerCase())} mot">` +
+    `<option value="">Som i receptet</option>${alts.map((to) => `<option value="${to}"${mealPrefs.swaps[from] === to ? " selected" : ""}>${esc(FOOD[to].n)}</option>`).join("")}</select></label>`).join("");
   $("ml-treat").checked = treat;
   $("ml-cheap").checked = cheap;
   $("ml-cheat-day").value = String(mealPrefs.cheatDay);
@@ -196,16 +211,29 @@ export function renderMealPrefs() {
 $("maltider").addEventListener("change", (ev) => {
   if (ev.target === $("ml-dessert-on")) setMealPrefs({ dessertDays: ev.target.checked ? [0, 1, 2, 3, 4, 5, 6] : [] });
   else if (ev.target.matches("[data-dessert-day]")) setMealPrefs({ dessertDays: $$("[data-dessert-day]:checked").map((el) => Number(el.dataset.dessertDay)) });
+  else if (ev.target === $("ml-side-on")) setMealPrefs({ sideDays: ev.target.checked ? [0, 1, 2, 3, 4, 5, 6] : [] });
+  else if (ev.target.matches("[data-side-day]")) setMealPrefs({ sideDays: $$("[data-side-day]:checked").map((el) => Number(el.dataset.sideDay)) });
   else if (ev.target === $("ml-treat")) setMealPrefs({ treat: ev.target.checked });
   else if (ev.target === $("ml-cheat-day")) setMealPrefs({ cheatDay: Number(ev.target.value) });
   else return;
-  const n = mealPrefs.dessertDays.length;
-  $("ml-msg").textContent = `Sparat. Efterrätt ${n === 7 ? "alla dagar" : n ? `${n} ${n === 1 ? "dag" : "dagar"} i veckan` : "aldrig"}, fuskdag ${DAYS[mealPrefs.cheatDay].toLowerCase()}${mealPrefs.treat ? ` med ${treatName().toLowerCase()}` : " utan godis"}. Veckans meny och inköpslista är uppdaterade.`;
+  const days = (n) => (n === 7 ? "alla dagar" : n ? `${n} ${n === 1 ? "dag" : "dagar"} i veckan` : "aldrig");
+  $("ml-msg").textContent = `Sparat. Efterrätt ${days(mealPrefs.dessertDays.length)}, tillbehör ${days(mealPrefs.sideDays.length)}, fuskdag ${DAYS[mealPrefs.cheatDay].toLowerCase()}${mealPrefs.treat ? ` med ${treatName().toLowerCase()}` : " utan godis"}. Veckans meny och inköpslista är uppdaterade.`;
   invalidateMenu();
   update();
 });
 
 // Billiga råvaror ligger under Inställningar → Inköpslista men sparas med de andra valen för måltider
+$("ml-swaps").addEventListener("change", (ev) => {
+  const from = ev.target.dataset.swapFood;
+  if (!from) return;
+  const swaps = { ...mealPrefs.swaps };
+  if (ev.target.value) swaps[from] = ev.target.value;
+  else delete swaps[from];
+  setMealPrefs({ swaps });
+  $("ml-cheap-msg").textContent = ev.target.value ? `Sparat. ${FOOD[from].n} byts mot ${FOOD[ev.target.value].n.toLowerCase()} i recepten och inköpslistan.` : `Sparat. ${FOOD[from].n} används som i recepten.`;
+  invalidateMenu();
+  update();
+});
 $("ml-cheap").addEventListener("change", (ev) => {
   setMealPrefs({ cheap: ev.target.checked });
   $("ml-cheap-msg").textContent = ev.target.checked ? "Sparat. Veckans rätter och inköpslista bygger nu på billiga råvaror." : "Sparat. Veckans rätter använder vanliga råvaror igen.";

@@ -64,8 +64,14 @@ export function renderFastingToday(planned) {
 
 /** Läget just nu. Anropas också en gång i minuten. */
 export function renderFastingNow(planned) {
-  const { day, yesterdayLast } = todaysFasting(planned);
+  const { day, today, yesterdayLast } = todaysFasting(planned);
   const now = fastingNow(day, nowHours(), yesterdayLast);
+  // Knapp för att själv styra fastan: starta den nu (sista måltiden = nu), bryta den (första måltiden = nu) eller
+  // starta om den efter att ha ätit något sent (sista måltiden = nu). Hanteras i app.js.
+  const action = now.state === "eating" ? ["start", "Starta fastan nu"]
+    : today.firstMeal ? ["start", "Jag åt nyss: starta om fastan nu"] : ["break", "Bryt fastan nu (jag äter)"];
+  $("fs-action").dataset.action = action[0];
+  $("fs-action").textContent = action[1];
   if (now.state === "eating") {
     $("fs-now").innerHTML = `<b>Ätfönstret är öppet</b><span>${esc(formatDuration(now.left))} kvar, stänger ${formatClock(day.windowEnd)}</span>` +
       `<div class="meter"><i style="width:${Math.min(100, ((8 - now.left) / 8) * 100)}%"></i></div>`;

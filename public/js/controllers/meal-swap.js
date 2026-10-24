@@ -53,6 +53,18 @@ $("sw-form").addEventListener("submit", (ev) => {
   update();
 });
 
+// Ersätt en viss måltid: öppna formuläret med den måltiden vald
+$("td-food").addEventListener("click", (ev) => {
+  const meal = ev.target.closest("[data-swap-meal]")?.dataset.swapMeal;
+  if (meal == null) return;
+  $("sw-box").open = true;
+  $("sw-meal").value = meal;
+  fillMoveOptions(Number(meal));
+  message("");
+  $("sw-box").scrollIntoView({ block: "start", behavior: "smooth" });
+  $("sw-name").focus({ preventScroll: true });
+});
+
 // Ångra en ersättning direkt i listan med dagens måltider
 $("td-food").addEventListener("click", (ev) => {
   const meal = ev.target.closest("[data-unswap]")?.dataset.unswap;

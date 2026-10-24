@@ -30,6 +30,9 @@ export function renderProgram(program) {
   $("prog-sub").textContent = `${program.summary} Varje stor muskelgrupp tränas två gånger i veckan, som ACSM rekommenderar (via ExRx).` +
     (program.clash
       ? " Med de här dagarna hamnar två pass för samma muskler i rad. Kör det andra passet lite lättare, eller flytta en dag så att det blir en vilodag emellan."
-      : " Passen ligger så att samma muskler aldrig tränas två dagar i rad.");
+      : program.chosen ? " Du har själv valt vilka dagar passen ligger, och samma muskler tränas inte två dagar i rad."
+      : " Passen ligger så att samma muskler aldrig tränas två dagar i rad.") +
+    (program.moved ? " Passen är flyttade den här veckan." : "") +
+    " Flytta ett pass under Inställningar → Veckoschema: dra det (⠿) till en annan dag, bara en vecka eller alla veckor.";
   $("sessions").innerHTML = program.sessions.map(sessionBlock).join("");
 }

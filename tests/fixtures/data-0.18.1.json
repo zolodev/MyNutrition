@@ -1,0 +1,351 @@
+{
+  "ffv": {
+    "age": "43",
+    "weight": "101",
+    "height": "183",
+    "bf": "28",
+    "act": "1.375",
+    "bfast": "7",
+    "bmeal": "MR_omelett1",
+    "goal": "84",
+    "tdays-val": "1,3,5,6",
+    "exswap": "2",
+    "sex": "m",
+    "rate": "0.5",
+    "eq": "gym",
+    "kcal": "1800"
+  },
+  "ffv-terms": {
+    "version": 4,
+    "accepted": "2026-10-01T06:00:00.000Z"
+  },
+  "ffv-log": {
+    "entries": [
+      {
+        "date": "2026-09-28",
+        "weight": 101.4,
+        "waist": 104,
+        "mood": 4,
+        "perf": 1,
+        "trained": true,
+        "cardio": [
+          {
+            "a": "lopning",
+            "km": 3.2,
+            "u": "km",
+            "s": 1260,
+            "hrMax": 172
+          }
+        ],
+        "imMod": 20,
+        "imVig": 15,
+        "note": "Gympass: Helkropp, 52 min",
+        "swaps": [],
+        "firstMeal": "07:27",
+        "lastMeal": "15:27",
+        "eaten": [
+          0,
+          1
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "weight": 100.9,
+        "waist": null,
+        "mood": 3,
+        "perf": null,
+        "trained": false,
+        "cardio": [],
+        "imMod": null,
+        "imVig": null,
+        "note": "",
+        "swaps": [
+          {
+            "meal": 1,
+            "n": "Huel Powder",
+            "k": 400,
+            "p": 30,
+            "was": "Laxpasta",
+            "moved": 4
+          },
+          {
+            "meal": 0,
+            "n": "Huel Black Edition",
+            "k": 400,
+            "p": 40
+          }
+        ],
+        "firstMeal": "07:10",
+        "lastMeal": "14:50"
+      },
+      {
+        "date": "2026-09-30",
+        "weight": 100.6,
+        "waist": null,
+        "mood": null,
+        "perf": 0,
+        "trained": true,
+        "cardio": [
+          {
+            "a": "rodd",
+            "km": 2,
+            "u": "m",
+            "s": 480,
+            "hrMax": null
+          }
+        ],
+        "imMod": null,
+        "imVig": 8,
+        "note": "Sov dåligt",
+        "swaps": [],
+        "firstMeal": null,
+        "lastMeal": null
+      },
+      {
+        "date": "2026-10-01",
+        "swaps": [
+          {
+            "meal": 1,
+            "n": "Huel Powder",
+            "k": 400,
+            "p": 30
+          }
+        ],
+        "eaten": [
+          0,
+          1,
+          4
+        ]
+      }
+    ]
+  },
+  "ffv-excl": {
+    "v": 2,
+    "allergens": [
+      "sesam"
+    ],
+    "foods": [
+      "lax"
+    ],
+    "words": [
+      "koriander"
+    ]
+  },
+  "ffv-myfoods": [
+    {
+      "id": "my_parm1",
+      "n": "Parmesanost",
+      "k": 390,
+      "p": 33,
+      "c": 0,
+      "f": 28,
+      "cat": "mejeri",
+      "allergens": [
+        "mjolk"
+      ],
+      "replaces": "",
+      "always": false
+    }
+  ],
+  "ffv-myrecipes": [
+    {
+      "id": "MR_omelett1",
+      "t": "Omelett med parmesan",
+      "g": "b",
+      "items": [
+        [
+          "aggvita",
+          206,
+          2,
+          "dl"
+        ],
+        [
+          "agg",
+          240,
+          4,
+          "st"
+        ],
+        [
+          "my_parm1",
+          30,
+          30,
+          "g"
+        ]
+      ],
+      "extra": [
+        {
+          "n": "Salt",
+          "q": 1,
+          "u": "krm"
+        },
+        {
+          "n": "Svartpeppar",
+          "q": 1,
+          "u": "krm"
+        }
+      ],
+      "how": "Vispa ihop allt.\nGrädda i airfryer 180 grader i 10 min."
+    },
+    {
+      "id": "MR_pizzasal",
+      "t": "Pizzasallad",
+      "g": "s",
+      "items": [
+        [
+          "vitkal",
+          100
+        ],
+        [
+          "olja",
+          5
+        ]
+      ],
+      "extra": [
+        {
+          "n": "Vinäger",
+          "q": 1,
+          "u": "msk"
+        },
+        {
+          "n": "Oregano",
+          "q": 0.5,
+          "u": "tsk"
+        }
+      ],
+      "how": "Strimla kålen, blanda med olja, vinäger, salt och oregano."
+    }
+  ],
+  "ffv-supps": [
+    "pwo",
+    "whey",
+    "creatine"
+  ],
+  "ffv-mysupps": [
+    {
+      "id": "ms_bcaa1",
+      "n": "BCAA",
+      "dose": "5 g",
+      "when": "clock",
+      "at": "16:00",
+      "kcal": true
+    }
+  ],
+  "ffv-seed": 424242,
+  "ffv-salt": {
+    "2900": 1
+  },
+  "ffv-tseed": 77,
+  "ffv-shop": [
+    "havre",
+    "olja"
+  ],
+  "ffv-shop-next": true,
+  "ffv-mealswaps": [
+    {
+      "n": "Huel Powder",
+      "k": 400,
+      "p": 30
+    }
+  ],
+  "ffv-traintimes": {
+    "1": {
+      "from": "16:00",
+      "to": "18:00"
+    },
+    "5": {
+      "from": "11:00",
+      "to": "13:00"
+    }
+  },
+  "ffv-moves": {
+    "2900": [
+      [
+        1,
+        0,
+        4
+      ]
+    ]
+  },
+  "ffv-install-declined": true,
+  "ffv-swipe-hint": true,
+  "ffv-lastexport": "2026-09-20",
+  "ffv-backup-snooze": "2026-10-01",
+  "ffv-schedule": {
+    "days": {
+      "1": {
+        "str": {
+          "from": "16:00",
+          "to": "17:30"
+        },
+        "int": false,
+        "walk": {
+          "from": "07:30",
+          "to": "08:00",
+          "label": "Till jobbet"
+        },
+        "extra": [
+          {
+            "label": "Padel",
+            "from": "19:00",
+            "to": "20:00"
+          }
+        ],
+        "session": "B"
+      },
+      "3": {
+        "str": {
+          "from": "16:00",
+          "to": "17:30"
+        }
+      },
+      "5": {
+        "str": {
+          "from": "11:00",
+          "to": "13:00"
+        },
+        "session": "H"
+      }
+    },
+    "work": {
+      "from": "08:00",
+      "to": "17:00",
+      "days": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "split": "full"
+  },
+  "ffv-meals": {
+    "dessertDays": [
+      0,
+      2
+    ],
+    "treat": false,
+    "cheap": true,
+    "cheatDay": 4,
+    "sideDays": [
+      0,
+      3
+    ],
+    "swaps": {
+      "algfars": "kycklingfars",
+      "renskav": "kyckling"
+    }
+  },
+  "ffv-trainmoves": {
+    "2900": [
+      [
+        0,
+        5
+      ],
+      [
+        2,
+        4
+      ]
+    ]
+  }
+}

@@ -13,6 +13,7 @@ import { renderToday, renderFasting } from "./views/today.js";
 import { renderFastingToday, renderFastingNow, todaysFasting } from "./views/fasting-view.js";
 import { formatClock, parseClock } from "./fasting.js";
 import { WINDOW } from "./day.js";
+import { sessionChoices, setSession, dayOverrides, setActivity, trainMovesFor, addTrainMove, resetTrainMoves, getSplit, setSplit } from "./schedule.js";
 import { weekLabel, renderWeekGrid, renderCheatTable, renderRecipes, renderShopping, updateShoppingProgress } from "./views/food.js";
 import { renderProgram } from "./views/training-view.js";
 import { renderLog } from "./views/log-view.js";
@@ -24,10 +25,11 @@ import { unlockStorage, keys as storageKeys } from "./storage.js";
 import { initNavigation } from "./controllers/navigation.js";
 import { initSettingsForms, syncBreakfastOptions, renderMealPrefs } from "./controllers/settings-forms.js";
 import { initLogForm } from "./controllers/log-form.js";
+import { initGoalForm } from "./controllers/goal-form.js";
 import { initBackupForms, showImportReceipt, renderBackupReminder } from "./controllers/backup-form.js";
 import { initWorkout } from "./controllers/workout.js";
 import { initMealSwap } from "./controllers/meal-swap.js";
-import { initScheduleEditor, renderSchedule } from "./controllers/schedule-editor.js";
+import { initScheduleEditor, renderSchedule, renderTrainWeek } from "./controllers/schedule-editor.js";
 import { initWeekDrag } from "./controllers/week-drag.js";
 import "./controllers/inputs.js";
 import { APP_VERSION } from "./version.js";
@@ -130,7 +132,7 @@ function syncDayButtons() {
 /** Råd om antalet gymdagar. Allt går att välja; 3–4 rekommenderas och annat ger en varning med motivering. */
 function showTrainingDaysMessage({ valid, picked }) {
   const msg = $("tdays-msg");
-  const advice = valid ? trainingDaysAdvice(picked.length) : null;
+  const advice = valid ? trainingDaysAdvice(picked.length, getSplit()) : null;
   msg.className = !valid || advice.level === "warn" ? "bad" : "";
   msg.textContent = valid ? advice.text
     : `Välj minst en dag. Planen använder ${state.trainingDays.map((d) => DAYS_SHORT[d]).join(", ")} så länge.`;
@@ -166,7 +168,11 @@ function update() {
   const profile = readProfile();
   showTrainingDaysMessage(profile.days);
   const targets = computeTargets(profile);
-  const program = buildProgram(profile.equipment, profile.days.days, { seed: planRandomness().trainingSeed || 0, week: state.week, period: profile.swapPeriod });
+  const variation = { seed: planRandomness().trainingSeed || 0, week: state.week, period: profile.swapPeriod };
+  // Veckans program med pass som är flyttade just den veckan, och planen utan dem (för Veckoschema)
+  const program = buildProgram(profile.equipment, profile.days.days, variation, sessionChoices(), trainMovesFor(state.week), getSplit());
+  const plannedProgram = buildProgram(profile.equipment, profile.days.days, variation, sessionChoices(), [], getSplit());
+  state.program = program; // för dra och släpp av gympass
   const week = buildWeek(state.week, targets, profile.breakfastChoice);
   const label = weekLabel(state.week);
 
@@ -193,8 +199,11 @@ function update() {
   renderBackupReminder();
   renderMealPrefs();
   $("kcal").placeholder = `${computeTargets({ ...profile, kcal: null }).target} (beräknat)`;
-  renderSchedule(program, profile.breakfastHour);
+  renderSchedule(plannedProgram, profile.breakfastHour);
+  renderTrainWeek(program, label.title + relativeWeek(state.week));
+  $("tw-split").value = getSplit();
   $("mv-reset").hidden = !movesFor(state.week).length;
+  $("wk-trainmoved").hidden = $("wk-trainmoved-food").hidden = !trainMovesFor(state.week).length;
   showGoalAdvice();
   renderReport({
     period: $("rp-period").value, profile, targets,
@@ -286,6 +295,14 @@ $("fastan").addEventListener("click", (ev) => {
   saveMealTimes(field);
 });
 for (const id of ["fs-first", "fs-last"]) $(id).addEventListener("change", () => saveMealTimes(id));
+// Styr fastan själv: Starta (eller starta om efter att ha ätit sent) sätter sista måltiden till nu, Bryt sätter
+// första måltiden till nu
+$("fs-action").addEventListener("click", () => {
+  const field = $("fs-action").dataset.action === "break" ? "fs-first" : "fs-last";
+  $(field).value = clockNow();
+  saveMealTimes(field);
+  toast(field === "fs-first" ? `Fastan är bruten ${clockNow()}. Ätfönstret är öppet i 8 h.` : `Fastan startade ${clockNow()}. Ändra tiden under Sista måltiden klar om det behövs.`);
+});
 $("fs-reset").addEventListener("click", () => {
   setMealTimes(todayStr(), { firstMeal: "", lastMeal: "" });
   update();
@@ -421,6 +438,8 @@ $("shop-next-week").addEventListener("change", (ev) => {
 
 $("wk-prev").addEventListener("click", () => showWeek(state.week - 1));
 $("wk-next").addEventListener("click", () => showWeek(state.week + 1));
+$("tw-prev").addEventListener("click", () => showWeek(state.week - 1));
+$("tw-next").addEventListener("click", () => showWeek(state.week + 1));
 $("wk-today").addEventListener("click", () => showWeek(TODAY_WEEK));
 // Byt plats på måltider mellan dagar (Mat → Veckan); gäller veckan som visas
 for (const select of $$("[data-days]")) select.innerHTML = DAYS.map((d, i) => `<option value="${i}">${d}</option>`).join("");
@@ -444,13 +463,63 @@ for (const id of ["td-food", "week"]) {
 }
 
 // Dra och släpp i veckoschemat byter plats på samma sätt
+/** Gymdagarna som de är valda i profilen (0 = måndag). */
+const gymDays = () => String($("tdays-val").value).split(",").filter((x) => x !== "").map(Number);
+
 initWeekDrag({
+  // Gympasset dras till en annan dag. Användaren väljer om flytten bara gäller den här veckan (t.ex. vid förhinder)
+  // eller alla veckor. Alla veckor: till en gymdag byter passen plats, till en annan dag flyttas passet dit och
+  // gymdagarna i profilen ändras; alla gymdagar får sitt nuvarande pass sparat, så att inget annat pass flyttas.
+  async moveSession(from, to) {
+    const schedule = state.program.schedule;
+    const what = schedule[from].label;
+    const target = schedule[to].kind === "str" ? `byta plats med ${schedule[to].label.toLowerCase()} på ${DAYS[to].toLowerCase()}` : `flytta det till ${DAYS[to].toLowerCase()}`;
+    // Alla veckor går bara när veckan inte redan har egna flyttar (annars stämmer inte dagarna med planen)
+    const weekOnly = trainMovesFor(state.week).length > 0;
+    const answer = await confirmDialog(`${what} på ${DAYS[from].toLowerCase()}: ${target}?`,
+      weekOnly ? "Gäller bara den här veckan." : "Bara den här veckan passar vid förhinder. Alla veckor ändrar dina gymdagar.",
+      { yes: "Bara den här veckan", no: "Avbryt", other: weekOnly ? null : "Alla veckor" });
+    if (!answer) return;
+    if (answer === true) {
+      addTrainMove(state.week, from, to);
+      update();
+      return toast(`${what} är flyttat till ${DAYS[to].toLowerCase()} den här veckan. Ångra med länken ovanför passen.`);
+    }
+    const days = gymDays();
+    for (const d of days) setSession(d, schedule[d].session);
+    if (schedule[to].kind === "str") {
+      setSession(from, schedule[to].session);
+      setSession(to, schedule[from].session);
+      toast(`${what} och ${schedule[to].label.toLowerCase()} har bytt dag för alla veckor.`);
+    } else {
+      // Egen tid för passet följer med, om den nya dagen inte redan har en
+      const time = dayOverrides(from).str;
+      if (typeof time === "object" && typeof dayOverrides(to).str !== "object") setActivity(to, "str", time);
+      setSession(to, schedule[from].session);
+      setSession(from, undefined);
+      $("tdays-val").value = [...days.filter((d) => d !== from), to].sort().join(",");
+      syncDayButtons();
+      saveProfile();
+      toast(`${what} är flyttat från ${DAYS[from].toLowerCase()} till ${DAYS[to].toLowerCase()} för alla veckor. Gymdagarna är ändrade.`);
+    }
+    update();
+  },
   swap(meal, a, b) {
     swapMeals(state.week, meal, a, b);
     update();
     $("mv-msg").textContent = "";
     toast(`${["Frukosten", "Eftermiddagsmåltiden", "Efterrätten"][meal]} på ${DAYS[a].toLowerCase()} och ${DAYS[b].toLowerCase()} har bytt plats.`);
   },
+});
+$("tw-split").addEventListener("change", () => {
+  setSplit($("tw-split").value);
+  update();
+  toast($("tw-split").value === "full" ? "Alla gymdagar får helkropp. Fler dagar väljer du under Profil → Gymdagar." : "Passen följer appens förslag igen.");
+});
+$("wk-trainreset").addEventListener("click", () => {
+  resetTrainMoves(state.week);
+  update();
+  toast("Passen ligger enligt planen igen den här veckan.");
 });
 $("mv-reset").addEventListener("click", () => {
   resetMoves(state.week);
@@ -481,6 +550,7 @@ loadMyRecipes();
 loadLog();
 initSettingsForms({ update, saveProfile });
 initLogForm({ update });
+initGoalForm({ update });
 initBackupForms({ acceptTerms });
 initWorkout({ update });
 initMealSwap({ update });

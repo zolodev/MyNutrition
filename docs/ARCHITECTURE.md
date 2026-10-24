@@ -51,10 +51,12 @@ bakgrunden (localStorage som reserv). **Inget skrivs innan villkoren är godkän
 | `ffv-seed`, `ffv-salt`, `ffv-tseed` | Slumpfrön för meny och träning (plankoden) | menu.js |
 | `ffv-shop` | Avbockat i inköpslistan, gäller alla veckor | app.js |
 | `ffv-shop-next` | Inköpslistan visar alltid nästa vecka | app.js |
-| `ffv-schedule` | Veckoschema: egna tider för gympass, intervaller, promenad och egna aktiviteter per veckodag (`days`), och arbetstid (`work`) | schedule.js |
+| `ffv-schedule` | Veckoschema: egna tider för gympass, intervaller, promenad och egna aktiviteter per veckodag (`days`, med valt gympass i `session` från 0.15.0), och arbetstid (`work`); passupplägg i `split` (`"full"` = helkropp varje pass, saknas = appens förslag) från 0.18.0 | schedule.js |
 | `ffv-traintimes` | Egna träningstider från 0.8.0 (läses fortfarande som förslag, skrivs inte längre) | trainingtimes.js |
 | `ffv-moves` | Måltider som bytt plats mellan dagar, per vecka | menu.js |
-| `ffv-meals` | Efterrätt vilka veckodagar, fuskdag (`cheatDay`) med godis, och billiga råvaror | preferences.js |
+| `ffv-trainmoves` | Gympass som flyttats en enskild vecka (t.ex. vid förhinder): `{ vecka: [[frånDag, tillDag], …] }` (från 0.16.0) | schedule.js |
+| `ffv-goals` | Mål för konditionen per aktivitet, först löpning: `{ lopning: { weekKm, weekRuns, distKm, timeS } }` (alla valfria), från 0.19.0 | goals.js |
+| `ffv-meals` | Efterrätt vilka veckodagar, tillbehör vilka veckodagar (`sideDays`), fuskdag (`cheatDay`) med godis, billiga råvaror (`cheap`) och valda billigare råvaror (`swaps`) | preferences.js |
 | `ffv-mealswaps` | Senast använda ersättningar för måltider (snabbval) | log.js |
 | `ffv-workout` | Pågående gympass (bara för enheten, överlever en omladdning) | controllers/workout.js |
 | `ffv-install-declined`, `ffv-swipe-hint` | Bara för enheten | pwa.js, navigation.js |

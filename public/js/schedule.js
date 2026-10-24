@@ -5,7 +5,8 @@
 //
 // Vilka dagar som är gymdagar bestäms av Gymdagar i profilen (tdays); här bestäms bara tiderna.
 // Data: "ffv-schedule" = { days: { "0": { str, int, walk, extra } } } (0 = måndag). Ett fält som saknas betyder
-// planens förslag; `false` betyder avslaget; { from, to, label? } är en egen tid. Okända fält behålls.
+// planens förslag; `false` betyder avslaget; { from, to, label? } är en egen tid. `session` (från 0.15.0) är ett
+// valt gympass för dagen, t.ex. "H" för helkropp (se applyChoices i training.js). Okända fält behålls.
 
 import { load, save } from "./util.js";
 import { parseClock } from "./fasting.js";
@@ -69,6 +70,53 @@ export function setActivity(day, kind, value) {
 /** Egna aktiviteter en veckodag: [{ label, from, to }]. */
 export function setExtras(day, list) {
   store(day, (d) => (list.length ? (d.extra = list) : delete d.extra));
+}
+
+/** Valda gympass per veckodag: { dag: pass-id }, t.ex. { 5: "H" }. */
+export function sessionChoices() {
+  const out = {};
+  for (const [d, o] of Object.entries(days())) if (typeof o?.session === "string") out[Number(d)] = o.session;
+  return out;
+}
+
+/** Välj gympass för en veckodag, eller låt planen välja med undefined. */
+export function setSession(day, id) {
+  store(day, (d) => (id ? (d.session = id) : delete d.session));
+}
+
+/**
+ * Passupplägg i "ffv-schedule".split: "auto" (appens förslag: helkropp, överkropp och ben eller över/under-split)
+ * eller "full" (helkropp varje pass, oavsett antal dagar). Saknas fältet gäller "auto".
+ */
+export const getSplit = () => (saved.split === "full" ? "full" : "auto");
+export function setSplit(split) {
+  saved = { ...saved };
+  if (split === "full") saved.split = "full";
+  else delete saved.split;
+  save(KEY, saved);
+}
+
+// ---------- Flyttade pass en enskild vecka ----------
+// "ffv-trainmoves" = { vecka: [[frånDag, tillDag], …] }: t.ex. när man inte kan träna en dag. Gäller bara den veckan;
+// gymdagarna i profilen ändras inte. Dagarna byter plats i tur och ordning (buildProgram i training.js).
+
+const MOVES_KEY = "ffv-trainmoves";
+let moves = load(MOVES_KEY, {}) || {};
+
+/** Veckans flyttade pass: [[frånDag, tillDag], …]. */
+export const trainMovesFor = (week) => (Array.isArray(moves[week]) ? moves[week].filter((m) => Array.isArray(m) && m.length === 2) : []);
+
+/** Flytta veckans pass från en dag till en annan (dagarna byter plats). */
+export function addTrainMove(week, from, to) {
+  moves = { ...moves, [week]: [...(Array.isArray(moves[week]) ? moves[week] : []), [from, to]] };
+  save(MOVES_KEY, moves);
+}
+
+/** Ta bort veckans flyttar, så att passen ligger enligt planen igen. */
+export function resetTrainMoves(week) {
+  moves = { ...moves };
+  delete moves[week];
+  save(MOVES_KEY, moves);
 }
 
 /** Ta bort alla egna inställningar för en veckodag. */

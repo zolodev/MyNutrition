@@ -13,7 +13,7 @@ export const exclusions = { allergens: new Set(), foods: new Set(), words: new S
 export const cleanWord = (w) => (typeof w === "string" ? w.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 40) : "");
 
 // ---------- Måltider: efterrätter, fuskdag med godis och billiga råvaror ----------
-// "ffv-meals" = { dessertDays: [0–6], treat, cheap, cheatDay }. Saknas något gäller som tidigare: efterrätt alla
+// "ffv-meals" = { dessertDays: [0–6], sideDays: [0–6] och swaps (från 0.17.0), treat, cheap, cheatDay }. Saknas något gäller som tidigare: efterrätt alla
 // dagar, godis och fri måltid på lördag och vanliga råvaror. Okända fält behålls (se skillen datakompatibilitet).
 const MEALS_KEY = "ffv-meals";
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -22,6 +22,10 @@ function cleanMealPrefs(m) {
   return {
     ...saved,
     dessertDays: Array.isArray(saved.dessertDays) ? ALL_DAYS.filter((d) => saved.dessertDays.includes(d)) : ALL_DAYS,
+    // Dagar med tillbehör (egna recept av typen tillbehör) till eftermiddagsmåltiden; inga om inget är valt
+    sideDays: Array.isArray(saved.sideDays) ? ALL_DAYS.filter((d) => saved.sideDays.includes(d)) : [],
+    // Valda billigare råvaror per livsmedel, t.ex. { algfars: "kycklingfars" } (från 0.17.0; se ALTERNATIVES)
+    swaps: saved.swaps && typeof saved.swaps === "object" ? Object.fromEntries(Object.entries(saved.swaps).filter(([, v]) => typeof v === "string")) : {},
     treat: saved.treat !== false,
     cheap: saved.cheap === true,
     // Fuskdag: dagen för godiset och den fria måltiden (0 = måndag). Lördag som tidigare om inget är valt.

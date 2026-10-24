@@ -280,6 +280,8 @@ table.data td.num { white-space: nowrap; }
 /* Små etiketter */
 .chip { display: inline-block; font-size: 0.74rem; font-weight: 700; padding: 3px 8px; border-radius: 99px; }
 .chip.str { color: var(--accent-ink); background: var(--accent); }
+.chip .drag-handle { color: inherit; font-size: 0.85rem; padding: 2px 5px 2px 0; margin: -2px 0 -2px -2px; }
+.chip .drag-handle:hover, .chip .drag-handle:focus-visible { background: none; color: inherit; }
 .chip.int { background: var(--spice-soft); color: var(--spice); }
 .chip.rest { background: var(--sunken); color: var(--muted); }
 .chip.season { background: var(--accent-soft); color: var(--accent); }
@@ -287,6 +289,7 @@ table.data td.num { white-space: nowrap; }
 /* ---------- Idag ---------- */
 .fast-card { display: grid; gap: 14px; }
 .fast-now { display: grid; gap: 4px; }
+#fs-action { justify-self: start; }
 .fast-now b { font-family: var(--font-display); font-size: 1.3rem; }
 .fast-now span { color: var(--muted); font-size: 0.9rem; }
 .meter { height: 10px; border-radius: 99px; background: var(--sunken); overflow: hidden; }
@@ -375,6 +378,21 @@ details.recipe[open] { border-color: var(--accent); }
 :is(#l-chart, #rp-chart) .cross { stroke: var(--muted); stroke-width: 1; }
 :is(#l-chart, #rp-chart) .empty { fill: var(--muted); font-size: 13px; font-family: var(--font-body); }
 .tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); font-size: 0.78rem; line-height: 1.4; padding: 6px 9px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -110%); }
+.goals { display: grid; gap: 10px; margin-top: 14px; }
+.goals-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.goals-head h3 { margin: 0; }
+.goals-head small { color: var(--muted); }
+.goal-line { display: grid; gap: 4px; }
+.goal-line b { font-size: 0.95rem; }
+.goal-line span { color: var(--muted); font-size: 0.88rem; }
+.goal-line .meter.done i { background: var(--c-good, var(--accent)); }
+.goal-weeks { display: flex; gap: 6px; flex-wrap: wrap; list-style: none; padding: 0; margin: 0; }
+.goal-weeks li { font-size: 0.8rem; padding: 3px 8px; border-radius: 99px; background: var(--sunken); color: var(--muted); }
+.goal-weeks li.hit { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.goal-edit > summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 4px 0; }
+.goal-edit form { margin-top: 8px; }
+.chart-range { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.chart-range .chip-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .chart-key { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); }
 .chart-key i { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid; vertical-align: middle; margin-right: 6px; }
 .log-table td:last-child { white-space: nowrap; }
@@ -552,12 +570,46 @@ textarea { width: 100%; font: inherit; font-size: 1rem; padding: 9px 10px; borde
 .drag-ghost a { display: block; color: var(--fg); text-decoration: none; }
 .drag-ghost small { display: block; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
 .drag-ghost .drag-handle { color: var(--accent); }
+.drag-ghost.chip { display: inline-flex; align-items: center; width: auto !important; padding: 3px 8px; background: var(--accent); color: var(--accent-ink); }
+.drag-ghost.chip .drag-handle { color: inherit; }
 
 /* Bocka av ätna måltider (Idag och veckoschemat) */
-.meal-row { display: flex; align-items: flex-start; gap: 8px; }
-.meal-row > :last-child { flex: 1; min-width: 0; }
+.meal-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 8px; align-items: start; }
+.meal-row > .eat-check { grid-row: 1 / span 2; }
+.sw-products-box { margin-top: 8px; }
+.sw-products-box > summary { cursor: pointer; color: var(--accent); font-size: 0.9rem; padding: 4px 0; }
+.sw-products-box .chips { margin-top: 6px; }
+.meal-row .swap-this { justify-self: end; font-size: 0.85rem; padding: 4px 2px 0; }
+/* Smala skärmar: tid och måltid på en egen rad överst, så att namn och kalorier inte hamnar ovanpå varandra */
+@media (max-width: 560px) {
+  .row:has(> .kind) { grid-template-columns: minmax(0, 1fr) auto; }
+  .row > .kind { grid-column: 1 / -1; }
+  .row > .end { white-space: normal; }
+}
 .eat-check { flex: none; display: grid; place-items: center; min-width: 32px; min-height: 40px; cursor: pointer; }
 .eat-check input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
 .meal-row.eaten summary b, .meal-row.eaten .swapped b, .day li.eaten a { text-decoration: line-through; color: var(--muted); }
 .day .eat-check { min-width: 24px; min-height: 30px; }
 .day .eat-check input { width: 18px; height: 18px; }
+
+/* Pass flyttade en enskild vecka */
+.trainmoved { margin: 0 0 10px; }
+
+/* Träningspass att dra mellan dagarna (Inställningar → Veckoschema) */
+.train-weeknav { padding: 6px 8px; margin: 4px 0 10px; }
+.train-weeknav .weeknav-title { font-size: 1.05rem; }
+.train-week { display: grid; gap: 6px; }
+.tw-day { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.tw-day b { flex: none; width: 2.6em; font-size: 0.85rem; }
+.tw-day.drop-target { outline: 3px solid var(--accent); outline-offset: -1px; background: var(--accent-soft); }
+.tw-day .chip .drag-handle { padding: 6px 6px 6px 0; }
+@media (min-width: 760px) {
+  .train-week { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .tw-day { flex-direction: column; align-items: stretch; text-align: center; min-height: 92px; }
+  .tw-day b { width: auto; }
+  .tw-day .chip { justify-content: center; overflow-wrap: anywhere; }
+}
+
+/* Byt enskilda råvaror (Inställningar → Inköpslista) */
+.swap-list { display: grid; gap: 8px; margin-top: 6px; }
+.swap-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 10px; align-items: center; }

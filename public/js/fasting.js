@@ -32,10 +32,13 @@ export function formatDuration(hours) {
  *   first         när första måltiden faktiskt åts, eller null
  *   last          när sista måltiden var klar, eller null
  *   yesterdayLast när gårdagens sista måltid var klar, eller null
- * Om sista måltiden inte är loggad antas ätfönstret vara 8 timmar från första måltiden.
+ * Om sista måltiden inte är loggad antas ätfönstret vara 8 timmar från första måltiden. Åt man sent i går (t.ex.
+ * 21:00) och första måltiden i dag inte är loggad, flyttas dagens start fram tills gårdagens fasta är klar (13:00),
+ * så att timern fortsätter räkna fastan i stället för att börja om vid den planerade frukosten.
  */
 export function fastingDay({ planned, first, last, yesterdayLast }) {
-  const start = first ?? planned;
+  const fastDone = yesterdayLast != null ? yesterdayLast + FAST_HOURS - 24 : null;
+  const start = first ?? Math.max(planned, fastDone ?? planned);
   const windowEnd = last ?? start + WINDOW;
   const fastEnd = windowEnd + FAST_HOURS; // timmar från i dag 00:00, alltså i morgon
   return {

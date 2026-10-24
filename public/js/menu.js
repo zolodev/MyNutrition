@@ -1,6 +1,6 @@
 // Veckomenyn: säsong, anpassning efter allergier, veckorotation, portionsskalning och inköpslista.
 
-import { FOOD, GASSY, DIGESTIVE_FRUITS, CHEAP, TEXT_FORMS } from "./data/foods.js";
+import { FOOD, GASSY, DIGESTIVE_FRUITS, CHEAP, TEXT_FORMS, ALTERNATIVES } from "./data/foods.js";
 import { RECIPES, SEASONAL, NONE } from "./data/recipes.js";
 import { substituteFor, adaptInstructions, isExcluded, mealPrefs } from "./preferences.js";
 import { macros, scaleItems, solveScaling } from "./nutrition.js";
@@ -54,16 +54,19 @@ export function invalidateMenu() {
  * och hela rätten stryks (ok: false) om en huvudingrediens saknar ersättare.
  */
 export function adaptRecipe(id, season) {
-  const cheap = mealPrefs.cheap && !RECIPES[id].mine; // egna recept lämnas som användaren skrev dem
-  const key = season + "|" + id + (cheap ? "|billigt" : "");
+  const mine = RECIPES[id].mine; // egna recept lämnas som användaren skrev dem
+  const cheap = mealPrefs.cheap && !mine;
+  // Råvaror som användaren själv har valt att byta (Inställningar → Inköpslista), t.ex. älgfärs → kycklingfärs
+  const chosen = mine ? {} : Object.fromEntries(Object.entries(mealPrefs.swaps).filter(([from, to]) => ALTERNATIVES[from]?.includes(to)));
+  const key = season + "|" + id + (cheap ? "|billigt" : "") + "|" + JSON.stringify(chosen);
   if (adaptedCache[key]) return adaptedCache[key];
   const items = RECIPES[id].items.map(([f, g]) => [resolveSeasonal(f, season), g]);
   // Billiga råvaror: rätter med en dyr råvara utan bra ersättare tas inte med; övriga dyra byts mot billigare
-  if (cheap && items.some(([f]) => CHEAP.skip.includes(f))) return (adaptedCache[key] = { ok: false, items: [], subs: [], dropped: [] });
+  if (cheap && items.some(([f]) => CHEAP.skip.includes(f) && !chosen[f])) return (adaptedCache[key] = { ok: false, items: [], subs: [], dropped: [] });
   const total = macros(items);
   const result = { ok: true, items: [], subs: [], dropped: [] };
   for (const [original, grams] of items) {
-    const food = cheap && CHEAP.swap[original] ? CHEAP.swap[original] : original;
+    const food = chosen[original] || (cheap && CHEAP.swap[original]) || original;
     if (food !== original) result.subs.push([original, food]);
     const replacement = substituteFor(food);
     if (replacement === food) result.items.push([food, grams]);
@@ -184,16 +187,24 @@ export function resetMoves(week) {
 }
 
 /**
+ * Måltiderna per dag: 0 frukost, 1 eftermiddagsmåltid, 2 efterrätt, 3 godis (bara fuskdagen) och 4 tillbehör till
+ * eftermiddagsmåltiden (bara de dagar som valts under Inställningar → Måltider). Tomma platser är NONE.
+ *
  * Ta bort efterrätten de dagar användaren inte vill ha någon, och lägg godiset på fuskdagen (eller ta bort det om det
  * är avstängt). Görs efter att
  * veckans rätter har slumpats, så att rätterna de andra dagarna blir desamma som tidigare.
  */
-function withMealPrefs(plan) {
+function withMealPrefs(plan, season) {
   // Godiset slumpas alltid för lördagen (så att veckans rätter blir desamma) och flyttas sedan till fuskdagen
   const treat = mealPrefs.treat ? plan[SATURDAY][3] : NONE;
+  // Tillbehör (egna recept av typen "s") de valda dagarna; finns flera turas de om
+  const sides = Object.keys(RECIPES).filter((id) => RECIPES[id].g === "s" && adaptRecipe(id, season).ok);
+  let next = 0;
   return plan.map((day, d) => {
     const meals = day.slice(0, 3).map((id, meal) => (meal === 2 && !mealPrefs.dessertDays.includes(d) ? NONE : id));
-    return d === mealPrefs.cheatDay ? [...meals, treat] : meals;
+    const withTreat = d === mealPrefs.cheatDay ? [...meals, treat] : meals;
+    if (!sides.length || !mealPrefs.sideDays.includes(d)) return withTreat;
+    return [...withTreat, NONE].slice(0, 4).concat(sides[next++ % sides.length]);
   });
 }
 
@@ -242,7 +253,7 @@ function digestiveFruit(recipeId, week) {
 
 export function buildWeek(week, targets, breakfastChoice) {
   const season = seasonOf(week);
-  const plan = withMealPrefs(applyMoves(week, weekPlan(week, breakfastChoice)));
+  const plan = withMealPrefs(applyMoves(week, weekPlan(week, breakfastChoice)), season);
 
   // Säsongsanpassa och anpassa efter bortval. Måltider med ägg, kål eller baljväxter får 100 g frukt med enzymer;
   // frukten växlar mellan rätterna och veckorna, och bortvalda frukter hoppas över. Egna recept får ingen frukt.

@@ -39,6 +39,7 @@ export const FOOD = {
   farskpotatis: { n: "Färskpotatis", k: 70, p: 1.8, c: 15, f: 0.1, s: "färskpotatis" },
   rotfrukter: { n: "Rotfrukter (kålrot, morot, palsternacka)", k: 40, p: 1, c: 8, f: 0.2, s: "rotfrukter" },
   vitkal:   { n: "Vitkål", k: 30, p: 1.3, c: 5, f: 0.2, s: "vitkål" },
+  spetskal: { n: "Spetskål", k: 25, p: 1.4, c: 4, f: 0.3, s: "spetskål" },
   blomkal:  { n: "Blomkål", k: 25, p: 2, c: 3, f: 0.3, s: "blomkål" },
   sallad:   { n: "Sallad, svensk", k: 15, p: 1.3, c: 2, f: 0.2, s: "sallad" },
   gronkal:  { n: "Grönkål", k: 50, p: 3, c: 6, f: 0.8, s: "grönkål" },
@@ -53,6 +54,7 @@ export const FOOD = {
   radisor:  { n: "Rädisor", k: 16, p: 0.7, c: 3, f: 0.1 },
   renskav:  { n: "Renskav", k: 115, p: 22, c: 0, f: 3 },
   algfars:  { n: "Älgfärs", k: 115, p: 22, c: 0, f: 3 },
+  notfars:  { n: "Nötfärs 10 %", k: 170, p: 19, c: 0, f: 10, s: "nötfärs" },
   algskav:  { n: "Älgskav", k: 110, p: 22, c: 0, f: 2.5 },
   tunnbrod: { n: "Mjukt tunnbröd", k: 290, p: 8, c: 55, f: 4, per: 40, unit: "st" },
   brunabonor: { n: "Bruna bönor, svenska, kokta", k: 120, p: 8, c: 17, f: 0.5 },
@@ -87,10 +89,10 @@ export const CATEGORIES = [
 
 const CATEGORY_OF = {};
 const byCategory = {
-  kott: "kyckling kycklingfars algfars algskav renskav algkott flaskfile kalkon",
+  kott: "kyckling kycklingfars algfars notfars algskav renskav algkott flaskfile kalkon",
   fisk: "sej torsk lax rakor",
   mejeri: "kvarg keso mjolk filmjolk ost agg aggvita sojayoghurt havredryck",
-  gron: "potatis farskpotatis rotfrukter vitkal kalmix blomkal broccoli sallad spenat gronkal kalrot morot tomat gurka paprika lok svamp radisor sommargron hostgron",
+  gron: "potatis farskpotatis rotfrukter vitkal spetskal kalmix blomkal broccoli sallad spenat gronkal kalrot morot tomat gurka paprika lok svamp radisor sommargron hostgron",
   frukt: "blabar blabarF jordgubbar lingon apple ananas mango papaya kiwi",
   skafferi: "havre havreGF ris pasta bulgur knacke knackeGF tortilla tortillaMajs tunnbrod brunabonor gulaartor linser olja popcorn choklad",
 };
@@ -119,7 +121,7 @@ export const GRAMS_PER_DL = {
 };
 
 /** Livsmedel som ger gaser eller svavel (ägg, kål, baljväxter); måltider med dem får en frukt ur DIGESTIVE_FRUITS (se menu.js). */
-export const GASSY = new Set(["agg", "aggvita", "vitkal", "kalmix", "gronkal", "blomkal", "hostgron", "broccoli", "sommargron", "brunabonor", "gulaartor", "linser"]);
+export const GASSY = new Set(["agg", "aggvita", "vitkal", "spetskal", "kalmix", "gronkal", "blomkal", "hostgron", "broccoli", "sommargron", "brunabonor", "gulaartor", "linser"]);
 
 /**
  * Frukter med enzymer som hjälper till att bryta ner maten: bromelain (ananas) och papain (papaya) bryter ner
@@ -197,12 +199,12 @@ export const LEGACY_PRODUCTS = {
 /** Ersättare när ett livsmedel är bortvalt. Den första som inte själv är bortvald används. */
 export const SUBSTITUTES = {
   sej: ["torsk"], torsk: ["sej"], lax: ["sej", "torsk"],
-  kalkon: ["kyckling"], flaskfile: ["kyckling"], kycklingfars: ["algfars"], algfars: ["kycklingfars"],
+  kalkon: ["kyckling"], flaskfile: ["kyckling"], kycklingfars: ["algfars"], algfars: ["kycklingfars"], notfars: ["kycklingfars", "algfars"],
   renskav: ["algskav"], algskav: ["renskav"], algkott: ["algskav", "renskav"],
   kvarg: ["keso", "sojayoghurt"], keso: ["kvarg", "sojayoghurt"], mjolk: ["havredryck"], filmjolk: ["sojayoghurt", "havredryck"],
   havre: ["havreGF"], knacke: ["knackeGF"], pasta: ["ris"], bulgur: ["ris"], tortilla: ["tortillaMajs"], tunnbrod: ["tortillaMajs"],
   brunabonor: ["gulaartor"], gulaartor: ["brunabonor"], potatis: ["farskpotatis", "rotfrukter"], farskpotatis: ["potatis"], ris: ["potatis"],
-  vitkal: ["kalmix", "morot"], kalmix: ["vitkal", "morot"], gronkal: ["vitkal", "sallad"], blomkal: ["broccoli", "rotfrukter"], broccoli: ["blomkal"],
+  vitkal: ["spetskal", "kalmix", "morot"], spetskal: ["vitkal", "kalmix"], kalmix: ["vitkal", "morot"], gronkal: ["vitkal", "sallad"], blomkal: ["broccoli", "rotfrukter"], broccoli: ["blomkal"],
   sallad: ["spenat", "vitkal"], spenat: ["sallad"], kalrot: ["morot", "rotfrukter"], morot: ["kalrot", "rotfrukter"], rotfrukter: ["morot", "potatis"],
   tomat: ["gurka", "morot"], gurka: ["morot"], paprika: ["morot"], hostgron: ["blomkal", "broccoli"], sommargron: ["broccoli"],
   blabar: ["lingon", "jordgubbar"], blabarF: ["blabar"], jordgubbar: ["blabarF", "blabar"], lingon: ["blabar"], apple: ["blabar"],
@@ -219,6 +221,16 @@ export const CHEAP = {
 };
 
 /**
+ * Billigare alternativ som användaren kan välja per råvara (Inställningar → Inköpslista), t.ex. kycklingfärs eller
+ * nötfärs i stället för älgfärs. Valet sparas i "ffv-meals".swaps och gäller alla inbyggda recept (se adaptRecipe).
+ */
+export const ALTERNATIVES = {
+  algfars: ["kycklingfars", "notfars"], algkott: ["kyckling", "flaskfile"], algskav: ["kyckling", "flaskfile"],
+  renskav: ["kyckling", "flaskfile"], lax: ["sej"], torsk: ["sej"], rakor: ["sej", "kyckling"],
+  flaskfile: ["kyckling"], kalkon: ["kyckling"],
+};
+
+/**
  * Hur livsmedlen skrivs i receptens namn och text: [obestämd form, bestämd form]. När en råvara byts ut (allergi,
  * bortval eller billiga råvaror) skrivs den om i namnet och texten, t.ex. "med bulgur" → "med ris" och
  * "Koka bulguren" → "Koka riset" (se renameInText i menu.js).
@@ -226,7 +238,7 @@ export const CHEAP = {
 export const TEXT_FORMS = {
   sej: ["sej", "sejen"], torsk: ["torsk", "torsken"], lax: ["lax", "laxen"], kalkon: ["kalkon", "kalkonen"],
   kyckling: ["kyckling", "kycklingen"], flaskfile: ["fläskfilé", "fläskfilén"], kycklingfars: ["kycklingfärs", "kycklingfärsen"],
-  algfars: ["älgfärs", "älgfärsen"], renskav: ["renskav", "renskavet"], algskav: ["älgskav", "älgskavet"], algkott: ["älgkött", "älgköttet"],
+  algfars: ["älgfärs", "älgfärsen"], notfars: ["nötfärs", "nötfärsen"], renskav: ["renskav", "renskavet"], algskav: ["älgskav", "älgskavet"], algkott: ["älgkött", "älgköttet"],
   kvarg: ["kvarg", "kvargen"], keso: ["keso", "kesot"], sojayoghurt: ["sojayoghurt", "sojayoghurten"],
   mjolk: ["mjölk", "mjölken"], havredryck: ["havredryck", "havredrycken"], filmjolk: ["filmjölk", "filmjölken"],
   havre: ["havregryn", "havregrynen"], havreGF: ["glutenfria havregryn", "havregrynen"], knacke: ["knäckebröd", "knäckebrödet"],

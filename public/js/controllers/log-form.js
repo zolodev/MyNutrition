@@ -66,20 +66,29 @@ const lastUnit = () =>
   entries.flatMap((e) => e.cardio).pop()?.u || "km";
 
 $("l-cardio-add").addEventListener("click", () => $("l-cardio").insertAdjacentHTML("beforeend", cardioRow({}, lastUnit())));
-// Tid: kolonerna sätts medan man skriver siffror (857 → 8:57, 10530 → 1:05:30)
-$("l-cardio").addEventListener("input", (ev) => {
-  if (!ev.target.matches("[data-c-time]")) return;
-  const formatted = formatWorkoutInput(ev.target.value);
-  if (formatted !== ev.target.value) ev.target.value = formatted;
-  ev.target.setCustomValidity("");
-});
+// Tid: kolonerna sätts medan man skriver siffror (857 → 8:57, 003516 → 00:35:16), som på ett stoppur. iPhones
+// sifferknappsats har inget kolon, så kolonerna appen har satt räknas bort vid varje ny siffra och sätts om.
+// Skriver man ett eget kolon lämnas texten orörd (data-c-own).
+export function onTimeInput(ev) {
+  const el = ev.target;
+  if (!el.matches("[data-c-time]")) return;
+  if (ev.data && /[^\d]/.test(ev.data)) el.dataset.cOwn = "1";
+  if (!/\d/.test(el.value) || !/^[\d:]*$/.test(el.value)) delete el.dataset.cOwn;
+  if (!el.dataset.cOwn && /^[\d:]+$/.test(el.value)) {
+    const formatted = formatWorkoutInput(el.value.replace(/:/g, ""));
+    if (formatted !== el.value) el.value = formatted;
+  }
+  el.setCustomValidity("");
+}
+$("l-cardio").addEventListener("input", onTimeInput);
 // När fältet lämnas skrivs tiden ut som hh:mm:ss: 8:57 betyder 8 min 57 s, alltså 00:08:57
-$("l-cardio").addEventListener("change", (ev) => {
+export function onTimeChange(ev) {
   if (!ev.target.matches("[data-c-time]") || !ev.target.value.trim()) return;
   const seconds = parseWorkoutTime(ev.target.value);
   if (seconds != null) ev.target.value = formatHms(seconds);
   ev.target.setCustomValidity(seconds != null ? "" : "Skriv tiden som hh:mm:ss eller mm:ss, t.ex. 00:08:57 eller 8:57");
-});
+}
+$("l-cardio").addEventListener("change", onTimeChange);
 // Byt enhet: rimliga gränser och exempel för km eller meter
 $("l-cardio").addEventListener("change", (ev) => {
   if (!ev.target.matches("[data-c-unit]")) return;

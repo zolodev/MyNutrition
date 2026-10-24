@@ -167,10 +167,11 @@ export function toast(text, ms = 4000) {
 
 /**
  * Fråga med en modal (#confirm i index.html) och svara true för Ja, false för Nej, Escape eller klick utanför.
- * `yes`/`no` ändrar knapptexterna; `no: null` ger bara en knapp (för ett meddelande, t.ex. "OK").
+ * `yes`/`no` ändrar knapptexterna; `no: null` ger bara en knapp (för ett meddelande, t.ex. "OK"). `other` ger en
+ * tredje knapp som svarar "other".
  * Webbläsare utan showModal (t.ex. jsdom) får dialogen öppnad med attributet open.
  */
-export function confirmDialog(question, detail = "", { yes = "Ja", no = "Nej" } = {}) {
+export function confirmDialog(question, detail = "", { yes = "Ja", no = "Nej", other = null } = {}) {
   const dialog = $("confirm");
   $("confirm-text").textContent = question;
   $("confirm-detail").textContent = detail;
@@ -179,6 +180,11 @@ export function confirmDialog(question, detail = "", { yes = "Ja", no = "Nej" } 
   yesButton.textContent = yes;
   noButton.textContent = no ?? "";
   noButton.hidden = no == null;
+  const otherButton = dialog.querySelector('[data-answer="other"]');
+  if (otherButton) {
+    otherButton.textContent = other ?? "";
+    otherButton.hidden = other == null;
+  }
   return new Promise((resolve) => {
     const finish = (yes) => {
       dialog.removeEventListener("click", onClick);
@@ -189,7 +195,7 @@ export function confirmDialog(question, detail = "", { yes = "Ja", no = "Nej" } 
     };
     const onClick = (ev) => {
       const answer = ev.target.closest("[data-answer]")?.dataset.answer;
-      if (answer) finish(answer === "yes");
+      if (answer) finish(answer === "other" ? "other" : answer === "yes");
       else if (ev.target === dialog) finish(false); // klick på bakgrunden
     };
     const onCancel = (ev) => {

@@ -6,10 +6,37 @@
 // Inställningar → Installera appen finns alltid kvar.
 
 import { $, load, save, confirmDialog } from "./util.js";
+import { APP_VERSION } from "./version.js";
 
 // Service workern registreras bara när sidan körs som egen webbplats (inte inbäddad i en annan sida och inte från disk).
 if ("serviceWorker" in navigator && window.self === window.top && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  // En app som ligger öppen i bakgrunden (t.ex. på iPhones hemskärm) laddas inte om av sig själv. När den visas
+  // igen frågar vi servern vilken version som är publicerad; är den nyare erbjuds en omladdning. Omladdningen rör
+  // bara app-filerna, aldrig sparad data.
+  document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && checkForUpdate());
+  window.addEventListener("load", () => setTimeout(checkForUpdate, 5000));
+}
+
+let offered = ""; // versionen som redan har erbjudits den här gången, så att frågan inte tjatar
+let lastCheck = 0;
+/** Fråga servern om en nyare version är publicerad och erbjud i så fall en omladdning. */
+export async function checkForUpdate() {
+  if (Date.now() - lastCheck < 60_000 || $("confirm").open) return; // högst en gång i minuten, och inte mitt i en annan fråga
+  lastCheck = Date.now();
+  try {
+    const html = await (await fetch(`index.html?check=${Date.now()}`, { cache: "no-store" })).text();
+    const latest = html.match(/<meta name="app-version" content="([^"]+)">/)?.[1];
+    if (!latest || latest === APP_VERSION || latest === offered) return;
+    offered = latest;
+    const reg = await navigator.serviceWorker?.getRegistration();
+    await reg?.update().catch(() => {});
+    const yes = await confirmDialog(`En ny version av appen finns (${latest})`,
+      `Du har version ${APP_VERSION}. Ladda om för att få den nya. Dina uppgifter ligger kvar.`, { yes: "Uppdatera nu", no: "Senare" });
+    if (yes) location.reload();
+  } catch {
+    // offline eller servern svarar inte: försök igen nästa gång appen visas
+  }
 }
 
 const BANNER_ANSWERED_KEY = "ffv-install-declined"; // bannern visas inte igen (Ja eller Nej); namnet finns kvar från äldre versioner

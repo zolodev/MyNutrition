@@ -2,12 +2,13 @@
 // promenad (t.ex. till och från jobbet) och egna aktiviteter. Tomma fält visar planens förslag. Under varje dag
 // visas råd med motivering (scheduleAdvice i schedule.js); inget blockeras.
 //
-// Gympass slås på och av via Gymdagar i profilen (setGymDay), så att gymdagarna bara bestäms på ett ställe.
+// Gympass slås på och av via Gymdagar i profilen (setGymDay), så att gymdagarna bara bestäms på ett ställe. Vilket
+// pass som körs en gymdag kan väljas i listan bredvid (setSession); passet byter då plats med dagen som hade det.
 
 import { $, esc, DAYS } from "../util.js";
 import { formatClock, parseClock } from "../fasting.js";
 import { STRENGTH, INTERVALS, WINDOW } from "../day.js";
-import { KINDS, dayOverrides, hasOverrides, setActivity, setExtras, resetDay, suggestion, daySchedule, scheduleAdvice, getWork, setWork, workOn } from "../schedule.js";
+import { KINDS, dayOverrides, hasOverrides, setActivity, setExtras, resetDay, setSession, suggestion, daySchedule, scheduleAdvice, getWork, setWork, workOn } from "../schedule.js";
 
 let deps = { update: () => {}, setGymDay: () => {} };
 let last = null; // { program, breakfast } från senaste ritningen
@@ -36,6 +37,11 @@ function dayCard(day) {
     `<div class="sched-row${on ? "" : " off"}" data-kind="${kind}"><label class="sched-on"><input type="checkbox" ${kind === "str" ? "data-sched-gym" : "data-sched-on"}${on ? " checked" : ""}>` +
     `<span>${title}</span></label>${extra}${timeInputs(day, kind, typeof o[kind] === "object" ? o[kind] : null, plan[kind] || fallback(kind, breakfast))}</div>`;
   const gym = type.kind === "str";
+  // Val av pass på gymdagar, när programmet har mer än ett pass (t.ex. helkropp, överkropp och ben)
+  const names = Object.fromEntries(program.sessions.map((x) => [x.id, x.name]));
+  const sessionSelect = gym && program.ids.length > 1
+    ? `<select class="sched-label" data-sched-session aria-label="${DAYS[day]}, vilket pass">${program.ids.map((id) =>
+      `<option value="${esc(id)}"${id === type.session ? " selected" : ""}>${esc(names[id])}</option>`).join("")}</select>` : "";
   const intOn = typeof o.int === "object" || (o.int === undefined && type.kind === "int");
   const walkOn = typeof o.walk === "object" || (o.walk === undefined && type.kind === "rest");
   const extras = (Array.isArray(o.extra) ? o.extra : []).map((x, i) =>
@@ -44,10 +50,13 @@ function dayCard(day) {
   const items = daySchedule(day, type.kind, breakfast);
   const next = program.schedule[(day + 1) % 7];
   const advice = scheduleAdvice(items, { work: workOn(day), eat: { from: breakfast, to: breakfast + WINDOW }, nextIsLegs: next.kind === "str" && program.legSessions.includes(next.session) });
+  // Samma muskler två dagar i rad (t.ex. helkropp på lördag och ben på söndag): ett råd, men inget blockeras
+  const both = gym && next.kind === "str" && [program.legSessions, program.upperSessions].find((g) => g.includes(type.session) && g.includes(next.session));
+  if (both) advice.push({ level: "warn", text: `${type.label} och ${next.label.toLowerCase()} dagen efter tränar ${both === program.legSessions ? "benen" : "överkroppen"} två dagar i rad. Kör det andra passet lite lättare, eller välj ett annat pass för en av dagarna.` });
   const work = workOn(day);
   return `<div class="card sched-day" data-sched-day="${day}"><div class="sched-head"><h3>${DAYS[day]}</h3><small>${esc(gym ? type.label : type.kind === "int" ? "Intervalldag" : "Vilodag")}` +
     `${work ? ` · arbete ${formatClock(work.from)}–${formatClock(work.to)}` : ""}</small></div>` +
-    row("str", gym, "Gympass") + row("int", intOn, "Intervaller") +
+    row("str", gym, "Gympass", sessionSelect) + row("int", intOn, "Intervaller") +
     row("walk", walkOn, "Promenad", `<input type="text" class="sched-label" data-sched-label data-key="${day}-walk-label" maxlength="40" value="${esc(typeof o.walk === "object" ? o.walk.label || "" : "")}" placeholder="t.ex. Till jobbet" aria-label="${DAYS[day]}, promenadens namn">`) +
     extras +
     `<div class="actions"><button type="button" class="linkbtn" data-sched-add>+ Lägg till aktivitet</button>` +
@@ -90,6 +99,18 @@ export function renderSchedule(program, breakfast) {
   if (focused) $("sched-list").querySelector(`[data-key="${focused}"]`)?.focus();
 }
 
+/**
+ * Träningspassen för en vecka, en ruta per dag. Gympassen har handtag (⠿) och dras till en annan dag
+ * (controllers/week-drag.js → moveSession i app.js). `title` är veckans namn, t.ex. "Vecka 42 · denna vecka".
+ */
+export function renderTrainWeek(program, title) {
+  $("tw-title").textContent = title;
+  $("train-week").innerHTML = program.schedule.map((type, day) => `<div class="tw-day" data-week-day="${day}"><b>${DAYS[day].slice(0, 3)}</b>` +
+    (type.kind === "str"
+      ? `<span class="chip str" data-session-chip><button type="button" class="drag-handle" aria-label="Dra ${esc(type.label.toLowerCase())} på ${DAYS[day].toLowerCase()} till en annan dag">⠿</button>${esc(type.label)}</span>`
+      : `<span class="chip ${type.kind}">${esc(type.label)}</span>`) + "</div>").join("");
+}
+
 /** Läs en rads tider ({ from, to } som "HH:MM"); tomma fält tar förslaget. Ger null om tiderna inte går ihop. */
 function readTimes(row) {
   const get = (k) => {
@@ -113,6 +134,10 @@ $("sched-list").addEventListener("change", (ev) => {
   const day = Number(card.dataset.schedDay), kind = row.dataset.kind;
   const type = last.program.schedule[day].kind;
   if (ev.target.matches("[data-sched-gym]")) return deps.setGymDay(day, ev.target.checked);
+  if (ev.target.matches("[data-sched-session]")) {
+    setSession(day, ev.target.value);
+    return deps.update();
+  }
   if (kind === "other") setExtras(day, readExtras(card));
   else if (ev.target.matches("[data-sched-on]")) {
     const byDefault = (kind === "int" && type === "int") || (kind === "walk" && type === "rest");

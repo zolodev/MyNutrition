@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- Appens version (samma som js/version.js; uppdateras av npm run bump). main.js använder den för att se till att
        alla filer kommer från samma version. -->
-  <meta name="app-version" content="0.14.3">
+  <meta name="app-version" content="0.19.0">
   <meta name="description"
     content="Personlig veckoplan för viktnedgång: kalorimål, styrkeprogram med ExRx-övningar, säsongsrecept, fasta 16:8 och logg.">
   <meta name="theme-color" content="#1d5c4c" media="(prefers-color-scheme: light)">
@@ -250,7 +250,7 @@
     href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="css/app.css">
   <!-- ?v= gör att startfilen alltid hämtas på nytt efter en uppdatering, även ur en gammal webbläsarcache -->
-  <script type="module" src="js/main.js?v=0.14.3" onerror="ffvBootFailed()"></script>
+  <script type="module" src="js/main.js?v=0.19.0" onerror="ffvBootFailed()"></script>
 </head>
 
 <body>
@@ -331,6 +331,7 @@
           </div>
           <div class="card fast-card">
             <div class="fast-now" id="fs-now" role="status"></div>
+            <button type="button" class="btn small" id="fs-action" data-action="start">Starta fastan nu</button>
             <div class="row2">
               <div class="field">
                 <label for="fs-first">Första måltiden</label>
@@ -360,28 +361,31 @@
           <p class="hint" id="td-eaten"></p>
           <div class="list" id="td-food"></div>
           <details class="card form swap-box" id="sw-box">
-            <summary>Åt du något annat? Ersätt en måltid</summary>
+            <summary>Ersätt en måltid med något annat</summary>
             <form id="sw-form" autocomplete="off">
-              <p class="hint">T.ex. en Huel-shake i stället för eftermiddagsmåltiden. Dagens kalorier och protein räknas om,
-                och ersättningen sparas i loggen.</p>
-              <div class="field"><label for="sw-meal">Måltid</label><select id="sw-meal"></select></div>
-              <div class="field" id="sw-move-field" hidden><label for="sw-move">Flytta den planerade rätten till en annan
-                  dag?</label><select id="sw-move"></select></div>
-              <div class="chips" id="sw-recent"></div>
+              <p class="hint">Åt du något annat än planen, t.ex. en Huel-shake eller lunch ute? Fyll i vad det var, så
+                räknas dagens kalorier och protein om och ersättningen sparas i loggen. Du kan också trycka på
+                <b>Åt något annat? Ersätt</b> under en måltid ovan.</p>
+              <div class="field"><label for="sw-meal">1. Vilken måltid ersätter du?</label><select id="sw-meal"></select></div>
               <div class="field">
-                <span class="label">Måltidsersättningar <small>värden per måltid enligt tillverkaren; kontrollera din
-                    förpackning</small></span>
-                <div class="chips" id="sw-products"></div>
+                <span class="label">2. Vad åt du i stället? <small>tryck på ett snabbval eller skriv själv</small></span>
+                <div class="chips" id="sw-recent"></div>
+                <details class="sw-products-box">
+                  <summary>Måltidsersättningar (Huel m.fl.)</summary>
+                  <p class="hint">Värden per måltid enligt tillverkaren; kontrollera din förpackning.</p>
+                  <div class="chips" id="sw-products"></div>
+                </details>
               </div>
-              <div class="field"><label for="sw-name">Vad åt du?</label><input type="text" id="sw-name" maxlength="60"
-                  placeholder="t.ex. Huel shake"></div>
+              <div class="field"><label for="sw-name">Namn</label><input type="text" id="sw-name" maxlength="60"
+                  placeholder="t.ex. Huel shake eller pizza"></div>
               <div class="row2">
                 <div class="field"><label for="sw-k">Kalorier (kcal)</label><input type="text" inputmode="decimal"
-                    data-decimal min="0" max="5000" id="sw-k" placeholder="står på förpackningen"></div>
+                    data-decimal min="0" max="5000" id="sw-k" placeholder="t.ex. 400"></div>
                 <div class="field"><label for="sw-p">Protein (g)</label><input type="text" inputmode="decimal" data-decimal
-                    min="0" max="500" id="sw-p"></div>
+                    min="0" max="500" id="sw-p" placeholder="t.ex. 30"></div>
               </div>
-              <div class="actions"><button type="submit" class="btn primary">Spara</button></div>
+              <div class="field" id="sw-move-field" hidden><label for="sw-move">3. Vad gör du med den planerade rätten?</label><select id="sw-move"></select></div>
+              <div class="actions"><button type="submit" class="btn primary">Spara ersättningen</button></div>
               <p class="hint" id="sw-msg"></p>
             </form>
           </details>
@@ -429,6 +433,8 @@
               <button type="button" class="weeknav-arrow" id="wk-next" aria-label="Nästa vecka">›</button>
               <button type="button" class="btn small weeknav-today" id="wk-today" hidden>Till denna vecka</button>
             </div>
+            <p class="hint trainmoved" id="wk-trainmoved-food" hidden>Gympassen är flyttade den här veckan
+              (<a href="#veckoschema">Inställningar → Veckoschema</a>).</p>
             <div class="week" id="week"></div>
             <details class="card form swap-box" id="mv-box">
               <summary>Byt plats på måltider mellan dagar</summary>
@@ -736,12 +742,45 @@
             </form>
             <div class="log-stats">
               <div class="tiles three" id="l-tiles"></div>
+              <div class="chart-range" id="l-range" role="group" aria-label="Visa period i viktkurvan">
+                <button type="button" class="chip-btn" data-range="14">2 veckor</button>
+                <button type="button" class="chip-btn" data-range="30" aria-pressed="true">Månad</button>
+                <button type="button" class="chip-btn" data-range="90">3 månader</button>
+                <button type="button" class="chip-btn" data-range="0">Hela planen</button>
+              </div>
               <div class="card chart">
                 <svg id="l-chart" viewBox="0 0 640 260" role="img" aria-label="Viktkurva"></svg>
                 <div class="tip" id="l-tip" hidden></div>
               </div>
               <div class="chart-key" id="l-key"></div>
               <div class="flag" id="l-advice" hidden></div>
+              <div class="card goals" id="l-goals">
+                <div class="goals-head"><h3>Löpmål</h3><small>Räknas från löppassen du loggar</small></div>
+                <div id="l-goal-status"></div>
+                <details class="goal-edit" id="l-goal-edit">
+                  <summary>Sätt eller ändra mål</summary>
+                  <form id="l-goal-form" class="form" autocomplete="off">
+                    <span class="label">Veckomål <small>måndag–söndag</small></span>
+                    <div class="row2">
+                      <div class="field"><label for="g-week-km">Kilometer per vecka</label><input type="text"
+                          inputmode="decimal" data-decimal min="0.5" max="500" id="g-week-km" placeholder="t.ex. 10"></div>
+                      <div class="field"><label for="g-week-runs">Pass per vecka</label><input type="text"
+                          inputmode="numeric" data-decimal min="1" max="14" id="g-week-runs" placeholder="t.ex. 3"></div>
+                    </div>
+                    <span class="label">Tidsmål <small>t.ex. 5 km på 30:00</small></span>
+                    <div class="row2">
+                      <div class="field"><label for="g-dist">Distans (km)</label><input type="text" inputmode="decimal"
+                          data-decimal min="0.4" max="100" id="g-dist" placeholder="t.ex. 5"></div>
+                      <div class="field"><label for="g-time">Tid (hh:mm:ss)</label><input type="text" inputmode="numeric"
+                          data-c-time maxlength="8" id="g-time" placeholder="t.ex. 00:30:00"></div>
+                    </div>
+                    <p class="hint">Lämna ett fält tomt om du inte vill ha det målet. Höj veckomålet med högst 10 % i taget,
+                      så hinner kroppen vänja sig och risken för skador blir mindre.</p>
+                    <div class="actions"><button type="submit" class="btn primary">Spara målen</button>
+                      <span class="status" id="g-msg" role="status"></span></div>
+                  </form>
+                </details>
+              </div>
             </div>
           </div>
           <div class="scroll-x">
@@ -901,6 +940,8 @@
               </div>
               <input type="hidden" id="tdays-val" value="0,2,4">
               <small id="tdays-msg">3–4 dagar rekommenderas: 3 ger helkropp, överkropp och ben; 4 ger över- och underkropp två gånger var. Du kan välja fler eller färre.</small>
+              <small>Vill du köra helkropp varje pass, så att det inte gör något om du missar en dag? Välj
+                <a href="#veckoschema">Upplägg: Helkropp varje pass under Inställningar → Veckoschema</a>.</small>
             </div>
             <div class="field" data-step="6">
               <label for="exswap">Byt övningar</label>
@@ -1060,7 +1101,7 @@
           </div>
           <nav class="settings-menu" aria-label="Inställningar">
             <a href="#veckoschema"><span><b>Veckoschema</b><small>Tider för gympass, intervaller, promenad och egna aktiviteter, dag för dag</small></span><span class="chev" aria-hidden="true">›</span></a>
-            <a href="#maltider"><span><b>Måltider</b><small>Efterrätt vilka veckodagar och fuskdag med godis</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#maltider"><span><b>Måltider</b><small>Efterrätt och tillbehör vilka veckodagar, och fuskdag med godis</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#anpassa"><span><b>Allergier och livsmedel</b><small>Allergener, ingredienser du inte äter och egna livsmedel</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#mina-recept"><span><b>Mina recept</b><small>Egna recept, i valfria mått, som kan komma med i menyn</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#tillskott"><span><b>Tillskott</b><small>Vilka tillskott du tar, och egna tillskott som BCAA</small></span><span class="chev" aria-hidden="true">›</span></a>
@@ -1081,6 +1122,26 @@
               Tomma tider visar appens förslag, räknat från frukosten. Under varje dag får du råd om vad som är bra och
               varför, men du bestämmer: inget blockeras. Vilka dagar som är gymdagar styr du med kryssrutan Gympass (samma
               som Gymdagar i Profil). Idag, veckoschemat under Mat och tillskottstipsen följer det du anger här.</p>
+          </div>
+          <div class="card form train-box">
+            <span class="label">Träningspass</span>
+            <p class="hint">Dra ett pass i handtaget (⠿) till en annan dag. Du väljer om flytten bara gäller veckan
+              nedan, t.ex. vid förhinder, eller alla veckor. Du kan också välja pass i listan under varje dag.</p>
+            <div class="field"><label for="tw-split">Upplägg</label>
+              <select id="tw-split">
+                <option value="auto">Appens förslag (3 dagar: helkropp, överkropp och ben; 4 eller fler: över- och underkropp)</option>
+                <option value="full">Helkropp varje pass</option>
+              </select></div>
+            <p class="hint">Vilka dagar du tränar väljer du under <a href="#profil">Profil → Gymdagar</a>, t.ex. alla
+              sju för helkropp varje dag.</p>
+            <div class="weeknav train-weeknav">
+              <button type="button" class="weeknav-arrow" id="tw-prev" aria-label="Föregående vecka">‹</button>
+              <div class="weeknav-label"><span class="weeknav-title" id="tw-title">Vecka</span></div>
+              <button type="button" class="weeknav-arrow" id="tw-next" aria-label="Nästa vecka">›</button>
+            </div>
+            <p class="hint trainmoved" id="wk-trainmoved" hidden>Passen är flyttade den här veckan.
+              <button type="button" class="linkbtn" id="wk-trainreset">Lägg tillbaka passen enligt planen</button></p>
+            <div class="train-week" id="train-week"></div>
           </div>
           <div class="card form sched-work" id="work-box">
             <span class="label">Arbetstid</span>
@@ -1115,6 +1176,9 @@
             <label class="terms-accept"><input type="checkbox" id="ml-dessert-on"><span>Efterrätt till eftermiddagsmåltiden</span></label>
             <div class="daypick" id="ml-dessert-days" role="group" aria-label="Dagar med efterrätt"><label><input type="checkbox" data-dessert-day="0"><span>Mån</span></label><label><input type="checkbox" data-dessert-day="1"><span>Tis</span></label><label><input type="checkbox" data-dessert-day="2"><span>Ons</span></label><label><input type="checkbox" data-dessert-day="3"><span>Tor</span></label><label><input type="checkbox" data-dessert-day="4"><span>Fre</span></label><label><input type="checkbox" data-dessert-day="5"><span>Lör</span></label><label><input type="checkbox" data-dessert-day="6"><span>Sön</span></label></div>
             <small>T.ex. måndag och onsdag om efterrätten görs i en större sats som räcker två dagar.</small>
+            <label class="terms-accept"><input type="checkbox" id="ml-side-on"><span>Tillbehör till eftermiddagsmåltiden, t.ex. pizzasallad</span></label>
+            <div class="daypick" id="ml-side-days" role="group" aria-label="Dagar med tillbehör"><label><input type="checkbox" data-side-day="0"><span>Mån</span></label><label><input type="checkbox" data-side-day="1"><span>Tis</span></label><label><input type="checkbox" data-side-day="2"><span>Ons</span></label><label><input type="checkbox" data-side-day="3"><span>Tor</span></label><label><input type="checkbox" data-side-day="4"><span>Fre</span></label><label><input type="checkbox" data-side-day="5"><span>Lör</span></label><label><input type="checkbox" data-side-day="6"><span>Sön</span></label></div>
+            <small id="ml-side-hint"></small>
             <div class="field"><label for="ml-cheat-day">Fuskdag: godis och fri måltid</label><select id="ml-cheat-day" data-days></select></div>
             <label class="terms-accept"><input type="checkbox" id="ml-treat"><span>Godis på fuskdagen (<span data-cheat="Name">Lördagsgodis</span>)</span></label>
 
@@ -1261,6 +1325,12 @@
             <label class="terms-accept"><input type="checkbox" id="ml-cheap"><span>Billiga råvaror: kycklingfärs i stället
                 för älgfärs, sej i stället för torsk och lax, kyckling i stället för fläskfilé och kalkon. Rätter med räkor,
                 renskav, älgskav eller älgkött tas inte med.</span></label>
+            <div class="field">
+              <span class="label">Byt enskilda råvaror</span>
+              <small>Välj ett billigare alternativ för en råvara. Det gäller alla recept, även när Billiga råvaror är
+                avstängt, och rätter med räkor, renskav, älgskav eller älgkött tas med om du har valt ett alternativ.</small>
+              <div class="swap-list" id="ml-swaps"></div>
+            </div>
             <p class="hint" id="ml-cheap-msg"></p>
           </div>
         </section>
@@ -1557,6 +1627,7 @@
       <p class="hint" id="confirm-detail"></p>
       <div class="actions">
         <button type="button" class="btn" data-answer="no">Nej</button>
+        <button type="button" class="btn" data-answer="other" hidden></button>
         <button type="button" class="btn primary" data-answer="yes">Ja</button>
       </div>
     </dialog>

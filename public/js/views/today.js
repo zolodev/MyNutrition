@@ -52,7 +52,7 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   $("td-advice").innerHTML = advice.map((a) => `<li class="${a.level}">${esc(a.text)}</li>`).join("");
 
   // Dagens recept, fullständiga
-  const meals = [[t(0), "Frukost"], [t(MEAL_AT), "Måltid"], [t(MEAL_AT), "Efterrätt"], [t(MEAL_AT), treatName()]];
+  const meals = [[t(0), "Frukost"], [t(MEAL_AT), "Måltid"], [t(MEAL_AT), "Efterrätt"], [t(MEAL_AT), treatName()], [t(MEAL_AT), "Tillbehör"]];
   // Varje måltid har en kryssruta för att bocka av den som ätit (sparas i dagens logg, se setEaten i log.js)
   const eaten = new Set(entryFor(todayStr())?.eaten || []);
   const check = (i) => `<label class="eat-check" title="Ätit"><input type="checkbox" data-eaten="${i}"${eaten.has(i) ? " checked" : ""} aria-label="Ätit ${MEAL_NAMES[i].toLowerCase()}"></label>`;
@@ -60,7 +60,9 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
     if (id === NONE) return "";
     const swap = swapOf(i);
     const done = eaten.has(i) ? " eaten" : "";
-    if (!swap) return `<div class="meal-row${done}">${check(i)}${recipeRow(week.recipes[id], `${meals[i][0]} ${meals[i][1]}`, false)}</div>`;
+    // Knappen Ersätt öppnar formuläret nedanför med måltiden förvald (controllers/meal-swap.js)
+    if (!swap) return `<div class="meal-row${done}">${check(i)}${recipeRow(week.recipes[id], `${meals[i][0]} ${meals[i][1]}`, false)}` +
+      `<button type="button" class="linkbtn swap-this" data-swap-meal="${i}">Åt något annat? Ersätt</button></div>`;
     return `<div class="meal-row${done}">${check(i)}<div class="row swapped"><span class="kind">${meals[i][0]} ${meals[i][1]}</span><span class="main"><b>${esc(swap.n)}</b>` +
       `<small>I stället för ${esc(swap.was || week.recipes[id].t)}${swap.moved != null ? `, som är flyttad till ${DAYS[swap.moved].toLowerCase()}` : ""}</small></span><span class="end">${fmt(swap.k)} kcal · ${fmt(swap.p)} g P ` +
       `<button type="button" class="linkbtn" data-unswap="${i}">Ångra</button></span></div></div>`;
@@ -119,8 +121,8 @@ export function fillMoveOptions(meal) {
   if (!shown || meal > 2) return ($("sw-move-field").hidden = true);
   const { week, index } = shown;
   const options = week.plan.map((day, d) => (d === index || day[meal] === NONE || day[meal] === week.plan[index][meal] ? ""
-    : `<option value="${d}">${DAYS[d]} (byter plats med ${esc(week.recipes[day[meal]].t)})</option>`)).join("");
-  $("sw-move").innerHTML = `<option value="">Nej, hoppa över den</option>${options}`;
+    : `<option value="${d}">Flytta den till ${DAYS[d].toLowerCase()} (byter plats med ${esc(week.recipes[day[meal]].t)})</option>`)).join("");
+  $("sw-move").innerHTML = `<option value="">Hoppa över den</option>${options}`;
   $("sw-move-field").hidden = !options;
 }
 

@@ -98,10 +98,10 @@ export const cardioText = (c) =>
 
 // ---------- Ersatta måltider ----------
 // Åt man något annat än planens måltid (t.ex. en Huel-shake i stället för eftermiddagsmåltiden) sparas det i dagens
-// post som { meal, n, k, p }: vilken måltid (0 frukost, 1 eftermiddagsmåltid, 2 efterrätt, 3 lördagsgodis), namn,
+// post som { meal, n, k, p }: vilken måltid (0 frukost, 1 eftermiddagsmåltid, 2 efterrätt, 3 lördagsgodis, 4 tillbehör), namn,
 // kcal och protein. Idag räknar då dagens summa med ersättningen i stället för receptet.
 
-export const MEAL_NAMES = ["Frukost", "Eftermiddagsmåltid", "Efterrätt", "Godis"]; // godiset ligger på fuskdagen
+export const MEAL_NAMES = ["Frukost", "Eftermiddagsmåltid", "Efterrätt", "Godis", "Tillbehör"]; // godiset ligger på fuskdagen
 const SWAPS_KEY = "ffv-mealswaps"; // senast använda ersättningar, för snabbval
 const cleanSwap = (x) =>
   x && typeof x.n === "string" && x.n.trim() ? { n: x.n.trim().slice(0, 60), k: inRange(x.k, 0, 5000) ?? 0, p: inRange(x.p, 0, 500) ?? 0 } : null;
@@ -115,7 +115,7 @@ function cleanSwaps(list) {
   const byMeal = new Map();
   for (const x of list) {
     const swap = cleanSwap(x);
-    if (swap && [0, 1, 2, 3].includes(x.meal)) byMeal.set(x.meal, { meal: x.meal, ...swap, ...swapExtras(x) });
+    if (swap && [0, 1, 2, 3, 4].includes(x.meal)) byMeal.set(x.meal, { meal: x.meal, ...swap, ...swapExtras(x) });
   }
   return [...byMeal.values()].sort((a, b) => a.meal - b.meal);
 }
@@ -157,7 +157,7 @@ export function cleanEntry(e) {
     test: inRange(e.test, 1, 36000), // äldre versioner: en testtid utan aktivitet och distans
     note: typeof e.note === "string" ? e.note.slice(0, 200) : "",
     swaps: cleanSwaps(e.swaps), // måltider som ersattes med något annat, t.ex. en Huel-shake
-    eaten: Array.isArray(e.eaten) ? [0, 1, 2, 3].filter((m) => e.eaten.includes(m)) : [], // avbockade måltider (0 frukost …)
+    eaten: Array.isArray(e.eaten) ? [0, 1, 2, 3, 4].filter((m) => e.eaten.includes(m)) : [], // avbockade måltider (0 frukost …)
     firstMeal: isClock(e.firstMeal) ? e.firstMeal : null, // "HH:MM", för uppföljning av fastan
     lastMeal: isClock(e.lastMeal) ? e.lastMeal : null,
   };

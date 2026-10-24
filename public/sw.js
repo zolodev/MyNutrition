@@ -2,7 +2,7 @@
 // VERSION följer appens version (js/version.js): en ny version ger en ny cache, och den gamla rensas.
 // Höj den med `npm run bump -- patch|minor|major`, aldrig för hand.
 // Lägger du till en fil i js/ eller css/ ska den också in i CORE, annars fungerar den inte offline.
-const VERSION = "ffv-0.14.3";
+const VERSION = "ffv-0.19.0";
 const CORE = [
   "./",
   "./index.html",
@@ -13,6 +13,7 @@ const CORE = [
   "./js/backup.js",
   "./js/controllers/backup-form.js",
   "./js/controllers/inputs.js",
+  "./js/controllers/goal-form.js",
   "./js/controllers/log-form.js",
   "./js/controllers/meal-swap.js",
   "./js/controllers/navigation.js",
@@ -26,6 +27,7 @@ const CORE = [
   "./js/data/recipes.js",
   "./js/day.js",
   "./js/fasting.js",
+  "./js/goals.js",
   "./js/log.js",
   "./js/main.js",
   "./js/menu.js",

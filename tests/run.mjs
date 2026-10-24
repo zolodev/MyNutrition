@@ -52,6 +52,33 @@ unit("Veckans recept går inte över kalorimålet (högst 5 %) och hamnar högst
 
 const tueThuSat = buildProgram("gym", parseTrainingDays("1,3,5", [0, 2, 4]).days);
 unit("Gymdagar tis/tor/lör ger helkropp, överkropp och ben", tueThuSat.schedule[1].label === "Helkropp" && tueThuSat.schedule[3].label === "Överkropp" && tueThuSat.schedule[5].label === "Ben");
+{
+  const auto = buildProgram("gym", [0, 2, 5]);
+  const picked = buildProgram("gym", [0, 2, 5], {}, { 5: "H" });
+  const sessions = (p) => [0, 2, 5].map((d) => p.schedule[d].session).sort().join();
+  unit("Valt pass: helkropp på lördag, passet byter plats och alla tre pass finns kvar",
+    picked.schedule[5].session === "H" && sessions(picked) === sessions(auto) && picked.chosen && !auto.chosen);
+  unit("Valt pass som inte finns i programmet hoppas över", JSON.stringify(buildProgram("gym", [0, 2, 5], {}, { 5: "UA", 3: "H" }).schedule) === JSON.stringify(auto.schedule));
+  unit("Valt pass: ben två dagar i rad ger en varning (clash), men blockeras inte", buildProgram("gym", [0, 4, 5], {}, { 4: "B", 5: "H" }).clash);
+}
+{
+  const all = buildProgram("gym", [0, 1, 2, 3, 4, 5, 6], {}, { 5: "Ö" }, [], "full");
+  unit("Helkropp varje pass: alla sju dagar får helkropp, sparade val av andra pass hoppas över",
+    all.schedule.every((x) => x.kind === "str" && x.session === "H") && all.ids.join() === "H" && all.title === "Helkropp varje pass" && all.clash);
+  const four = buildProgram("db", [0, 2, 4, 5], {}, {}, [], "full");
+  unit("Helkropp varje pass gäller även fyra dagar, med hantlar", [0, 2, 4, 5].every((d) => four.schedule[d].label === "Helkropp") && four.sessions.length === 1);
+  unit("Utan upplägg blir det appens förslag som förut", buildProgram("gym", [0, 2, 4, 5]).ids.join() === "UA,OA,UB,OB");
+  const { trainingDaysAdvice } = await import("../public/js/training.js");
+  unit("Råd för helkropp varje dag: varning med motivering", trainingDaysAdvice(7, "full").level === "warn" && trainingDaysAdvice(3, "full").level === "ok");
+}
+{
+  const plan = buildProgram("gym", [0, 2, 4]);
+  const moved = buildProgram("gym", [0, 2, 4], {}, {}, [[0, 5]]);
+  unit("Flytt en vecka: måndagens pass hamnar på lördag och måndag blir vilodag",
+    moved.schedule[5].session === plan.schedule[0].session && moved.schedule[0].kind !== "str" && moved.moved && !plan.moved && moved.summary.includes("lördag"));
+  unit("Flytt en vecka till en gymdag: passen byter plats", (() => { const m = buildProgram("gym", [0, 2, 4], {}, {}, [[0, 2]]); return m.schedule[0].session === plan.schedule[2].session && m.schedule[2].session === plan.schedule[0].session; })());
+  unit("Ogiltiga flyttar hoppas över", JSON.stringify(buildProgram("gym", [0, 2, 4], {}, {}, [[0, 9], [1, 1], ["x", 2]]).schedule) === JSON.stringify(plan.schedule));
+}
 const inARow = buildProgram("gym", [0, 1, 2]);
 unit("Tre dagar i rad varnar för samma muskler två dagar i rad", inARow.clash);
 unit("Inga gymdagar behåller senaste val", parseTrainingDays("", [0, 2, 4]).days.join() === "0,2,4");
@@ -145,6 +172,30 @@ unit("Sista måltiden loggad 18:30 stänger fönstret och flyttar fastan", fasti
 unit("Läget kl 22: fastar sedan 20, 2 h av 16", (() => { const n = fasting.fastingNow(skipped, 22, 20); return n.state === "fasting" && n.elapsed === 2 && n.left === 14; })());
 unit("Läget kl 13: ätfönstret öppet, 7 h kvar", (() => { const n = fasting.fastingNow(skipped, 13, 20); return n.state === "eating" && n.left === 7; })());
 unit("Läget kl 06: fastar sedan i går 20:00, 10 h", fasting.fastingNow(skipped, 6, 20).elapsed === 10);
+{
+  const late = fasting.fastingDay({ planned: 7, first: null, last: null, yesterdayLast: 21 });
+  unit("Sen måltid i går 21:00: dagens start flyttas till 13:00 i stället för att börja om vid frukost 07:00", late.start === 13 && late.windowEnd === 21);
+  const at8 = fasting.fastingNow(late, 8, 21);
+  unit("Kl. 08 efter sen måltid: fastan fortsätter räkna, 11 h av 16", at8.state === "fasting" && Math.abs(at8.elapsed - 11) < 1e-9);
+  unit("Normal kväll (15:00): frukosten ligger kvar enligt planen", fasting.fastingDay({ planned: 7, first: null, last: null, yesterdayLast: 15 }).start === 7);
+  unit("Loggad första måltid gäller alltid", fasting.fastingDay({ planned: 7, first: 9, last: null, yesterdayLast: 21 }).start === 9);
+}
+{
+  const goals = await import("../public/js/goals.js");
+  const list = [
+    { date: "2026-10-19", cardio: [{ a: "lopning", km: 4, s: 1560 }] },
+    { date: "2026-10-21", cardio: [{ a: "lopning", km: 3, s: 1140 }, { a: "rodd", km: 2, s: 570 }] },
+    { date: "2026-10-14", cardio: [{ a: "lopning", km: 5, s: 1860 }] },
+    { date: "2026-08-01", cardio: [{ a: "lopning", km: 5, s: 1500 }] },
+  ];
+  const weeks = goals.weekProgress("lopning", 3, list, "2026-10-24");
+  unit("Löpmål: veckans km och pass räknas måndag–söndag, bara löpning", weeks[0].monday === "2026-10-19" && weeks[0].km === 7 && weeks[0].runs === 2 && weeks[1].km === 5 && weeks[1].runs === 1 && weeks[2].runs === 0 && weeks[0].week === 43);
+  const best = goals.bestEstimate("lopning", 5, 56, list, "2026-10-24");
+  unit("Löpmål: bästa uppskattade 5 km-tid de senaste 8 veckorna (Riegel), äldre pass räknas inte", best.date === "2026-10-14" && best.seconds === 1860);
+  unit("Riegel: 4 km på 26:00 motsvarar ungefär 32:56 på 5 km", Math.round(goals.riegel(1560, 4, 5)) === 1976);
+  const clean = goals.cleanGoal({ weekKm: 10, weekRuns: 2.6, distKm: -1, timeS: "x", own: 1 });
+  unit("Löpmål: ogiltiga värden blir null, okända fält behålls", clean.weekKm === 10 && clean.weekRuns === 3 && clean.distKm === null && clean.timeS === null && clean.own === 1);
+}
 
 // Tillskott
 const supps = await import("../public/js/supplements.js");
@@ -169,6 +220,34 @@ unit("Eget recept visas och räknas som det är skrivet (ingen skalning, ingen e
   JSON.stringify(menu.buildWeek(today, man, myOmelet.id).recipes[myOmelet.id].items) === JSON.stringify([["agg", 120], ["aggvita", 150], ["ost", 20]]));
 own.removeMyRecipe(myOmelet.id);
 menu.invalidateMenu();
+{
+  const side = own.cleanRecipe({ t: "Pizzasallad", g: "s", items: [["vitkal", 100], ["olja", 5]], extra: [{ n: "Vinäger", q: 1, u: "msk" }], how: "Strimla kålen fint." });
+  own.addMyRecipe(side);
+  prefs.setMealPrefs({ sideDays: [0, 3] });
+  menu.invalidateMenu();
+  const wk = menu.buildWeek(today, man, "F0");
+  unit("Tillbehör läggs till eftermiddagsmåltiden de valda dagarna (måltid 4), som det är skrivet",
+    wk.plan[0][4] === side.id && wk.plan[3][4] === side.id && !wk.plan[1][4] && JSON.stringify(wk.recipes[side.id].items) === JSON.stringify([["vitkal", 100], ["olja", 5]]));
+  unit("Tillbehöret kommer med i inköpslistan", wk.extras["x:vinäger"]?.amounts.msk === 2 && wk.shopping.vitkal >= 200);
+  prefs.setMealPrefs({ sideDays: [] });
+  menu.invalidateMenu();
+  unit("Inga tillbehör utan valda dagar", menu.buildWeek(today, man, "F0").plan.every((d) => !d[4]));
+  own.removeMyRecipe(side.id);
+  menu.invalidateMenu();
+}
+{
+  const { RECIPES: ALL } = await import("../public/js/data/recipes.js");
+  const withElk = Object.keys(ALL).find((id) => ALL[id].items.some(([f]) => f === "algfars"));
+  prefs.setMealPrefs({ swaps: { algfars: "notfars" } });
+  menu.invalidateMenu();
+  const r = menu.buildWeek(today, man, "F0").recipes[withElk];
+  unit("Vald billigare råvara: älgfärs blir nötfärs i ingredienserna och i namnet", r.items.some(([f]) => f === "notfars") && !r.items.some(([f]) => f === "algfars") && !/älgfärs/i.test(r.t + r.how));
+  prefs.setMealPrefs({ swaps: { renskav: "kyckling" }, cheap: true });
+  menu.invalidateMenu();
+  unit("Billiga råvaror: rätt med renskav tas med när ett alternativ är valt", menu.recipesFor("d", menu.seasonOf(today)).some((id) => ALL[id].items.some(([f]) => f === "renskav")));
+  prefs.setMealPrefs({ swaps: {}, cheap: false });
+  menu.invalidateMenu();
+}
 unit("Eget recept utan namn avvisas", own.cleanRecipe({ t: " ", items: [["kvarg", 100]] }) === null);
 own.removeMyRecipe(myBreakfast.id);
 menu.invalidateMenu();
@@ -327,6 +406,22 @@ const fire = (el, type) => el.dispatchEvent(new win.Event(type, { bubbles: true 
 const go = (hash) => { win.location.hash = hash; fire(win, "hashchange"); };
 const visible = () => [...win.document.querySelectorAll("[data-view]")].filter((v) => !v.hidden).map((v) => v.dataset.view).join(",");
 const check = (label, cond) => { console.log((cond ? "OK   " : "FEL  ") + label); if (!cond) process.exitCode = 1; };
+// En app som har legat öppen i bakgrunden frågar servern om en nyare version när den visas igen
+{
+  const { checkForUpdate } = await import("../public/js/pwa.js");
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ text: async () => '<meta name="app-version" content="99.0.0">' });
+  const asking = checkForUpdate(); // väntar på svaret i dialogen
+  await new Promise((r) => setTimeout(r, 20));
+  const offeredUpdate = $("confirm").hasAttribute("open") && text("confirm-text").includes("99.0.0") && $("confirm").querySelector('[data-answer="yes"]').textContent === "Uppdatera nu";
+  if ($("confirm").hasAttribute("open")) fire($("confirm").querySelector('[data-answer="no"]'), "click");
+  await asking;
+  await checkForUpdate();
+  const askedAgain = $("confirm").hasAttribute("open");
+  globalThis.fetch = realFetch;
+  console.log("\n# Uppdateringar");
+  check("En nyare publicerad version erbjuds med Uppdatera nu, och frågan tjatar inte", offeredUpdate && !askedAgain);
+}
 console.log("\n# Appen i en simulerad webbläsare (jsdom)");
 {
   // Varje modul måste finnas i service workerns lista, annars fungerar appen inte offline
@@ -486,9 +581,19 @@ $("l-weight").value = "94.2"; fire($("logf"), "submit");
 check("Loggpost sparas med ISO-datum", text("l-msg").startsWith("Sparat för 2026-10-01") && $("l-table").textContent.includes("2026-10-01"));
 $("l-date").value = "2026-13-40"; fire($("logf"), "submit");
 check("Ogiltigt datum avvisas", text("l-msg").startsWith("Skriv datumet som ÅÅÅÅ-MM-DD"));
+check("Viktkurvan visar senaste månaden från början, med knappar för period", $("l-range").querySelector('[aria-pressed="true"]').dataset.range === "30" && $("l-range").querySelectorAll("[data-range]").length === 4);
+fire($("l-range").querySelector('[data-range="0"]'), "click");
 check("Grafen visar planen hela vägen ner till målvikten", !!$("l-chart").querySelector(".plan-end") && /målvikten ca \d{4}-\d{2}-\d{2}/.test(text("l-key")));
 const planLine = $("l-chart").querySelector(".plan"), planEnd = $("l-chart").querySelector(".plan-end");
 check("Planlinjen slutar vid målvikten", Math.abs(Number(planLine.getAttribute("x2")) - Number(planEnd.getAttribute("cx"))) < 0.01 && Math.abs(Number(planLine.getAttribute("y2")) - Number(planEnd.getAttribute("cy"))) < 0.01);
+{
+  // Inzoomat: skalan följer bara de synliga vägningarna, så att trenden syns tydligare
+  const height = () => { const ys = [...$("l-chart").querySelectorAll(".axis")].filter((t) => t.getAttribute("text-anchor") === "end").map((t) => parseFloat(t.textContent.replace(",", "."))); return Math.max(...ys) - Math.min(...ys); };
+  const whole = height();
+  fire($("l-range").querySelector('[data-range="14"]'), "click");
+  check("2 veckor zoomar in: mindre viktspann på skalan och inget målvikt-streck", height() <= whole && !$("l-chart").querySelector(".plan-end") && $("l-range").querySelector('[data-range="14"]').getAttribute("aria-pressed") === "true");
+  fire($("l-range").querySelector('[data-range="30"]'), "click");
+}
 // Kondition: aktivitet, distans och tid per pass, flera pass per dag, tempo per aktivitet
 $("l-date").value = "2026-10-02"; fire($("l-date"), "input");
 const cardioRows = () => [...$("l-cardio").querySelectorAll(".cardio-row")];
@@ -506,6 +611,31 @@ check("Maxpuls sparas per pass och visas, ingen snittpuls", cardioEntry.cardio[1
 const timeInput = cardioRows()[0].querySelector("[data-c-time]");
 timeInput.value = "010530"; fire(timeInput, "input");
 check("Tid skriven som siffror blir hh:mm:ss", timeInput.value === "01:05:30" && timeInput.placeholder === "hh:mm:ss");
+// Siffra för siffra som på iPhones sifferknappsats (utan kolon): 003516 → 00:35:16
+const typeKey = (el, ch) => { el.value += ch; el.dispatchEvent(new win.InputEvent("input", { bubbles: true, data: ch, inputType: "insertText" })); };
+timeInput.value = ""; fire(timeInput, "input");
+for (const ch of "003516") typeKey(timeInput, ch);
+fire(timeInput, "change");
+check("Tid knappad siffra för siffra (003516) blir 00:35:16", timeInput.value === "00:35:16" && timeInput.validity.valid);
+timeInput.value = "00:35:1"; timeInput.dispatchEvent(new win.InputEvent("input", { bubbles: true, inputType: "deleteContentBackward" }));
+check("Radera en siffra sätter kolonerna om", timeInput.value === "0:03:51");
+timeInput.value = ""; fire(timeInput, "input");
+for (const ch of "8:5") typeKey(timeInput, ch);
+check("Eget kolon lämnas orört medan man skriver", timeInput.value === "8:5");
+// Löpmål: veckomål och tidsmål
+{
+  $("g-week-km").value = "10"; $("g-week-runs").value = "3"; $("g-dist").value = "5";
+  $("g-time").value = ""; fire($("g-time"), "input");
+  for (const ch of "003000") typeKey($("g-time"), ch);
+  check("Tidsmålet skrivs med siffror som i loggen: 003000 blir 00:30:00", $("g-time").value === "00:30:00");
+  fire($("l-goal-form"), "submit");
+  const saved = JSON.parse(win.localStorage.getItem("ffv-goals") || "{}").lopning;
+  check("Löpmålen sparas", saved?.weekKm === 10 && saved.weekRuns === 3 && saved.distKm === 5 && saved.timeS === 1800);
+  check("Löpmålen visar veckans framsteg och tidsmålet", /av 10 km den här veckan/.test(text("l-goal-status")) && /av 3 pass/.test(text("l-goal-status")) && text("l-goal-status").includes("Mål: 5 km på 00:30:00 (6:00/km)"));
+  $("g-time").value = ""; fire($("l-goal-form"), "submit");
+  check("Tidsmål utan tid stoppas med förklaring", text("g-msg").includes("både distans och tid"));
+  $("g-time").value = "00:30:00";
+}
 timeInput.value = "8:57"; fire(timeInput, "input"); fire(timeInput, "change");
 check("8:57 betyder 8 min 57 s och skrivs ut som 00:08:57", timeInput.value === "00:08:57" && timeInput.validity.valid);
 timeInput.value = "8:5x"; fire(timeInput, "input"); fire(timeInput, "change");
@@ -577,6 +707,16 @@ $("l-date").value = todayStr(); $("l-weight").value = "93.8"; fire($("logf"), "s
 check("Loggformuläret behåller måltidstiden", $("l-table").textContent.includes("12:00–20:00"));
 fire($("fs-reset"), "click");
 check("Tillbaka till planens tider", text("fs-plan").includes("Ätfönster 07:00") && $("fs-reset").hidden);
+{
+  // Styr fastan själv med knappen under läget just nu
+  const action = $("fs-action").dataset.action;
+  const clock = new Date().toTimeString().slice(0, 5);
+  fire($("fs-action"), "click");
+  const entry = JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === todayStr());
+  check("Knappen för fastan sätter tiden till nu (starta eller bryta fastan)", ["start", "break"].includes(action) &&
+    (action === "start" ? entry.lastMeal === clock : entry.firstMeal === clock) && /Starta|Bryt|starta om/.test($("fs-action").textContent));
+  fire($("fs-reset"), "click");
+}
 
 // Eget frukostrecept via Inställningar
 go("mina-recept");
@@ -1021,6 +1161,9 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   const before = kcalToday();
   const dinner = $("td-food").querySelectorAll("summary b")[1].textContent;
   check("Formuläret för att ersätta en måltid föreslår eftermiddagsmåltiden", $("sw-meal").value === "1" && $("sw-recent").hidden);
+  fire($("td-food").querySelector('[data-swap-meal="0"]'), "click");
+  check("Knappen Ersätt under en måltid öppnar formuläret med den måltiden vald", $("sw-box").open && $("sw-meal").value === "0");
+  $("sw-meal").value = "1"; fire($("sw-meal"), "change");
   $("sw-name").value = "Huel shake"; $("sw-k").value = "400"; $("sw-p").value = "30";
   fire($("sw-form"), "submit");
   const swapped = $("td-food").querySelector(".row.swapped");
@@ -1125,6 +1268,36 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   }
   fire($("mv-reset"), "click");
   check("Återställ ger planens ordning igen", dinnerOn(0) === monday && dinnerOn(4) === friday && $("mv-reset").hidden);
+
+  // Gympassen flyttas under Inställningar → Veckoschema, inte under Mat
+  {
+    check("Gympasset under Mat har inget handtag", !!$("week").querySelector(".chip.str") && !$("week").querySelector(".chip.str .drag-handle"));
+    const slots = [...$("train-week").querySelectorAll("[data-week-day]")];
+    const from = slots.find((d) => d.querySelector(".drag-handle")), to = slots.find((d) => d.querySelector(".chip.rest"));
+    const name = from.querySelector(".chip").textContent.replace("⠿", "");
+    check("Veckoschema visar passen dag för dag med handtag på gymdagarna", slots.length === 7 && !!from && !!to && $("tw-title").textContent.includes("Vecka"));
+    const pointer = (el, type) => el.dispatchEvent(Object.assign(new win.MouseEvent(type, { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }), { pointerId: 1 }));
+    const handle = from.querySelector(".drag-handle");
+    const realAt = win.document.elementFromPoint;
+    win.document.elementFromPoint = () => to;
+    pointer(handle, "pointerdown");
+    pointer(handle, "pointermove");
+    pointer(handle, "pointerup");
+    win.document.elementFromPoint = realAt;
+    await tick();
+    check("Dra ett pass frågar om veckan eller alla veckor", $("confirm").hasAttribute("open") && !$("confirm").querySelector('[data-answer="other"]').hidden);
+    fire($("confirm").querySelector('[data-answer="yes"]'), "click"); await tick();
+    const toDay = Number(to.dataset.weekDay);
+    check("Passet ligger på den nya dagen den här veckan", $("train-week").querySelectorAll("[data-week-day]")[toDay].textContent.includes(name) && !$("wk-trainmoved").hidden && !$("wk-trainmoved-food").hidden);
+    fire($("wk-trainreset"), "click");
+    check("Passen kan läggas tillbaka enligt planen", !$("train-week").querySelectorAll("[data-week-day]")[toDay].textContent.includes(name) && $("wk-trainmoved").hidden && $("wk-trainmoved-food").hidden);
+    // Upplägg: helkropp varje pass
+    $("tw-split").value = "full"; fire($("tw-split"), "change");
+    const gymSlots = () => [...$("train-week").querySelectorAll(".chip.str")].map((c) => c.textContent.replace("⠿", ""));
+    check("Upplägget Helkropp varje pass ger helkropp alla gymdagar och sparas", gymSlots().length >= 3 && gymSlots().every((t) => t === "Helkropp") && JSON.parse(win.localStorage.getItem("ffv-schedule") || "{}").split === "full");
+    $("tw-split").value = "auto"; fire($("tw-split"), "change");
+    check("Appens förslag igen ger olika pass och tar bort fältet", new Set(gymSlots()).size > 1 && !("split" in JSON.parse(win.localStorage.getItem("ffv-schedule") || "{}")));
+  }
 
   // Ersätt dagens eftermiddagsmåltid med Huel och flytta rätten till en annan dag
   go("idag");
