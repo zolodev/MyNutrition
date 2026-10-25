@@ -6,6 +6,32 @@ MINOR höjs för nya funktioner, PATCH för rättningar. Höj versionen med `npm
 
 ## [Ej släppt]
 
+## [0.21.0] - 2026-10-25
+
+### Tillagt
+- Mellanmål och snacks på Idag: lägg till det du äter utöver planens måltider, t.ex. lättfil med kasein, med kalorier
+  och protein. De räknas som ätna i Ätit i dag och läggs till dagens summa, syns i loggens tabell och delar snabbval
+  med ersättningarna (senast använda och Huel m.fl.). Sparas i dagens post i `ffv-log` (`snacks`) och följer med i
+  exporten.
+
+### Rättat
+- Loggens poster behåller fält som en nyare version har sparat, och att spara en dag för hand under Logg behåller allt
+  som inte finns i formuläret (t.ex. mellanmål).
+
+## [0.20.0] - 2026-10-24
+
+### Tillagt
+- Egna pass under Inställningar → Veckoschema: lägg in t.ex. CrossFit eller Hyrox på flera dagar på en gång (snabbval
+  för CrossFit, Hyrox, spinning och padel), med tid. Passen syns på Idag, i veckans träning och under varje dag,
+  och kan tas bort från alla dagar på en gång.
+- Hårt pass: ett eget pass kan markeras som hårt. Det räknas då som träning i råden (två hårda pass samma dag,
+  intervaller samma dag, dagen före ett benpass, efter att ätfönstret stängt) och i tipsen om PWO och protein.
+  Sparas som `hard: true` i `ffv-schedule` och följer med i exporten; äldre egna aktiviteter är lättare aktiviteter
+  som förut.
+
+### Rättat
+- Att ändra en egen aktivitet under en dag behåller nu fält som inte visas i formuläret.
+
 ## [0.19.2] - 2026-10-24
 
 ### Tillagt

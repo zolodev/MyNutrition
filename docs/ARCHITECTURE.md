@@ -44,14 +44,14 @@ bakgrunden (localStorage som reserv). **Inget skrivs innan villkoren är godkän
 | --- | --- | --- |
 | `ffv` | Profilen ({ fältets id: värde }, bl.a. eget kalorimål `kcal`) | app.js |
 | `ffv-terms` | Godkända villkor (gäller bara enheten) | app.js |
-| `ffv-log` | Loggposter (vikt, pass, anteckning, ersatta måltider `swaps`, avbockade måltider `eaten` …) | log.js |
+| `ffv-log` | Loggposter (vikt, pass, anteckning, ersatta måltider `swaps`, avbockade måltider `eaten`, mellanmål `snacks` från 0.21.0 …; okända fält behålls) | log.js |
 | `ffv-excl` | Allergier, bortvalda livsmedel och ord | preferences.js |
 | `ffv-myfoods`, `ffv-myrecipes`, `ffv-mysupps` | Egna livsmedel, recept och tillskott | preferences.js, myrecipes.js, supplements.js |
 | `ffv-supps` | Valda tillskott | supplements.js |
 | `ffv-seed`, `ffv-salt`, `ffv-tseed` | Slumpfrön för meny och träning (plankoden) | menu.js |
 | `ffv-shop` | Avbockat i inköpslistan, gäller alla veckor | app.js |
 | `ffv-shop-next` | Inköpslistan visar alltid nästa vecka | app.js |
-| `ffv-schedule` | Veckoschema: egna tider för gympass, intervaller, promenad och egna aktiviteter per veckodag (`days`, med valt gympass i `session` från 0.15.0), och arbetstid (`work`); passupplägg i `split` (`"full"` = helkropp varje pass, saknas = appens förslag) från 0.18.0 | schedule.js |
+| `ffv-schedule` | Veckoschema: egna tider för gympass, intervaller, promenad och egna aktiviteter per veckodag (`days`, med valt gympass i `session` från 0.15.0), egna aktiviteter och pass i `extra` (`[{ label, from, to, hard? }]`, `hard: true` = hårt pass som CrossFit från 0.20.0) och arbetstid (`work`); passupplägg i `split` (`"full"` = helkropp varje pass, saknas = appens förslag) från 0.18.0 | schedule.js |
 | `ffv-traintimes` | Egna träningstider från 0.8.0 (läses fortfarande som förslag, skrivs inte längre) | trainingtimes.js |
 | `ffv-moves` | Måltider som bytt plats mellan dagar, per vecka | menu.js |
 | `ffv-trainmoves` | Gympass som flyttats en enskild vecka (t.ex. vid förhinder): `{ vecka: [[frånDag, tillDag], …] }` (från 0.16.0) | schedule.js |

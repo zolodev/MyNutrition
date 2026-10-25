@@ -286,6 +286,14 @@ table.data td.num { white-space: nowrap; }
 .chip.int { background: var(--spice-soft); color: var(--spice); }
 .chip.rest { background: var(--sunken); color: var(--muted); }
 .chip.season { background: var(--accent-soft); color: var(--accent); }
+.chip.other { background: var(--spice-soft); color: var(--spice); }
+/* Mellanmål och snacks på Idag */
+.snacks { display: grid; gap: 10px; }
+.sn-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.sn-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.sn-list .end { color: var(--muted); font-size: 0.9rem; white-space: nowrap; }
+.sn-add > summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+#sn-form { display: grid; gap: 12px; padding-top: 12px; }
 
 /* ---------- Idag ---------- */
 .fast-card { display: grid; gap: 14px; }
@@ -538,6 +546,16 @@ textarea { width: 100%; font: inherit; font-size: 1rem; padding: 9px 10px; borde
 .sched-row.off .sched-times, .sched-row.off .sched-label { opacity: 0.45; }
 .sched-on { display: flex; gap: 10px; align-items: center; font-weight: 600; min-height: 32px; cursor: pointer; }
 .sched-on input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
+.sched-hard { display: flex; gap: 8px; align-items: center; font-size: 0.86rem; color: var(--muted); cursor: pointer; }
+.sched-hard input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+/* Egna pass på flera dagar (Veckoschema) */
+.own-sessions { display: grid; gap: 12px; }
+.own-sessions .btn { justify-self: start; }
+.os-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.os-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.os-list small { display: block; color: var(--muted); }
+.os-list .linkbtn { white-space: nowrap; }
+.tw-day:has(.chip.other) { flex-wrap: wrap; }
 .sched-times { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; }
 .sched-times input { text-align: center; font-family: var(--font-data); }
 .sched-other { display: flex; gap: 10px; align-items: center; }

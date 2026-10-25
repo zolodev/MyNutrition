@@ -8,7 +8,7 @@
 import { $, esc, DAYS } from "../util.js";
 import { formatClock, parseClock } from "../fasting.js";
 import { STRENGTH, INTERVALS, WINDOW } from "../day.js";
-import { KINDS, dayOverrides, hasOverrides, setActivity, setExtras, resetDay, setSession, suggestion, daySchedule, scheduleAdvice, getWork, setWork, workOn } from "../schedule.js";
+import { KINDS, dayOverrides, hasOverrides, setActivity, setExtras, resetDay, setSession, suggestion, daySchedule, scheduleAdvice, getWork, setWork, workOn, addExtraOnDays, removeExtraEverywhere, ownSessions } from "../schedule.js";
 
 let deps = { update: () => {}, setGymDay: () => {} };
 let last = null; // { program, breakfast } från senaste ritningen
@@ -46,7 +46,8 @@ function dayCard(day) {
   const walkOn = typeof o.walk === "object" || (o.walk === undefined && type.kind === "rest");
   const extras = (Array.isArray(o.extra) ? o.extra : []).map((x, i) =>
     `<div class="sched-row" data-kind="other" data-index="${i}"><div class="sched-other"><input type="text" class="sched-label" data-sched-label data-key="${day}-other-${i}-label" maxlength="40" value="${esc(x.label || "")}" placeholder="t.ex. Padel" aria-label="${DAYS[day]}, egen aktivitet">` +
-    `<button type="button" class="linkbtn" data-sched-remove="${i}">Ta bort</button></div>${timeInputs(day, "other", x, null, i)}</div>`).join("");
+    `<button type="button" class="linkbtn" data-sched-remove="${i}">Ta bort</button></div>${timeInputs(day, "other", x, null, i)}` +
+    `<label class="sched-hard"><input type="checkbox" data-sched-hard${x.hard === true ? " checked" : ""}><span>Hårt pass</span></label></div>`).join("");
   const items = daySchedule(day, type.kind, breakfast);
   const next = program.schedule[(day + 1) % 7];
   const advice = scheduleAdvice(items, { work: workOn(day), eat: { from: breakfast, to: breakfast + WINDOW }, nextIsLegs: next.kind === "str" && program.legSessions.includes(next.session) });
@@ -90,10 +91,59 @@ $("work-clear").addEventListener("click", () => {
   deps.update();
 });
 
+// ---------- Egna pass på flera dagar (t.ex. CrossFit eller Hyrox onsdag, fredag och lördag) ----------
+
+const HARD_NAMES = /crossfit|hyrox|spinning|boxning|kampsport|bootcamp|intervall|löp|fotboll|innebandy|hockey/i;
+const dayName = (d) => DAYS[d].slice(0, 3).toLowerCase();
+
+function renderOwnSessions() {
+  const list = ownSessions();
+  $("os-list").innerHTML = list.map((x) => `<li><span><b>${esc(x.label)}</b>${x.hard ? ' <span class="chip other">hårt</span>' : ""} ` +
+    `<small>${new Set(x.times.map((t) => `${t.from}–${t.to}`)).size === 1
+      ? `${x.times.map((t) => dayName(t.day)).join(", ")} ${esc(x.times[0].from)}–${esc(x.times[0].to)}`
+      : x.times.map((t) => `${dayName(t.day)} ${esc(t.from)}–${esc(t.to)}`).join(", ")}</small></span>` +
+    `<button type="button" class="linkbtn" data-os-remove="${esc(x.label)}">Ta bort</button></li>`).join("");
+  $("os-list").hidden = !list.length;
+}
+
+$("os-picks").addEventListener("click", (ev) => {
+  const pick = ev.target.closest("[data-os-pick]");
+  if (!pick) return;
+  $("os-name").value = pick.dataset.osPick;
+  $("os-hard").checked = true;
+  $("os-from").focus();
+});
+$("os-name").addEventListener("change", () => {
+  if (HARD_NAMES.test($("os-name").value)) $("os-hard").checked = true;
+});
+$("os-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const label = $("os-name").value.trim();
+  const from = $("os-from").value, to = $("os-to").value;
+  const dayList = [...$("os-days").querySelectorAll("[data-os-day]:checked")].map((el) => Number(el.dataset.osDay));
+  const msg = (t) => ($("os-msg").textContent = t);
+  if (!label) return msg("Skriv vad passet heter, t.ex. CrossFit.");
+  if (!(parseClock(from) != null && parseClock(to) != null && parseClock(to) > parseClock(from))) return msg("Fyll i när passet börjar och slutar, t.ex. 17:30–18:30.");
+  if (!dayList.length) return msg("Välj minst en dag.");
+  addExtraOnDays(dayList, { label, from, to, ...($("os-hard").checked ? { hard: true } : {}) });
+  msg(`${label} är inlagt ${dayList.map(dayName).join(", ")} ${from}–${to}. Det syns på Idag och under dagarna nedan.`);
+  $("os-name").value = "";
+  for (const el of $("os-days").querySelectorAll("[data-os-day]")) el.checked = false;
+  deps.update();
+});
+$("os-list").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("[data-os-remove]");
+  if (!btn) return;
+  removeExtraEverywhere(btn.dataset.osRemove);
+  $("os-msg").textContent = `${btn.dataset.osRemove} är borttaget från alla dagar.`;
+  deps.update();
+});
+
 /** Rita schemat. Fältet som har fokus får fokus igen efteråt, så att man kan fortsätta skriva. */
 export function renderSchedule(program, breakfast) {
   last = { program, breakfast };
   renderWork();
+  renderOwnSessions();
   const focused = document.activeElement?.dataset?.key;
   $("sched-list").innerHTML = [0, 1, 2, 3, 4, 5, 6].map(dayCard).join("");
   if (focused) $("sched-list").querySelector(`[data-key="${focused}"]`)?.focus();
@@ -108,7 +158,8 @@ export function renderTrainWeek(program, title) {
   $("train-week").innerHTML = program.schedule.map((type, day) => `<div class="tw-day" data-week-day="${day}"><b>${DAYS[day].slice(0, 3)}</b>` +
     (type.kind === "str"
       ? `<span class="chip str" data-session-chip><button type="button" class="drag-handle" aria-label="Dra ${esc(type.label.toLowerCase())} på ${DAYS[day].toLowerCase()} till en annan dag">⠿</button>${esc(type.label)}</span>`
-      : `<span class="chip ${type.kind}">${esc(type.label)}</span>`) + "</div>").join("");
+      : `<span class="chip ${type.kind}">${esc(type.label)}</span>`) +
+    ownSessions().filter((x) => x.times.some((t) => t.day === day)).map((x) => `<span class="chip ${x.hard ? "other" : "rest"}">${esc(x.label)}</span>`).join("") + "</div>").join("");
 }
 
 /** Läs en rads tider ({ from, to } som "HH:MM"); tomma fält tar förslaget. Ger null om tiderna inte går ihop. */
@@ -121,10 +172,17 @@ function readTimes(row) {
   return parseClock(from) != null && parseClock(to) != null && parseClock(to) > parseClock(from) ? { from, to } : null;
 }
 
+/** Dagens egna aktiviteter från fälten. Sparade fält som inte visas (även okända) behålls. */
 function readExtras(card) {
-  return [...card.querySelectorAll('.sched-row[data-kind="other"]')].map((row) => ({
-    label: row.querySelector("[data-sched-label]").value.trim() || KINDS.other, ...(readTimes(row) || { from: "12:00", to: "12:30" }),
-  }));
+  const saved = dayOverrides(Number(card.dataset.schedDay)).extra;
+  return [...card.querySelectorAll('.sched-row[data-kind="other"]')].map((row) => {
+    const before = Array.isArray(saved) ? saved[Number(row.dataset.index)] || {} : {};
+    const hard = row.querySelector("[data-sched-hard]")?.checked;
+    const x = { ...before, label: row.querySelector("[data-sched-label]").value.trim() || KINDS.other, ...(readTimes(row) || { from: "12:00", to: "12:30" }) };
+    if (hard) x.hard = true;
+    else delete x.hard;
+    return x;
+  });
 }
 
 $("sched-list").addEventListener("change", (ev) => {

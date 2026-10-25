@@ -120,8 +120,9 @@ $("logf").addEventListener("submit", (ev) => {
   if (cardio.error) return logMessage(cardio.error);
   const perf = radioValue("l-perf");
   const existing = entryFor(date);
+  // Det som inte finns i formuläret (måltidstider, ersättningar, avbockningar, mellanmål, okända fält) ligger kvar
   const entry = cleanEntry({
-    firstMeal: existing?.firstMeal, lastMeal: existing?.lastMeal, swaps: existing?.swaps, eaten: existing?.eaten,
+    ...existing,
     date, weight: num($("l-weight").value), waist: num($("l-waist").value), mood: radioValue("l-mood") ? +radioValue("l-mood") : null,
     perf: perf && perf !== "none" ? +perf : null, trained: perf ? perf !== "none" : false, cardio: cardio.list, test: existing?.test, imMod: num($("l-im-mod").value), imVig: num($("l-im-vig").value), note: $("l-note").value.trim(),
   });

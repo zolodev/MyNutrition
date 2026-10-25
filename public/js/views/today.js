@@ -20,7 +20,7 @@ import { renderTimeline } from "./timeline.js";
  * `week` = buildWeek() för innevarande vecka, `program` = buildProgram(), `breakfast` = frukosttid i timmar,
  * `swaps` = dagens ersatta måltider från loggen ({ meal, n, k, p }).
  */
-export function renderToday({ week, targets, program, breakfast, weight, swaps = [] }) {
+export function renderToday({ week, targets, program, breakfast, weight, swaps = [], snacks = [] }) {
   const index = todayIndex();
   const day = week.plan[index];
   const training = program.schedule[index];
@@ -35,21 +35,25 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   // Dagens summa: planens recept, utom de måltider som ersattes med något annat
   const swapOf = (i) => swaps.find((x) => x.meal === i);
   const planned = totals(day.filter((id, i) => id !== NONE && !swapOf(i)), week.recipes);
-  const sum = swaps.reduce((acc, x) => (day[x.meal] && day[x.meal] !== NONE ? { ...acc, k: acc.k + x.k, p: acc.p + x.p } : acc), planned);
+  const withSwaps = swaps.reduce((acc, x) => (day[x.meal] && day[x.meal] !== NONE ? { ...acc, k: acc.k + x.k, p: acc.p + x.p } : acc), planned);
+  // Mellanmål och snacks utöver planen läggs till både dagens summa och det som är ätet
+  const extra = snacks.reduce((acc, x) => ({ k: acc.k + x.k, p: acc.p + x.p }), { k: 0, p: 0 });
+  const sum = { ...withSwaps, k: withSwaps.k + extra.k, p: withSwaps.p + extra.p };
   // Ätet hittills: avbockade måltider och ersatta (en ersättning är något man har ätit i stället)
   const eaten = new Set([...(entryFor(todayStr())?.eaten || []), ...swaps.map((x) => x.meal)].filter((i) => day[i] && day[i] !== NONE));
   const mealKcal = (i) => swapOf(i) ? { k: swapOf(i).k, p: swapOf(i).p } : week.recipes[day[i]].m;
-  const ate = [...eaten].reduce((acc, i) => ({ k: acc.k + mealKcal(i).k, p: acc.p + mealKcal(i).p }), { k: 0, p: 0 });
+  const ate = [...eaten].reduce((acc, i) => ({ k: acc.k + mealKcal(i).k, p: acc.p + mealKcal(i).p }), extra);
+  const planWord = snacks.length ? "med mellanmål" : "planerat";
   $("td-targets").innerHTML =
-    tile({ label: "Ätit i dag", value: fmt(ate.k), unit: "kcal", sub: `av ${fmt(sum.k)} planerat · mål ${fmt(targets.target)}`, main: true }) +
-    tile({ label: "Protein", value: fmt(ate.p), unit: "g", sub: `av ${fmt(sum.p)} g planerat · mål ${fmt(targets.protein)}` }) +
+    tile({ label: "Ätit i dag", value: fmt(ate.k), unit: "kcal", sub: `av ${fmt(sum.k)} ${planWord} · mål ${fmt(targets.target)}`, main: true }) +
+    tile({ label: "Protein", value: fmt(ate.p), unit: "g", sub: `av ${fmt(sum.p)} g ${planWord} · mål ${fmt(targets.protein)}` }) +
     tile({ label: "Fasta", value: 16, unit: "h", sub: `${t(WINDOW)}–${t(0)}` });
 
   // Dagens tidslinje: ätfönstret och dagens aktiviteter enligt veckoschemat (egna tider, annars planens förslag)
   const items = daySchedule(index, training.kind, breakfast);
   const span = (x) => `${formatClock(x.from)}–${formatClock(x.to)}`;
   renderTimeline($("td-timeline"), [{ from: at(0), to: at(WINDOW), cls: "eat", label: `Ätfönster ${t(0)}–${t(WINDOW)}` },
-    ...items.map((x) => ({ from: x.from, to: x.to, cls: x.kind === "other" ? "walk" : x.kind, label: `${x.label} ${span(x)}` }))],
+    ...items.map((x) => ({ from: x.from, to: x.to, cls: x.kind === "other" ? (x.hard ? "int" : "walk") : x.kind, label: `${x.label} ${span(x)}` }))],
   [{ at: at(0), label: `Frukost ${t(0)}` }, { at: at(MEAL_AT), label: `Måltid ${t(MEAL_AT)}` }]);
   const next = program.schedule[(index + 1) % 7];
   const advice = scheduleAdvice(items, { work: workOn(index), eat: { from: at(0), to: at(WINDOW) }, nextIsLegs: next.kind === "str" && program.legSessions.includes(next.session) });
@@ -73,9 +77,15 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   }).join("");
   // Hur mycket av dagen som är ätet
   const mealCount = day.filter((id) => id !== NONE).length;
-  $("td-eaten").textContent = eaten.size
-    ? `Ätit ${eaten.size} av ${mealCount} måltider: ${fmt(ate.k)} av ${fmt(sum.k)} kcal och ${fmt(ate.p)} av ${fmt(sum.p)} g protein.`
+  const snackText = snacks.length ? ` och ${snacks.length} mellanmål` : "";
+  $("td-eaten").textContent = eaten.size || snacks.length
+    ? `Ätit ${eaten.size} av ${mealCount} måltider${snackText}: ${fmt(ate.k)} av ${fmt(sum.k)} kcal och ${fmt(ate.p)} av ${fmt(sum.p)} g protein.`
     : "Bocka av måltiderna när du har ätit dem.";
+  // Mellanmål och snacks (controllers/meal-swap.js)
+  $("sn-list").innerHTML = snacks.map((x, i) => `<li><span class="main"><b>${esc(x.n)}</b></span><span class="end">${fmt(x.k)} kcal · ${fmt(x.p)} g P ` +
+    `<button type="button" class="linkbtn" data-snack-remove="${i}" aria-label="Ta bort ${esc(x.n)}">Ta bort</button></span></li>`).join("");
+  $("sn-list").hidden = !snacks.length;
+  $("sn-empty").hidden = snacks.length > 0;
   // Formuläret för att ersätta en måltid: dagens måltider att välja bland, och senast använda ersättningar
   $("sw-meal").innerHTML = day.map((id, i) => (id === NONE ? "" : `<option value="${i}">${MEAL_NAMES[i]}${swapOf(i) ? " (ersatt)" : ""}</option>`)).join("");
   if (day[1] !== NONE && !swapOf(1)) $("sw-meal").value = "1"; // oftast eftermiddagsmåltiden

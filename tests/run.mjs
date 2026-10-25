@@ -1205,6 +1205,35 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   go("idag");
   fire($("td-food").querySelector("[data-unswap]"), "click");
   check("Ångra visar receptet igen och dagens summa blir som förut", !$("td-food").querySelector(".row.swapped") && kcalToday() === before);
+
+  // Mellanmål och snacks utöver planen
+  const planned = () => Number(text("td-targets").match(/av ([\d\s]+) (?:planerat|med mellanmål)/)[1].replace(/\D/g, ""));
+  const plannedBefore = planned();
+  check("Utan mellanmål visas en förklaring och ingen lista", !$("sn-empty").hidden && $("sn-list").hidden);
+  $("sn-name").value = "Lättfil med kasein"; $("sn-k").value = "235"; $("sn-p").value = "40"; fire($("sn-form"), "submit");
+  $("sn-name").value = "Banan"; $("sn-k").value = "105"; $("sn-p").value = ""; fire($("sn-form"), "submit");
+  const snacksSaved = () => JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === todayStr())?.snacks || [];
+  check("Mellanmål sparas i dagens logg", snacksSaved().length === 2 && snacksSaved()[0].n === "Lättfil med kasein" && snacksSaved()[0].k === 235 && snacksSaved()[0].p === 40 && snacksSaved()[1].p === 0);
+  check("Mellanmålen räknas som ätna och läggs till dagens summa", kcalToday() === before + 340 && planned() === plannedBefore + 340 && text("td-targets").includes("med mellanmål") && text("td-eaten").includes("2 mellanmål"));
+  check("Mellanmålen listas på Idag och blir snabbval", $("sn-list").querySelectorAll("li").length === 2 && text("sn-recent").includes("Lättfil med kasein") && text("sw-recent").includes("Banan"));
+  fire($("sn-form"), "submit");
+  check("Ett tomt mellanmål sparas inte", snacksSaved().length === 2 && text("sn-msg").startsWith("Fyll i"));
+  check("Mellanmålen syns i loggens tabell", text("l-table").includes("Mellanmål: Lättfil med kasein (235 kcal)"));
+  go("logg");
+  $("l-date").value = todayStr(); fire($("l-date"), "input");
+  $("l-waist").value = "94"; fire($("logf"), "submit");
+  check("Att spara loggen för hand behåller mellanmålen", snacksSaved().length === 2);
+  go("idag");
+  fire($("sn-list").querySelector('[data-snack-remove="0"]'), "click");
+  check("Ett mellanmål går att ta bort", snacksSaved().length === 1 && snacksSaved()[0].n === "Banan" && kcalToday() === before + 105);
+  fire($("sn-list").querySelector('[data-snack-remove="0"]'), "click");
+  check("Utan mellanmål är dagens summa som förut", kcalToday() === before && planned() === plannedBefore && !$("sn-empty").hidden);
+}
+{
+  const { cleanEntry } = await import("../public/js/log.js");
+  const e = cleanEntry({ date: "2026-10-25", weight: 82, snacks: [{ n: "Banan", k: 105, p: 1 }, { n: "", k: 5 }], framtida: { x: 1 } });
+  check("Loggens poster behåller okända fält och städar mellanmålen", e.framtida?.x === 1 && e.snacks.length === 1 && e.snacks[0].n === "Banan");
+  check("Äldre poster utan mellanmål får en tom lista", cleanEntry({ date: "2026-10-25", weight: 82 }).snacks.length === 0);
 }
 
 // Inställningar → Måltider
@@ -1253,6 +1282,34 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   check("Sent pass efter ätfönstret ger en varning men blockeras inte", [...card().querySelectorAll(".advice li.warn")].some((li) => li.textContent.includes("efter att ätfönstret stängt")));
   fire(card().querySelector("[data-sched-reset]"), "click");
   check("Dagen går att återställa till förslaget", !JSON.parse(win.localStorage.getItem("ffv-schedule")).days?.[days[0]]);
+
+  // Egna pass på flera dagar: CrossFit onsdag, fredag och lördag
+  const ownExtra = (d) => (JSON.parse(win.localStorage.getItem("ffv-schedule") || "{}").days?.[d]?.extra || []).find((x) => x.label === "CrossFit");
+  fire($("os-picks").querySelector('[data-os-pick="CrossFit"]'), "click");
+  check("Snabbvalet CrossFit fyller i namnet och markerar hårt pass", $("os-name").value === "CrossFit" && $("os-hard").checked);
+  $("os-from").value = "17:30"; $("os-to").value = "18:30";
+  fire($("os-form"), "submit");
+  check("Utan valda dagar sparas inget och det förklaras", text("os-msg").includes("Välj minst en dag") && !ownExtra(2));
+  for (const d of [2, 4, 5]) $("os-days").querySelector(`[data-os-day="${d}"]`).checked = true;
+  fire($("os-form"), "submit");
+  check("CrossFit sparas som hårt pass onsdag, fredag och lördag", [2, 4, 5].every((d) => ownExtra(d)?.from === "17:30" && ownExtra(d).to === "18:30" && ownExtra(d).hard === true) && !ownExtra(0));
+  check("Egna pass listas med dagar och tid", text("os-list").includes("CrossFit") && text("os-list").includes("ons, fre, lör 17:30–18:30"));
+  check("Passen syns i veckans träning under Veckoschema", [2, 4, 5].every((d) => $("train-week").querySelectorAll("[data-week-day]")[d].textContent.includes("CrossFit")));
+  $("os-name").value = "CrossFit"; $("os-from").value = "18:00"; $("os-to").value = "19:00";
+  $("os-days").querySelector('[data-os-day="5"]').checked = true; fire($("os-form"), "submit");
+  check("Samma pass igen samma dag ersätter det i stället för att lägga till ett till", ownExtra(5).from === "18:00" && JSON.parse(win.localStorage.getItem("ffv-schedule")).days[5].extra.filter((x) => x.label === "CrossFit").length === 1);
+  // Ändrad tid i dagens kort behåller markeringen hårt pass
+  {
+    const row = $("sched-list").querySelector('[data-sched-day="2"] .sched-row[data-kind="other"]');
+    const end = row.querySelector('[data-sched-time="to"]');
+    end.value = "18:45"; fire(end, "change");
+    check("Ändrad tid under dagen behåller markeringen hårt pass", ownExtra(2)?.to === "18:45" && ownExtra(2).hard === true);
+  }
+  const hard = sched.scheduleAdvice([{ kind: "str", label: "Gympass", from: 16, to: 17 }, { kind: "other", label: "CrossFit", from: 18, to: 19, hard: true }], { eat: { from: 11, to: 19 } });
+  check("Hårt pass och gympass samma dag ger ett råd, men blockeras inte", hard.some((a) => a.level === "warn" && a.text.includes("två hårda pass")));
+  check("En lättare aktivitet ger inget sådant råd", !sched.scheduleAdvice([{ kind: "str", label: "Gympass", from: 16, to: 17 }, { kind: "other", label: "Padel", from: 18, to: 19 }], { eat: { from: 11, to: 19 } }).some((a) => a.text.includes("hårda")));
+  fire($("os-list").querySelector('[data-os-remove="CrossFit"]'), "click");
+  check("Ta bort tar bort passet från alla dagar", [2, 4, 5].every((d) => !ownExtra(d)) && !text("os-list").includes("CrossFit"));
 }
 
 // Byt plats på måltider mellan dagar (Mat → Veckan)

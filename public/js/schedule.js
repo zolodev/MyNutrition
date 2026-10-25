@@ -7,6 +7,8 @@
 // Data: "ffv-schedule" = { days: { "0": { str, int, walk, extra } } } (0 = måndag). Ett fält som saknas betyder
 // planens förslag; `false` betyder avslaget; { from, to, label? } är en egen tid. `session` (från 0.15.0) är ett
 // valt gympass för dagen, t.ex. "H" för helkropp (se applyChoices i training.js). Okända fält behålls.
+// `extra` = [{ label, from, to, hard? }]: egna aktiviteter och pass. `hard: true` (från 0.20.0) markerar ett hårt pass
+// som CrossFit eller Hyrox, som räknas som träning i råden; saknas fältet är det en lättare aktivitet.
 
 import { load, save } from "./util.js";
 import { parseClock } from "./fasting.js";
@@ -70,6 +72,35 @@ export function setActivity(day, kind, value) {
 /** Egna aktiviteter en veckodag: [{ label, from, to }]. */
 export function setExtras(day, list) {
   store(day, (d) => (list.length ? (d.extra = list) : delete d.extra));
+}
+
+const sameLabel = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+const extrasOn = (day) => (Array.isArray(dayOverrides(day).extra) ? dayOverrides(day).extra : []);
+
+/**
+ * Lägg in ett eget pass ({ label, from, to, hard }) på flera veckodagar, t.ex. CrossFit onsdag, fredag och lördag.
+ * Finns ett pass med samma namn redan en av dagarna ersätts det, så att det inte blir dubbelt.
+ */
+export function addExtraOnDays(dayList, x) {
+  for (const day of dayList) setExtras(day, [...extrasOn(day).filter((e) => !sameLabel(e.label, x.label)), { ...x }]);
+}
+
+/** Ta bort ett eget pass (på namnet) från alla veckodagar. */
+export function removeExtraEverywhere(label) {
+  for (let day = 0; day < 7; day++) if (extrasOn(day).some((e) => sameLabel(e.label, label))) setExtras(day, extrasOn(day).filter((e) => !sameLabel(e.label, label)));
+}
+
+/** Egna pass per namn: [{ label, hard, times: [{ day, from, to }] }], i veckodagsordning. */
+export function ownSessions() {
+  const out = [];
+  for (let day = 0; day < 7; day++) for (const e of extrasOn(day)) {
+    if (!e || !e.label) continue;
+    let s = out.find((x) => sameLabel(x.label, e.label));
+    if (!s) out.push((s = { label: e.label, hard: false, times: [] }));
+    s.hard = s.hard || e.hard === true;
+    s.times.push({ day, from: e.from, to: e.to });
+  }
+  return out;
 }
 
 /** Valda gympass per veckodag: { dag: pass-id }, t.ex. { 5: "H" }. */
@@ -163,13 +194,13 @@ export function daySchedule(day, kind, breakfast) {
   add("walk", o.walk, KINDS.walk);
   for (const x of Array.isArray(o.extra) ? o.extra : []) {
     const t = hours(x);
-    if (t) items.push({ kind: "other", label: x.label || KINDS.other, ...t, custom: true });
+    if (t) items.push({ kind: "other", label: x.label || KINDS.other, ...t, custom: true, hard: x.hard === true });
   }
   return items.sort((a, b) => a.from - b.from);
 }
 
 /** Det första passet en dag (gympass eller intervaller), eller null. Används för PWO och vassle. */
-export const workoutOf = (items) => items.find((x) => x.kind === "str") || items.find((x) => x.kind === "int") || null;
+export const workoutOf = (items) => items.find((x) => x.kind === "str") || items.find((x) => x.kind === "int") || items.find((x) => x.hard) || null;
 
 const clock = (h) => `${String(Math.floor(h)).padStart(2, "0")}:${String(Math.round((h % 1) * 60)).padStart(2, "0")}`;
 
@@ -190,7 +221,13 @@ export function scheduleAdvice(items, { eat, nextIsLegs = false, work = null }) 
   if (str && str.to <= eat.from) advice.push({ level: "tip", text: "Du tränar före första måltiden, alltså fastande. Det går bra för de flesta; ät proteinrikt direkt efter passet." });
   if (str && int) advice.push({ level: "warn", text: "Intervaller och gympass samma dag: kör intervallerna efter gympasset, eller en annan dag, så att styrkan inte påverkas (intervaller före styrka ger sämre pass)." });
   if (int && nextIsLegs) advice.push({ level: "tip", text: "Intervaller dagen före ett benpass kan ge trötta ben. Lägg dem hellre efter benpasset eller på en annan dag." });
-  const late = [str, int].filter(Boolean).find((x) => x.to > 21);
+  // Hårda egna pass (CrossFit, Hyrox …) belastar hela kroppen som ett extra träningspass
+  const hard = items.find((x) => x.hard);
+  if (hard && str) advice.push({ level: "warn", text: `${hard.label} och gympass samma dag blir två hårda pass. Kör gympasset lättare (färre set), eller flytta gymdagen under Profil → Gymdagar så att du får minst en vilodag i veckan.` });
+  if (hard && int) advice.push({ level: "tip", text: `${hard.label} är redan ett hårt konditionspass. Hoppa över intervallerna den här dagen.` });
+  if (hard && nextIsLegs && !str) advice.push({ level: "tip", text: `${hard.label} dagen före ett benpass kan ge trötta ben. Kör benpasset lite lättare, eller byt pass för dagen efter.` });
+  if (hard && hard.to > eat.to) advice.push({ level: "tip", text: `${hard.label} slutar ${clock(hard.to)}, efter att ätfönstret stängt ${clock(eat.to)}, så proteinet efter passet bryter fastan. Flytta frukosten senare de här dagarna (ätfönstret flyttas med), eller ät proteinrikt före ${clock(eat.to)}.` });
+  const late = [str, int, hard].filter(Boolean).find((x) => x.to > 21);
   if (late) advice.push({ level: "tip", text: `${late.label} slutar sent (${clock(late.to)}). Hård träning sent kan försämra sömnen; välj koffeinfri PWO.` });
   const walk = items.find((x) => x.kind === "walk");
   if (walk && eat.from + MEAL_AT <= walk.from && walk.from <= eat.from + MEAL_AT + 1.5) advice.push({ level: "tip", text: "Bra: en promenad strax efter eftermiddagsmåltiden sänker blodsockret." });

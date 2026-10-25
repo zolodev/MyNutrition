@@ -189,7 +189,7 @@ function update() {
   renderShoppingWeek(profile, targets, week);
 
   // Idag följer de verkliga måltidstiderna om de är loggade
-  if (state.week === TODAY_WEEK) renderToday({ week, targets, program, breakfast: todaysFasting(profile.breakfastHour).day.start, weight: profile.weight, swaps: entryFor(todayStr())?.swaps || [] });
+  if (state.week === TODAY_WEEK) renderToday({ week, targets, program, breakfast: todaysFasting(profile.breakfastHour).day.start, weight: profile.weight, swaps: entryFor(todayStr())?.swaps || [], snacks: entryFor(todayStr())?.snacks || [] });
   renderFastingToday(profile.breakfastHour);
   renderFasting(targets, profile.breakfastHour);
   renderLog(kgPerWeek(targets.deficit), profile.goal, profile.weight);

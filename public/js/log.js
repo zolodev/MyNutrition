@@ -140,11 +140,38 @@ export function setSwap(date, meal, swap) {
   return removed;
 }
 
-/** Kontrollera och städa en post. Ger null om datumet saknas eller är felaktigt. */
+// ---------- Mellanmål och snacks ----------
+// Utöver planens måltider: [{ n, k, p }] i dagens post (`snacks`, från 0.21.0), t.ex. lättfil med kasein.
+// De räknas som ätna och läggs till dagens summa på Idag.
+
+function cleanSnacks(list) {
+  return Array.isArray(list) ? list.map((x) => { const s = cleanSwap(x); return s && { ...x, ...s }; }).filter(Boolean).slice(0, 30) : [];
+}
+
+/** Lägg till ett mellanmål ({ n, k, p }) en dag. Det blir också ett snabbval bland de senast använda. */
+export function addSnack(date, snack) {
+  const clean = cleanSwap(snack);
+  if (!clean) return;
+  const e = entryFor(date) || { date };
+  upsertEntry(cleanEntry({ ...e, date, snacks: [...(e.snacks || []), clean] }));
+  save(SWAPS_KEY, [clean, ...recentSwaps().filter((x) => x.n.toLowerCase() !== clean.n.toLowerCase())].slice(0, 8));
+}
+
+/** Ta bort ett mellanmål (index i dagens lista). */
+export function removeSnack(date, index) {
+  const e = entryFor(date);
+  if (!e) return;
+  const next = cleanEntry({ ...e, snacks: (e.snacks || []).filter((_, i) => i !== index) });
+  if (isEmptyEntry(next)) removeEntry(date);
+  else upsertEntry(next);
+}
+
+/** Kontrollera och städa en post. Ger null om datumet saknas eller är felaktigt. Okända fält (från en nyare version) behålls. */
 export function cleanEntry(e) {
   if (!e || !isIsoDate(e.date)) return null;
   const perf = [1, 0, -1].includes(e.perf) ? e.perf : null;
   return {
+    ...e,
     date: e.date,
     weight: inRange(e.weight, 30, 300),
     waist: inRange(e.waist, 40, 200),
@@ -160,6 +187,7 @@ export function cleanEntry(e) {
     eaten: Array.isArray(e.eaten) ? [0, 1, 2, 3, 4].filter((m) => e.eaten.includes(m)) : [], // avbockade måltider (0 frukost …)
     firstMeal: isClock(e.firstMeal) ? e.firstMeal : null, // "HH:MM", för uppföljning av fastan
     lastMeal: isClock(e.lastMeal) ? e.lastMeal : null,
+    snacks: cleanSnacks(e.snacks), // mellanmål och snacks utöver planen (från 0.21.0)
   };
 }
 
@@ -181,7 +209,7 @@ export function setMealTimes(date, { firstMeal, lastMeal }) {
 /** Har posten inget sparat alls? Bara då får den tas bort (t.ex. när dagens måltidstider nollställs). */
 function isEmptyEntry(e) {
   return ["weight", "waist", "mood", "perf", "test", "imMod", "imVig", "firstMeal", "lastMeal"].every((k) => e[k] == null) &&
-    !e.note && !e.cardio.length && !e.swaps.length && !e.eaten.length && !e.trained;
+    !e.note && !e.cardio.length && !e.swaps.length && !e.eaten.length && !e.snacks.length && !e.trained;
 }
 
 /** Bocka av (eller ur) en måltid som ätit en dag: 0 frukost, 1 eftermiddagsmåltid, 2 efterrätt, 3 lördagsgodis. */

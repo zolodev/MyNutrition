@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- Appens version (samma som js/version.js; uppdateras av npm run bump). main.js använder den för att se till att
        alla filer kommer från samma version. -->
-  <meta name="app-version" content="0.19.2">
+  <meta name="app-version" content="0.21.0">
   <meta name="description"
     content="Personlig veckoplan för viktnedgång: kalorimål, styrkeprogram med ExRx-övningar, säsongsrecept, fasta 16:8 och logg.">
   <meta name="theme-color" content="#1d5c4c" media="(prefers-color-scheme: light)">
@@ -250,7 +250,7 @@
     href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="css/app.css">
   <!-- ?v= gör att startfilen alltid hämtas på nytt efter en uppdatering, även ur en gammal webbläsarcache -->
-  <script type="module" src="js/main.js?v=0.19.2" onerror="ffvBootFailed()"></script>
+  <script type="module" src="js/main.js?v=0.21.0" onerror="ffvBootFailed()"></script>
 </head>
 
 <body>
@@ -360,6 +360,33 @@
           </div>
           <p class="hint" id="td-eaten"></p>
           <div class="list" id="td-food"></div>
+          <div class="card snacks" id="sn-box">
+            <span class="label">Mellanmål och snacks</span>
+            <ul class="sn-list" id="sn-list"></ul>
+            <p class="hint" id="sn-empty">Åt du något utöver planens måltider, t.ex. lättfil med kasein eller en frukt? Lägg
+              till det här, så räknas det med i dagens kalorier och protein.</p>
+            <details class="sn-add" id="sn-add">
+              <summary>+ Lägg till mellanmål</summary>
+              <form id="sn-form" autocomplete="off">
+                <div class="chips" id="sn-recent"></div>
+                <details class="sw-products-box">
+                  <summary>Måltidsersättningar (Huel m.fl.)</summary>
+                  <p class="hint">Värden per måltid enligt tillverkaren; kontrollera din förpackning.</p>
+                  <div class="chips" id="sn-products"></div>
+                </details>
+                <div class="field"><label for="sn-name">Vad åt du?</label><input type="text" id="sn-name" maxlength="60"
+                    placeholder="t.ex. Lättfil med kasein"></div>
+                <div class="row2">
+                  <div class="field"><label for="sn-k">Kalorier (kcal)</label><input type="text" inputmode="decimal"
+                      data-decimal min="0" max="5000" id="sn-k" placeholder="t.ex. 235"></div>
+                  <div class="field"><label for="sn-p">Protein (g)</label><input type="text" inputmode="decimal" data-decimal
+                      min="0" max="500" id="sn-p" placeholder="t.ex. 40"></div>
+                </div>
+                <div class="actions"><button type="submit" class="btn primary">Lägg till</button></div>
+                <p class="hint" id="sn-msg" role="status"></p>
+              </form>
+            </details>
+          </div>
           <details class="card form swap-box" id="sw-box">
             <summary>Ersätt en måltid med något annat</summary>
             <form id="sw-form" autocomplete="off">
@@ -1143,6 +1170,25 @@
               <button type="button" class="linkbtn" id="wk-trainreset">Lägg tillbaka passen enligt planen</button></p>
             <div class="train-week" id="train-week"></div>
           </div>
+          <form class="card form own-sessions" id="os-form" autocomplete="off">
+            <span class="label">Egna pass</span>
+            <p class="hint">Lägg in pass utöver gymmet, t.ex. CrossFit eller Hyrox, på flera dagar på en gång. De syns på
+              Idag och i schemat nedan. Ett hårt pass räknas som träning i råden, t.ex. om det krockar med ett gympass
+              samma dag.</p>
+            <div class="chips" id="os-picks"><button type="button" class="chip-btn" data-os-pick="CrossFit">CrossFit</button><button
+                type="button" class="chip-btn" data-os-pick="Hyrox">Hyrox</button><button type="button" class="chip-btn"
+                data-os-pick="Spinning">Spinning</button><button type="button" class="chip-btn" data-os-pick="Padel">Padel</button></div>
+            <div class="field"><label for="os-name">Pass</label><input type="text" id="os-name" maxlength="40" placeholder="t.ex. CrossFit"></div>
+            <div class="field"><span class="label">Tid</span>
+              <div class="sched-times"><input type="text" inputmode="numeric" data-clock id="os-from" placeholder="17:30"
+                  aria-label="Passet börjar"><span aria-hidden="true">–</span><input type="text" inputmode="numeric" data-clock
+                  id="os-to" placeholder="18:30" aria-label="Passet slutar"></div></div>
+            <div class="daypick" id="os-days" role="group" aria-label="Dagar för passet"><label><input type="checkbox" data-os-day="0"><span>Mån</span></label><label><input type="checkbox" data-os-day="1"><span>Tis</span></label><label><input type="checkbox" data-os-day="2"><span>Ons</span></label><label><input type="checkbox" data-os-day="3"><span>Tor</span></label><label><input type="checkbox" data-os-day="4"><span>Fre</span></label><label><input type="checkbox" data-os-day="5"><span>Lör</span></label><label><input type="checkbox" data-os-day="6"><span>Sön</span></label></div>
+            <label class="terms-accept"><input type="checkbox" id="os-hard" checked><span>Hårt pass (CrossFit, Hyrox, spinning …)</span></label>
+            <button type="submit" class="btn primary">Lägg till passet</button>
+            <p class="status" id="os-msg" role="status"></p>
+            <ul class="os-list" id="os-list" hidden></ul>
+          </form>
           <div class="card form sched-work" id="work-box">
             <span class="label">Arbetstid</span>
             <p class="hint">Fyll i när du jobbar, så lägger appen sina förslag utanför arbetstiden och varnar om något
