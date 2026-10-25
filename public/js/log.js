@@ -188,6 +188,10 @@ export function cleanEntry(e) {
     firstMeal: isClock(e.firstMeal) ? e.firstMeal : null, // "HH:MM", för uppföljning av fastan
     lastMeal: isClock(e.lastMeal) ? e.lastMeal : null,
     snacks: cleanSnacks(e.snacks), // mellanmål och snacks utöver planen (från 0.21.0)
+    // Energi för dagen (från 0.22.0): allt som åts, inskrivet för hand, och aktiva kalorier enligt klockan
+    intakeK: inRange(e.intakeK, 0, 15000),
+    intakeP: inRange(e.intakeP, 0, 1000),
+    burned: inRange(e.burned, 0, 10000),
   };
 }
 
@@ -208,7 +212,7 @@ export function setMealTimes(date, { firstMeal, lastMeal }) {
 
 /** Har posten inget sparat alls? Bara då får den tas bort (t.ex. när dagens måltidstider nollställs). */
 function isEmptyEntry(e) {
-  return ["weight", "waist", "mood", "perf", "test", "imMod", "imVig", "firstMeal", "lastMeal"].every((k) => e[k] == null) &&
+  return ["weight", "waist", "mood", "perf", "test", "imMod", "imVig", "firstMeal", "lastMeal", "intakeK", "intakeP", "burned"].every((k) => e[k] == null) &&
     !e.note && !e.cardio.length && !e.swaps.length && !e.eaten.length && !e.snacks.length && !e.trained;
 }
 
@@ -273,6 +277,21 @@ export function addWorkout(date, { text, vigorous = 0, strength = false }) {
 }
 
 
+
+// ---------- Energibalans ----------
+
+/**
+ * Dagens energibalans: det som åts minus underhållsbehovet (`tdee`, utan träning och steg) och det klockan säger att
+ * man har bränt. Negativt = underskott. `intake` är det inskrivna intaget, annars det som är ätet enligt Idag.
+ */
+export function energyBalance({ intake, burned }, tdee) {
+  if (intake == null || !(tdee > 0)) return null;
+  return Math.round(intake - tdee - (burned || 0));
+}
+
+/** "Ätit 2 345 kcal · 162 g protein · bränt 967 kcal", eller "" om inget är inskrivet. */
+export const energyText = (e) => [e.intakeK != null ? `Ätit ${fmt(e.intakeK)} kcal` : "", e.intakeP != null ? `${fmt(e.intakeP)} g protein` : "",
+  e.burned != null ? `bränt ${fmt(e.burned)} kcal` : ""].filter(Boolean).join(" · ");
 
 // ---------- Statistik ----------
 

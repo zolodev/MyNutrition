@@ -8,6 +8,7 @@ import { cardioRow } from "../views/log-view.js";
 let update = () => {}; // ritar om appen; sätts av initLogForm()
 
 
+const ENERGY_FIELDS = [["l-in-k", "intakeK"], ["l-in-p", "intakeP"], ["l-burned", "burned"]];
 const logMessage = (text) => ($("l-msg").textContent = text);
 
 /** Skriv datumet som ÅÅÅÅ-MM-DD medan man knappar in siffror (mobilens sifferknappsats saknar bindestreck). */
@@ -26,6 +27,7 @@ function fillLogForm(date) {
   $("l-im-vig").value = e.imVig ?? "";
   showIntensityTotal();
   $("l-note").value = e.note || "";
+  for (const [id, key] of ENERGY_FIELDS) $(id).value = e[key] ?? "";
   for (const el of $$('input[name="l-mood"]')) el.checked = +el.value === e.mood;
   const notTrained = !!entryFor(date) && e.perf == null && e.trained === false;
   for (const el of $$('input[name="l-perf"]')) el.checked = el.value === "none" ? notTrained : +el.value === e.perf;
@@ -125,8 +127,9 @@ $("logf").addEventListener("submit", (ev) => {
     ...existing,
     date, weight: num($("l-weight").value), waist: num($("l-waist").value), mood: radioValue("l-mood") ? +radioValue("l-mood") : null,
     perf: perf && perf !== "none" ? +perf : null, trained: perf ? perf !== "none" : false, cardio: cardio.list, test: existing?.test, imMod: num($("l-im-mod").value), imVig: num($("l-im-vig").value), note: $("l-note").value.trim(),
+    ...Object.fromEntries(ENERGY_FIELDS.map(([id, key]) => [key, num($(id).value)])),
   });
-  if (entry.weight == null && entry.mood == null && entry.perf == null && !entry.cardio.length && intensityMinutes(entry) == null && entry.test == null && entry.waist == null && !entry.note) return logMessage("Fyll i minst ett värde.");
+  if (entry.weight == null && entry.mood == null && entry.perf == null && !entry.cardio.length && intensityMinutes(entry) == null && entry.test == null && entry.waist == null && !entry.note && ENERGY_FIELDS.every(([, key]) => entry[key] == null)) return logMessage("Fyll i minst ett värde.");
   upsertEntry(entry);
   update();
   logMessage(`Sparat för ${entry.date} (${svDate(entry.date, { weekday: "long" })}).`);

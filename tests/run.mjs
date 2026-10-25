@@ -1036,7 +1036,7 @@ go("rapport");
 check("Rapporten är en egen sida och Logg är markerad i menyn", visible() === "rapport" && win.document.querySelector('a[data-tab="logg"]').getAttribute("aria-current") === "page");
 check("Rapporten sammanfattar vikt, förändring, midja, BMI, mål, mående, kondition och intensitetsminuter", ["Startvikt", "Nu, 7-dagarssnitt", "Förändring", "Midja", "BMI", "Målvikt", "Mående", "Konditionspass", "Intensitetsminuter"].every((t) => text("rp-tiles").includes(t)));
 {
-  const tileEl = $("rp-tiles").querySelector(".tile.wide");
+  const tileEl = [...$("rp-tiles").querySelectorAll(".tile.wide")].find((t) => t.textContent.startsWith("Prognos"));
   const text2 = tileEl?.textContent || "";
   check("Rapporten har en prognos med datum för målvikten om man följer appen", tileEl && text2.startsWith("Prognos för målvikten") && (/\d{4}-\d{2}-\d{2}/.test(text2) && /om du följer appens kalorimål och träning \([\d,]+ kg\/vecka\)/.test(text2) || text2.includes("Nådd") || text2.includes("Fyll i en målvikt")));
 }
@@ -1228,12 +1228,37 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   check("Ett mellanmål går att ta bort", snacksSaved().length === 1 && snacksSaved()[0].n === "Banan" && kcalToday() === before + 105);
   fire($("sn-list").querySelector('[data-snack-remove="0"]'), "click");
   check("Utan mellanmål är dagens summa som förut", kcalToday() === before && planned() === plannedBefore && !$("sn-empty").hidden);
+
+  // Energi: inskrivet intag och brända kalorier enligt klockan ger dagens energibalans
+  const balanceTile = () => [...$("td-targets").querySelectorAll(".tile.wide")].find((t) => /balans|skott i dag/.test(t.textContent));
+  check("Utan inskrivet intag och bränt ber Idag om dem", balanceTile()?.textContent.includes("Fyll i bränt från klockan"));
+  go("logg");
+  $("l-date").value = todayStr(); fire($("l-date"), "input");
+  $("l-in-k").value = "2345"; $("l-in-p").value = "162"; $("l-burned").value = "967"; fire($("logf"), "submit");
+  const saved = JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === todayStr());
+  check("Ätit, protein och bränt sparas i dagens logg", saved.intakeK === 2345 && saved.intakeP === 162 && saved.burned === 967 && saved.waist === 94);
+  check("Energin syns i loggens tabell", text("l-table").includes("Ätit 2 345 kcal · 162 g protein · bränt 967 kcal"));
+  go("idag");
+  const tdee = Number(balanceTile().textContent.match(/underhåll ([\d\s]+)/)[1].replace(/\D/g, ""));
+  const balance = 2345 - tdee - 967;
+  check("Idag visar det inskrivna intaget och dagens energibalans", kcalToday() === 2345 && text("td-targets").includes("inskrivet i loggen") &&
+    balanceTile().textContent.includes(`bränt 967 enligt klockan`) && Number(balanceTile().querySelector(".v").textContent.replace(/[^\d]/g, "")) === Math.abs(balance));
+  check("Rapporten visar energibalansen", text("rp-tiles").includes("Energibalans, snitt per dag") && text("rp-tiles").includes("ätit 2 345 kcal och 162 g protein, bränt 967 kcal"));
+  go("logg");
+  $("l-date").value = todayStr(); fire($("l-date"), "input");
+  check("Loggen fyller i energin när dagen öppnas", $("l-in-k").value === "2345" && $("l-burned").value === "967");
+  $("l-in-k").value = ""; $("l-in-p").value = ""; $("l-burned").value = ""; fire($("logf"), "submit");
+  go("idag");
+  check("Utan inskrivet intag räknas avbockningarna igen", kcalToday() === before);
 }
 {
   const { cleanEntry } = await import("../public/js/log.js");
   const e = cleanEntry({ date: "2026-10-25", weight: 82, snacks: [{ n: "Banan", k: 105, p: 1 }, { n: "", k: 5 }], framtida: { x: 1 } });
   check("Loggens poster behåller okända fält och städar mellanmålen", e.framtida?.x === 1 && e.snacks.length === 1 && e.snacks[0].n === "Banan");
   check("Äldre poster utan mellanmål får en tom lista", cleanEntry({ date: "2026-10-25", weight: 82 }).snacks.length === 0);
+  const energy = cleanEntry({ date: "2026-10-25", intakeK: 2345, intakeP: 162, burned: 967 });
+  check("Energin för dagen läses och felaktiga värden blir tomma", energy.intakeK === 2345 && energy.burned === 967 &&
+    cleanEntry({ date: "2026-10-25", intakeK: -5, burned: "x" }).intakeK === null && cleanEntry({ date: "2026-10-25", weight: 82 }).burned === null);
 }
 
 // Inställningar → Måltider

@@ -2,9 +2,9 @@
 // läkare. Sidan har en egen utskriftslayout, så den kan skrivas ut eller sparas som PDF.
 
 import { $, esc, fmt, signed, todayStr, dateToDay, dayToDate, mondayOf, isoWeekNumber, DAY_MS } from "../util.js";
-import { entries, sevenDayAverage, logStats, CARDIO, paceText, secondsPerKm, cardioText, intensityMinutes, WEEKLY_INTENSITY_GOAL, formatHms } from "../log.js";
+import { entries, sevenDayAverage, logStats, CARDIO, paceText, secondsPerKm, cardioText, intensityMinutes, WEEKLY_INTENSITY_GOAL, formatHms, energyBalance, energyText } from "../log.js";
 import { parseClock, fastingHours, formatDuration } from "../fasting.js";
-import { bmiOf, kgPerWeek } from "../nutrition.js";
+import { bmiOf, kgPerWeek, KCAL_PER_KG_FAT } from "../nutrition.js";
 import { tile } from "./components.js";
 
 const EPOCH_DAY = Date.UTC(2024, 0, 1) / DAY_MS; // veckor räknas från måndagen 2024-01-01, som i util.js
@@ -70,7 +70,22 @@ function renderSummary(weighIns, allWeighIns, list, profile, targets) {
     tile({ label: "Konditionspass", value: passes.length, sub: passes.length ? `${fmt(passes.reduce((a, c) => a + c.km, 0), 1)} km på ${formatHms(passes.reduce((a, c) => a + c.s, 0))}` : "Inga pass loggade" }) +
     tile({ label: "Intensitetsminuter", value: im.length ? fmt(im.reduce((a, b) => a + b, 0) / imWeeks) : "–", unit: im.length ? "min/vecka" : "",
       sub: im.length ? `snitt per vecka · WHO rekommenderar minst ${WEEKLY_INTENSITY_GOAL}` : "Inte loggade" }) +
+    energyTile(list, targets) +
     forecastTile(allWeighIns, profile, targets);
+}
+
+/** Energibalansen de dagar där intaget är inskrivet i loggen: snitt för intag, protein och bränt, och underskottet. */
+function energyTile(list, targets) {
+  const days = list.filter((e) => e.intakeK != null);
+  if (!days.length) return tile({ label: "Energibalans", value: "–", wide: true, sub: "Skriv in ätit och bränt (kcal) i loggen, så visas snittet här." });
+  const balances = days.map((e) => energyBalance({ intake: e.intakeK, burned: e.burned }, targets.tdee));
+  const sum = balances.reduce((a, b) => a + b, 0);
+  const proteins = days.filter((e) => e.intakeP != null).map((e) => e.intakeP);
+  const burned = days.filter((e) => e.burned != null).map((e) => e.burned);
+  return tile({ label: "Energibalans, snitt per dag", value: signed(sum / days.length, 0), unit: "kcal", wide: true, subClass: sum <= 0 ? "down" : "up",
+    sub: `${days.length} ${days.length === 1 ? "dag" : "dagar"} med inskrivet intag: ätit ${fmt(average(days.map((e) => e.intakeK)))} kcal` +
+      (proteins.length ? ` och ${fmt(average(proteins))} g protein` : "") + (burned.length ? `, bränt ${fmt(average(burned))} kcal enligt klockan` : "") +
+      `, underhåll ca ${fmt(targets.tdee)} kcal. Totalt ${signed(sum, 0)} kcal ≈ ${signed(sum / KCAL_PER_KG_FAT, 1)} kg fett.` });
 }
 
 /**
@@ -187,7 +202,7 @@ function renderDays(list, allWeighIns, byDate) {
         `<tr><td class="num">${e.date}</td><td class="num">${value(e.weight)}</td><td class="num">${value(e.weight != null ? sevenDayAverage(allWeighIns, dateToDay(e.date)) : null)}</td>` +
         `<td class="num">${value(e.waist)}</td><td class="num">${e.mood ?? "–"}</td><td>${perf(e.perf)}</td>` +
         `<td>${e.cardio.length ? e.cardio.map((c) => esc(cardioText(c))).join("<br>") : "–"}</td><td class="num">${intensityMinutes(e) ?? "–"}</td>` +
-        `<td class="num">${e.firstMeal || e.lastMeal ? `${e.firstMeal || "?"}–${e.lastMeal || "?"}` : "–"}</td><td class="num">${nightFast(e, byDate) != null ? formatDuration(nightFast(e, byDate)) : "–"}</td><td>${esc(e.note)}</td></tr>`).join("") +
+        `<td class="num">${e.firstMeal || e.lastMeal ? `${e.firstMeal || "?"}–${e.lastMeal || "?"}` : "–"}</td><td class="num">${nightFast(e, byDate) != null ? formatDuration(nightFast(e, byDate)) : "–"}</td><td>${esc([energyText(e), e.note].filter(Boolean).join(" · "))}</td></tr>`).join("") +
       `</tbody>`
     : `<tbody><tr><td class="note">Inga loggade dagar i perioden.</td></tr></tbody>`;
 }

@@ -6,6 +6,15 @@ MINOR höjs för nya funktioner, PATCH för rättningar. Höj versionen med `npm
 
 ## [Ej släppt]
 
+## [0.22.0] - 2026-10-25
+
+### Tillagt
+- Energi i loggen: skriv in vad du har ätit (kcal och protein) och bränt enligt klockan (aktiva kcal) för en dag.
+  Idag visar det inskrivna intaget i stället för avbockningarna och dagens över- eller underskott: ätit minus
+  underhållsbehovet och det klockan har bränt. Rapporten visar snittet per dag och ungefär hur mycket fett det
+  motsvarar, och loggens tabell visar siffrorna. Sparas i dagens post i `ffv-log` (`intakeK`, `intakeP`, `burned`)
+  och följer med i exporten; äldre poster utan dem fungerar som förut.
+
 ## [0.21.0] - 2026-10-25
 
 ### Tillagt

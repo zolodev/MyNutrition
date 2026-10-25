@@ -1,8 +1,8 @@
 // Idag: dagens måltider och träning, samt tidslinjerna för fasta och träning.
 
-import { $, esc, fmt, hhmm, todayIndex, todayStr, DAYS } from "../util.js";
+import { $, esc, fmt, signed, hhmm, todayIndex, todayStr, DAYS } from "../util.js";
 import { daySchedule, scheduleAdvice, workoutOf, workOn } from "../schedule.js";
-import { MEAL_NAMES, entryFor } from "../log.js";
+import { MEAL_NAMES, entryFor, energyBalance } from "../log.js";
 import { treatName } from "../preferences.js";
 import { NONE } from "../data/recipes.js";
 import { totals } from "../menu.js";
@@ -44,10 +44,15 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   const mealKcal = (i) => swapOf(i) ? { k: swapOf(i).k, p: swapOf(i).p } : week.recipes[day[i]].m;
   const ate = [...eaten].reduce((acc, i) => ({ k: acc.k + mealKcal(i).k, p: acc.p + mealKcal(i).p }), extra);
   const planWord = snacks.length ? "med mellanmål" : "planerat";
+  // Har man skrivit in hela dagens intag i loggen gäller det i stället för avbockningarna
+  const entry = entryFor(todayStr()) || {};
+  const typed = entry.intakeK != null;
+  const intake = { k: typed ? entry.intakeK : ate.k, p: entry.intakeP ?? ate.p };
   $("td-targets").innerHTML =
-    tile({ label: "Ätit i dag", value: fmt(ate.k), unit: "kcal", sub: `av ${fmt(sum.k)} ${planWord} · mål ${fmt(targets.target)}`, main: true }) +
-    tile({ label: "Protein", value: fmt(ate.p), unit: "g", sub: `av ${fmt(sum.p)} g ${planWord} · mål ${fmt(targets.protein)}` }) +
-    tile({ label: "Fasta", value: 16, unit: "h", sub: `${t(WINDOW)}–${t(0)}` });
+    tile({ label: "Ätit i dag", value: fmt(intake.k), unit: "kcal", sub: `${typed ? "inskrivet i loggen" : `av ${fmt(sum.k)} ${planWord}`} · mål ${fmt(targets.target)}`, main: true }) +
+    tile({ label: "Protein", value: fmt(intake.p), unit: "g", sub: `${entry.intakeP != null ? "inskrivet" : `av ${fmt(sum.p)} g ${planWord}`} · mål ${fmt(targets.protein)}` }) +
+    tile({ label: "Fasta", value: 16, unit: "h", sub: `${t(WINDOW)}–${t(0)}` }) +
+    balanceTile(intake.k, entry.burned, targets, typed);
 
   // Dagens tidslinje: ätfönstret och dagens aktiviteter enligt veckoschemat (egna tider, annars planens förslag)
   const items = daySchedule(index, training.kind, breakfast);
@@ -118,6 +123,25 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   $("td-supps-box").hidden = !usesSupplements();
   $("td-supps").innerHTML = tips.map((tip) => `<li><b>${formatClock(tip.at)} ${tip.name}</b> ${tip.text}</li>`).join("") +
     generalNotes().map((n) => `<li>${n}</li>`).join("");
+}
+
+/**
+ * Dagens energibalans: ätit minus underhållsbehovet och det klockan säger att man har bränt.
+ * Underhållsbehovet räknar inte med träning och steg, så de brända kalorierna läggs till.
+ */
+function balanceTile(intake, burned, targets, typed) {
+  const link = `<a href="#logf" data-edit-log>${burned != null ? "Ändra" : "Fyll i bränt från klockan"}</a>`;
+  const balance = energyBalance({ intake, burned }, targets.tdee);
+  if (balance == null) return "";
+  if (burned == null && !typed) return tile({ label: "Energibalans i dag", value: "–", wide: true,
+    sub: `Skriv in vad du har ätit och bränt enligt klockan i loggen, så räknas dagens över- eller underskott ut. ${link}` });
+  const out = targets.tdee + (burned || 0);
+  const verdict = balance < -1000 ? " Stort underskott; ät gärna lite mer en så aktiv dag."
+    : balance <= 0 ? "" : intake > targets.target ? " Över behovet i dag; det jämnar ut sig över veckan." : "";
+  return tile({ label: balance <= 0 ? "Underskott i dag" : "Överskott i dag", value: signed(balance, 0), unit: "kcal", wide: true,
+    subClass: balance <= 0 ? "down" : "up",
+    sub: `Ätit ${fmt(intake)} − förbrukat ca ${fmt(out)} (underhåll ${fmt(targets.tdee)}${burned != null ? ` + bränt ${fmt(burned)} enligt klockan` : ", utan träning"}).` +
+      `${verdict} ${burned != null ? "Klockor visar ofta lite för mycket." : ""} ${link}` });
 }
 
 let shown = null; // veckan och dagen som Idag visar, för valen i fillMoveOptions

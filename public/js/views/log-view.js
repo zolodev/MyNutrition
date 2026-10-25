@@ -1,13 +1,13 @@
 // Logg: nyckeltal, viktkurva, råd och tabell.
 
 import { $, esc, fmt, signed, todayStr, dateToDay, dayToDate, svDate } from "../util.js";
-import { entries, entryFor, logStats, sevenDayAverage, formatHms, CARDIO, paceText, secondsPerKm, cardioText, intensityMinutes, WEEKLY_INTENSITY_GOAL, MEAL_NAMES } from "../log.js";
+import { entries, entryFor, logStats, sevenDayAverage, formatHms, CARDIO, paceText, secondsPerKm, cardioText, intensityMinutes, WEEKLY_INTENSITY_GOAL, MEAL_NAMES, energyText } from "../log.js";
 import { parseClock, fastingHours, formatDuration } from "../fasting.js";
 import { tile } from "./components.js";
 import { goalFor, hasGoal, weekProgress, bestEstimate } from "../goals.js";
 
 /** Anteckningen och dagens ersatta måltider, t.ex. "Eftermiddagsmåltid: Huel shake (400 kcal)". */
-const noteText = (e) => [e.note, ...(e.swaps || []).map((x) => `${MEAL_NAMES[x.meal]}: ${x.n} (${fmt(x.k)} kcal)`),
+const noteText = (e) => [e.note, energyText(e), ...(e.swaps || []).map((x) => `${MEAL_NAMES[x.meal]}: ${x.n} (${fmt(x.k)} kcal)`),
   ...(e.snacks || []).map((x) => `Mellanmål: ${x.n} (${fmt(x.k)} kcal)`),
   e.eaten?.length ? `Ätit: ${e.eaten.map((m) => MEAL_NAMES[m].toLowerCase()).join(", ")}` : ""].filter(Boolean).join(" · ");
 

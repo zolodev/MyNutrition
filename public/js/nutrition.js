@@ -3,7 +3,7 @@
 import { FOOD, scaleGroupOf, GRAMS_PER_DL } from "./data/foods.js";
 import { fmt, clamp, DAY_MS } from "./util.js";
 
-const KCAL_PER_KG_FAT = 7700;
+export const KCAL_PER_KG_FAT = 7700;
 const MAX_DEFICIT = 1000; // kcal/dag
 const FLOOR = { m: 1500, k: 1200 }; // lägsta kalorimål utan medicinsk uppföljning
 
