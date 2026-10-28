@@ -5,9 +5,9 @@ import { computeTargets, kgPerWeek, recommendedGoal } from "./nutrition.js";
 import { loadPreferences, exclusions, saveExclusions, setExclusions } from "./preferences.js";
 import { buildWeek, shoppingList, invalidateMenu, initSeed, planRandomness, setPlanRandomness, swapMeals, resetMoves, movesFor } from "./menu.js";
 import { encodePlan, decodePlan, prettyCode, randomSeed } from "./plancode.js";
-import { SEASONS } from "./data/recipes.js";
+import { SEASONS, NONE } from "./data/recipes.js";
 import { parseTrainingDays, buildProgram, SWAP_TEXT, trainingDaysAdvice } from "./training.js";
-import { loadLog, entries, entryFor, upsertEntry, cleanEntry, setMealTimes, setEaten } from "./log.js";
+import { loadLog, entries, entryFor, upsertEntry, cleanEntry, setMealTimes, setEaten, dayIntake } from "./log.js";
 import { renderTargets, renderGoalAdvice } from "./views/profile.js";
 import { renderToday, renderFasting } from "./views/today.js";
 import { renderFastingToday, renderFastingNow, todaysFasting } from "./views/fasting-view.js";
@@ -205,8 +205,17 @@ function update() {
   $("mv-reset").hidden = !movesFor(state.week).length;
   $("wk-trainmoved").hidden = $("wk-trainmoved-food").hidden = !trainMovesFor(state.week).length;
   showGoalAdvice();
+  // Allt som åts en dag, med planens måltider för den veckan (veckorna byggs bara en gång per ritning)
+  const weeks = new Map();
+  const intakeOf = (e) => {
+    const date = new Date(e.date + "T12:00:00");
+    const w = weekIndexOf(date);
+    if (!weeks.has(w)) weeks.set(w, w === state.week ? week : buildWeek(w, targets, profile.breakfastChoice));
+    const wk = weeks.get(w), day = wk.plan[(date.getDay() + 6) % 7];
+    return dayIntake(e, (i) => (day[i] && day[i] !== NONE ? wk.recipes[day[i]].m : null));
+  };
   renderReport({
-    period: $("rp-period").value, profile, targets,
+    period: $("rp-period").value, profile, targets, intakeOf,
     labels: {
       activity: $("act").selectedOptions[0]?.textContent || "",
       equipment: { gym: "gym", db: "hantlar", bw: "kroppsvikt" }[profile.equipment],

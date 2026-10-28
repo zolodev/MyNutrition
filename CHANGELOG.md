@@ -6,6 +6,17 @@ MINOR höjs för nya funktioner, PATCH för rättningar. Höj versionen med `npm
 
 ## [Ej släppt]
 
+## [0.22.1] - 2026-10-28
+
+### Ändrat
+- Ätit i dag summerar nu allt som är ätet: avbockade och ersatta måltider, mellanmål och det som skrivs in i loggen
+  under Energi (fälten heter nu Övrigt ätit och Övrigt protein). I 0.22.0 ersatte det inskrivna intaget det andra i
+  stället för att läggas till, så siffrorna blev fel. Den sparade datan är densamma; det inskrivna syns nu också som
+  en rad bland mellanmålen på Idag.
+- Rutan på Idag heter Netto i dag: ätit − bränt enligt klockan, jämfört med kalorimålet och det lägsta (1 500 kcal för
+  män, 1 200 för kvinnor), med underskottet mot underhållet. Bränt skrivs in direkt i rutan.
+- Rapporten visar nettot per dag med allt ätet summerat, även avbockade måltider och mellanmål.
+
 ## [0.22.0] - 2026-10-25
 
 ### Tillagt

@@ -2,7 +2,7 @@
 // läkare. Sidan har en egen utskriftslayout, så den kan skrivas ut eller sparas som PDF.
 
 import { $, esc, fmt, signed, todayStr, dateToDay, dayToDate, mondayOf, isoWeekNumber, DAY_MS } from "../util.js";
-import { entries, sevenDayAverage, logStats, CARDIO, paceText, secondsPerKm, cardioText, intensityMinutes, WEEKLY_INTENSITY_GOAL, formatHms, energyBalance, energyText } from "../log.js";
+import { entries, sevenDayAverage, logStats, CARDIO, paceText, secondsPerKm, cardioText, intensityMinutes, WEEKLY_INTENSITY_GOAL, formatHms, energyText, hasIntake } from "../log.js";
 import { parseClock, fastingHours, formatDuration } from "../fasting.js";
 import { bmiOf, kgPerWeek, KCAL_PER_KG_FAT } from "../nutrition.js";
 import { tile } from "./components.js";
@@ -23,7 +23,7 @@ function nightFast(e, byDate) {
  * Rita rapporten. `period` = "all" eller antal dagar bakåt ("84", "28"). `profile`, `targets` och `labels`
  * (texter för aktivitetsnivå, utrustning och gymdagar) kommer från Profil.
  */
-export function renderReport({ period, profile, targets, labels }) {
+export function renderReport({ period, profile, targets, labels, intakeOf }) {
   const today = dateToDay(todayStr());
   const from = period === "all" ? -Infinity : today - Number(period) + 1;
   const list = entries.filter((e) => dateToDay(e.date) >= from && dateToDay(e.date) <= today);
@@ -34,7 +34,7 @@ export function renderReport({ period, profile, targets, labels }) {
   $("rp-period-text").textContent = list.length
     ? `${list[0].date} – ${list[list.length - 1].date} · ${list.length} loggade dagar`
     : "Inga loggade dagar i perioden. Logga under Logg så fylls rapporten i.";
-  renderSummary(weighIns, allWeighIns, list, profile, targets);
+  renderSummary(weighIns, allWeighIns, list, profile, targets, intakeOf);
   drawChart(weighIns, allWeighIns, profile.goal);
   renderWeeks(list, allWeighIns, byDate);
   renderCardio(list);
@@ -43,7 +43,7 @@ export function renderReport({ period, profile, targets, labels }) {
   $("rp-foot").textContent = `Skapad ${todayStr()} med Fettförbränningsveckan. Rekommendationer baserade på ExRx, inte medicinsk rådgivning. Uppgifterna är egenrapporterade.`;
 }
 
-function renderSummary(weighIns, allWeighIns, list, profile, targets) {
+function renderSummary(weighIns, allWeighIns, list, profile, targets, intakeOf) {
   const first = weighIns[0], last = weighIns[weighIns.length - 1];
   const nowAvg = last ? sevenDayAverage(allWeighIns, last.day) : null;
   const change = first ? nowAvg - first.weight : null;
@@ -70,22 +70,25 @@ function renderSummary(weighIns, allWeighIns, list, profile, targets) {
     tile({ label: "Konditionspass", value: passes.length, sub: passes.length ? `${fmt(passes.reduce((a, c) => a + c.km, 0), 1)} km på ${formatHms(passes.reduce((a, c) => a + c.s, 0))}` : "Inga pass loggade" }) +
     tile({ label: "Intensitetsminuter", value: im.length ? fmt(im.reduce((a, b) => a + b, 0) / imWeeks) : "–", unit: im.length ? "min/vecka" : "",
       sub: im.length ? `snitt per vecka · WHO rekommenderar minst ${WEEKLY_INTENSITY_GOAL}` : "Inte loggade" }) +
-    energyTile(list, targets) +
+    energyTile(list, targets, intakeOf) +
     forecastTile(allWeighIns, profile, targets);
 }
 
-/** Energibalansen de dagar där intaget är inskrivet i loggen: snitt för intag, protein och bränt, och underskottet. */
-function energyTile(list, targets) {
-  const days = list.filter((e) => e.intakeK != null);
-  if (!days.length) return tile({ label: "Energibalans", value: "–", wide: true, sub: "Skriv in ätit och bränt (kcal) i loggen, så visas snittet här." });
-  const balances = days.map((e) => energyBalance({ intake: e.intakeK, burned: e.burned }, targets.tdee));
-  const sum = balances.reduce((a, b) => a + b, 0);
-  const proteins = days.filter((e) => e.intakeP != null).map((e) => e.intakeP);
+/**
+ * Energin de dagar där något ätet är loggat: snitt för intag (allt summerat, se dayIntake i log.js), protein och
+ * bränt, nettot (ätit − bränt) och underskottet mot underhållsbehovet.
+ */
+function energyTile(list, targets, intakeOf) {
+  const days = list.filter(hasIntake);
+  if (!days.length || !intakeOf) return tile({ label: "Energi", value: "–", wide: true, sub: "Bocka av måltider och lägg in mellanmål på Idag, och bränt enligt klockan, så visas snittet här." });
+  const intakes = days.map((e) => intakeOf(e));
+  const nets = days.map((e, i) => intakes[i].k - (e.burned || 0));
+  const deficit = nets.reduce((a, n) => a + (n - targets.tdee), 0);
   const burned = days.filter((e) => e.burned != null).map((e) => e.burned);
-  return tile({ label: "Energibalans, snitt per dag", value: signed(sum / days.length, 0), unit: "kcal", wide: true, subClass: sum <= 0 ? "down" : "up",
-    sub: `${days.length} ${days.length === 1 ? "dag" : "dagar"} med inskrivet intag: ätit ${fmt(average(days.map((e) => e.intakeK)))} kcal` +
-      (proteins.length ? ` och ${fmt(average(proteins))} g protein` : "") + (burned.length ? `, bränt ${fmt(average(burned))} kcal enligt klockan` : "") +
-      `, underhåll ca ${fmt(targets.tdee)} kcal. Totalt ${signed(sum, 0)} kcal ≈ ${signed(sum / KCAL_PER_KG_FAT, 1)} kg fett.` });
+  return tile({ label: "Netto, snitt per dag", value: fmt(average(nets)), unit: "kcal", wide: true, subClass: deficit <= 0 ? "down" : "up",
+    sub: `${days.length} ${days.length === 1 ? "dag" : "dagar"}: ätit ${fmt(average(intakes.map((x) => x.k)))} kcal och ${fmt(average(intakes.map((x) => x.p)))} g protein` +
+      (burned.length ? `, bränt ${fmt(average(burned))} kcal enligt klockan` : "") + ` (kalorimål ${fmt(targets.target)}). ` +
+      `${deficit <= 0 ? "Underskott" : "Överskott"} mot underhållet (${fmt(targets.tdee)}) totalt ${fmt(Math.abs(deficit))} kcal ≈ ${fmt(Math.abs(deficit) / KCAL_PER_KG_FAT, 1)} kg fett.` });
 }
 
 /**

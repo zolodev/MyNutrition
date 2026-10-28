@@ -1229,33 +1229,40 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   fire($("sn-list").querySelector('[data-snack-remove="0"]'), "click");
   check("Utan mellanmål är dagens summa som förut", kcalToday() === before && planned() === plannedBefore && !$("sn-empty").hidden);
 
-  // Energi: inskrivet intag och brända kalorier enligt klockan ger dagens energibalans
-  const balanceTile = () => [...$("td-targets").querySelectorAll(".tile.wide")].find((t) => /balans|skott i dag/.test(t.textContent));
-  check("Utan inskrivet intag och bränt ber Idag om dem", balanceTile()?.textContent.includes("Fyll i bränt från klockan"));
+  // Energi: allt som äts summeras (måltider, mellanmål och det som skrivs in i loggen), och det klockan har bränt dras av
+  const netTile = () => $("td-targets").querySelector(".tile.net");
+  const netValue = () => Number(netTile().querySelector(".v").textContent.replace(/[^\d-−]/g, "").replace("−", "-"));
+  check("Idag visar dagens netto med ett fält för bränt", netTile() && $("td-burned") && netValue() === before);
+  $("sn-name").value = "Lunch"; $("sn-k").value = "715"; $("sn-p").value = "40"; fire($("sn-form"), "submit");
   go("logg");
   $("l-date").value = todayStr(); fire($("l-date"), "input");
-  $("l-in-k").value = "2345"; $("l-in-p").value = "162"; $("l-burned").value = "967"; fire($("logf"), "submit");
-  const saved = JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === todayStr());
-  check("Ätit, protein och bränt sparas i dagens logg", saved.intakeK === 2345 && saved.intakeP === 162 && saved.burned === 967 && saved.waist === 94);
-  check("Energin syns i loggens tabell", text("l-table").includes("Ätit 2 345 kcal · 162 g protein · bränt 967 kcal"));
+  $("l-in-k").value = "1100"; $("l-in-p").value = "75"; fire($("logf"), "submit");
+  const saved = () => JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === todayStr());
+  check("Övrigt ätit sparas i dagens logg", saved().intakeK === 1100 && saved().intakeP === 75 && saved().waist === 94 && saved().snacks.length === 1);
+  check("Energin syns i loggens tabell", text("l-table").includes("Övrigt ätit 1 100 kcal · 75 g protein"));
   go("idag");
-  const tdee = Number(balanceTile().textContent.match(/underhåll ([\d\s]+)/)[1].replace(/\D/g, ""));
-  const balance = 2345 - tdee - 967;
-  check("Idag visar det inskrivna intaget och dagens energibalans", kcalToday() === 2345 && text("td-targets").includes("inskrivet i loggen") &&
-    balanceTile().textContent.includes(`bränt 967 enligt klockan`) && Number(balanceTile().querySelector(".v").textContent.replace(/[^\d]/g, "")) === Math.abs(balance));
-  check("Rapporten visar energibalansen", text("rp-tiles").includes("Energibalans, snitt per dag") && text("rp-tiles").includes("ätit 2 345 kcal och 162 g protein, bränt 967 kcal"));
+  const proteinToday = () => Number($("td-targets").querySelectorAll(".tile")[1].querySelector(".v").textContent.replace(/\D/g, ""));
+  check("Ätit i dag summerar måltider, mellanmål och det inskrivna i loggen", kcalToday() === before + 715 + 1100 && text("sn-list").includes("Inskrivet i loggen"));
+  $("td-burned").value = "308"; fire($("td-burn"), "submit");
+  check("Bränt sparas från Idag och dras av i nettot", saved().burned === 308 && netValue() === before + 1815 - 308 && netTile().textContent.includes("− bränt 308"));
+  check("Rapporten visar nettot med allt summerat", text("rp-tiles").includes("Netto, snitt per dag") && text("rp-tiles").includes(`ätit ${(before + 1815).toLocaleString("sv-SE").replace(/\s/g, " ")} kcal`) && text("rp-tiles").includes("bränt 308 kcal"));
   go("logg");
   $("l-date").value = todayStr(); fire($("l-date"), "input");
-  check("Loggen fyller i energin när dagen öppnas", $("l-in-k").value === "2345" && $("l-burned").value === "967");
+  check("Loggen fyller i energin när dagen öppnas", $("l-in-k").value === "1100" && $("l-burned").value === "308");
   $("l-in-k").value = ""; $("l-in-p").value = ""; $("l-burned").value = ""; fire($("logf"), "submit");
   go("idag");
-  check("Utan inskrivet intag räknas avbockningarna igen", kcalToday() === before);
+  fire($("sn-list").querySelector('[data-snack-remove="0"]'), "click");
+  check("Utan inskrivet intag och mellanmål är dagens summa som förut", kcalToday() === before && netValue() === before && !$("sn-empty").hidden);
 }
 {
   const { cleanEntry } = await import("../public/js/log.js");
   const e = cleanEntry({ date: "2026-10-25", weight: 82, snacks: [{ n: "Banan", k: 105, p: 1 }, { n: "", k: 5 }], framtida: { x: 1 } });
   check("Loggens poster behåller okända fält och städar mellanmålen", e.framtida?.x === 1 && e.snacks.length === 1 && e.snacks[0].n === "Banan");
   check("Äldre poster utan mellanmål får en tom lista", cleanEntry({ date: "2026-10-25", weight: 82 }).snacks.length === 0);
+  const { dayIntake } = await import("../public/js/log.js");
+  const day = cleanEntry({ date: "2026-10-27", eaten: [0], snacks: [{ n: "Lunch", k: 715, p: 40 }], intakeK: 1100, intakeP: 75, burned: 308 });
+  const sumDay = dayIntake(day, (i) => (i === 0 ? { k: 640, p: 67 } : null));
+  check("Dagens intag summerar avbockat, mellanmål och inskrivet", sumDay.k === 640 + 715 + 1100 && sumDay.p === 67 + 40 + 75);
   const energy = cleanEntry({ date: "2026-10-25", intakeK: 2345, intakeP: 162, burned: 967 });
   check("Energin för dagen läses och felaktiga värden blir tomma", energy.intakeK === 2345 && energy.burned === 967 &&
     cleanEntry({ date: "2026-10-25", intakeK: -5, burned: "x" }).intakeK === null && cleanEntry({ date: "2026-10-25", weight: 82 }).burned === null);

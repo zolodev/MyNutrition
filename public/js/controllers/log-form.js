@@ -2,7 +2,7 @@
 // med det som är loggat. Själva datan och reglerna för den finns i log.js; tabellen och raderna ritas i views/log-view.js.
 
 import { $, $$, num, radioValue, todayStr, dayToDate, dateToDay, svDate, confirmDialog, checkDecimal, scrollToElement } from "../util.js";
-import { entries, entryFor, upsertEntry, removeEntry, cleanEntry, isIsoDate, parseWorkoutTime, formatWorkoutInput, formatHms, cleanCardio, CARDIO, intensityMinutes } from "../log.js";
+import { entries, entryFor, upsertEntry, removeEntry, cleanEntry, setEnergy, isIsoDate, parseWorkoutTime, formatWorkoutInput, formatHms, cleanCardio, CARDIO, intensityMinutes } from "../log.js";
 import { cardioRow } from "../views/log-view.js";
 
 let update = () => {}; // ritar om appen; sätts av initLogForm()
@@ -158,6 +158,14 @@ document.addEventListener("click", (ev) => {
   if (!ev.target.closest?.("[data-edit-log]")) return;
   ev.preventDefault();
   openLogFor(todayStr());
+});
+
+// Idag: bränt enligt klockan skrivs in direkt i rutan Netto i dag
+document.addEventListener("submit", (ev) => {
+  if (ev.target.id !== "td-burn") return;
+  ev.preventDefault();
+  setEnergy(todayStr(), { burned: num($("td-burned").value) });
+  update();
 });
 
 /** Koppla loggen till appen. Anropas när loggen är inläst (loadLog). */

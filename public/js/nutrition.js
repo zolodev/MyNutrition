@@ -87,7 +87,7 @@ export function computeTargets(p) {
   const carbs = Math.max(75, Math.round((target - protein * 4 - fat * 9) / 4 / 5) * 5);
   steps.push(`Protein ${proteinText} = <b>${protein} g</b>. Högt protein skyddar musklerna i underskott och mättar bäst (ExRx/ISSN: 1,4–2,0 g/kg för tränande, ca 2,2 g/kg fettfri massa vid underskott). Fett hålls lågt, 0,6 g/kg = <b>${fat} g</b> (ca ${fmt(((fat * 9) / target) * 100)} % av kalorierna; under 0,5 g/kg rekommenderas inte eftersom kroppen behöver fett för hormoner och upptag av vitaminer). Resten blir kolhydrater = <b>${carbs} g</b>, lågt men tillräckligt för styrketräning: ExRx påpekar att styrkepass bara tömmer 25–40 % av musklernas glykogen.`);
 
-  return { target, tdee, bmr, deficit, protein, fat, carbs, weight: w, flags, steps };
+  return { target, tdee, bmr, deficit, protein, fat, carbs, weight: w, flags, steps, floor };
 }
 
 /** Förväntad viktnedgång i kg per vecka för ett dagligt underskott. */

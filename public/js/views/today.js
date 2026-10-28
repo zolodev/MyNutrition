@@ -1,8 +1,8 @@
 // Idag: dagens måltider och träning, samt tidslinjerna för fasta och träning.
 
-import { $, esc, fmt, signed, hhmm, todayIndex, todayStr, DAYS } from "../util.js";
+import { $, esc, fmt, hhmm, todayIndex, todayStr, DAYS } from "../util.js";
 import { daySchedule, scheduleAdvice, workoutOf, workOn } from "../schedule.js";
-import { MEAL_NAMES, entryFor, energyBalance } from "../log.js";
+import { MEAL_NAMES, entryFor, dayIntake } from "../log.js";
 import { treatName } from "../preferences.js";
 import { NONE } from "../data/recipes.js";
 import { totals } from "../menu.js";
@@ -39,20 +39,18 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   // Mellanmål och snacks utöver planen läggs till både dagens summa och det som är ätet
   const extra = snacks.reduce((acc, x) => ({ k: acc.k + x.k, p: acc.p + x.p }), { k: 0, p: 0 });
   const sum = { ...withSwaps, k: withSwaps.k + extra.k, p: withSwaps.p + extra.p };
-  // Ätet hittills: avbockade måltider och ersatta (en ersättning är något man har ätit i stället)
-  const eaten = new Set([...(entryFor(todayStr())?.eaten || []), ...swaps.map((x) => x.meal)].filter((i) => day[i] && day[i] !== NONE));
-  const mealKcal = (i) => swapOf(i) ? { k: swapOf(i).k, p: swapOf(i).p } : week.recipes[day[i]].m;
-  const ate = [...eaten].reduce((acc, i) => ({ k: acc.k + mealKcal(i).k, p: acc.p + mealKcal(i).p }), extra);
-  const planWord = snacks.length ? "med mellanmål" : "planerat";
-  // Har man skrivit in hela dagens intag i loggen gäller det i stället för avbockningarna
+  // Ätet hittills: avbockade och ersatta måltider (en ersättning är något man har ätit i stället), mellanmål och det
+  // som är inskrivet i loggen under Energi. Allt summeras (dayIntake i log.js).
   const entry = entryFor(todayStr()) || {};
-  const typed = entry.intakeK != null;
-  const intake = { k: typed ? entry.intakeK : ate.k, p: entry.intakeP ?? ate.p };
+  const eaten = new Set([...(entry.eaten || []), ...swaps.map((x) => x.meal)].filter((i) => day[i] && day[i] !== NONE));
+  const ate = dayIntake({ ...entry, swaps, snacks }, (i) => (day[i] && day[i] !== NONE ? week.recipes[day[i]].m : null));
+  const typed = { k: entry.intakeK || 0, p: entry.intakeP || 0 };
+  const planWord = snacks.length || typed.k ? "med mellanmål" : "planerat";
   $("td-targets").innerHTML =
-    tile({ label: "Ätit i dag", value: fmt(intake.k), unit: "kcal", sub: `${typed ? "inskrivet i loggen" : `av ${fmt(sum.k)} ${planWord}`} · mål ${fmt(targets.target)}`, main: true }) +
-    tile({ label: "Protein", value: fmt(intake.p), unit: "g", sub: `${entry.intakeP != null ? "inskrivet" : `av ${fmt(sum.p)} g ${planWord}`} · mål ${fmt(targets.protein)}` }) +
+    tile({ label: "Ätit i dag", value: fmt(ate.k), unit: "kcal", sub: `av ${fmt(sum.k + typed.k)} ${planWord} · mål ${fmt(targets.target)}`, main: true }) +
+    tile({ label: "Protein", value: fmt(ate.p), unit: "g", sub: `av ${fmt(sum.p + typed.p)} g ${planWord} · mål ${fmt(targets.protein)}` }) +
     tile({ label: "Fasta", value: 16, unit: "h", sub: `${t(WINDOW)}–${t(0)}` }) +
-    balanceTile(intake.k, entry.burned, targets, typed);
+    netTile(ate.k, entry.burned, targets);
 
   // Dagens tidslinje: ätfönstret och dagens aktiviteter enligt veckoschemat (egna tider, annars planens förslag)
   const items = daySchedule(index, training.kind, breakfast);
@@ -82,15 +80,18 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   }).join("");
   // Hur mycket av dagen som är ätet
   const mealCount = day.filter((id) => id !== NONE).length;
-  const snackText = snacks.length ? ` och ${snacks.length} mellanmål` : "";
-  $("td-eaten").textContent = eaten.size || snacks.length
-    ? `Ätit ${eaten.size} av ${mealCount} måltider${snackText}: ${fmt(ate.k)} av ${fmt(sum.k)} kcal och ${fmt(ate.p)} av ${fmt(sum.p)} g protein.`
+  const snackText = snacks.length + (typed.k ? 1 : 0) ? ` och ${snacks.length + (typed.k ? 1 : 0)} mellanmål` : "";
+  $("td-eaten").textContent = eaten.size || snacks.length || typed.k
+    ? `Ätit ${eaten.size} av ${mealCount} måltider${snackText}: ${fmt(ate.k)} av ${fmt(sum.k + typed.k)} kcal och ${fmt(ate.p)} av ${fmt(sum.p + typed.p)} g protein.`
     : "Bocka av måltiderna när du har ätit dem.";
   // Mellanmål och snacks (controllers/meal-swap.js)
   $("sn-list").innerHTML = snacks.map((x, i) => `<li><span class="main"><b>${esc(x.n)}</b></span><span class="end">${fmt(x.k)} kcal · ${fmt(x.p)} g P ` +
     `<button type="button" class="linkbtn" data-snack-remove="${i}" aria-label="Ta bort ${esc(x.n)}">Ta bort</button></span></li>`).join("");
-  $("sn-list").hidden = !snacks.length;
-  $("sn-empty").hidden = snacks.length > 0;
+  // Det som är inskrivet i loggen under Energi räknas också, och visas här så att det syns var siffran kommer ifrån
+  if (entry.intakeK != null || entry.intakeP != null) $("sn-list").insertAdjacentHTML("beforeend", `<li><span class="main"><b>Inskrivet i loggen</b></span>` +
+    `<span class="end">${fmt(typed.k)} kcal · ${fmt(typed.p)} g P <button type="button" class="linkbtn" data-edit-log>Ändra</button></span></li>`);
+  $("sn-list").hidden = !$("sn-list").children.length;
+  $("sn-empty").hidden = !$("sn-list").hidden;
   // Formuläret för att ersätta en måltid: dagens måltider att välja bland, och senast använda ersättningar
   $("sw-meal").innerHTML = day.map((id, i) => (id === NONE ? "" : `<option value="${i}">${MEAL_NAMES[i]}${swapOf(i) ? " (ersatt)" : ""}</option>`)).join("");
   if (day[1] !== NONE && !swapOf(1)) $("sw-meal").value = "1"; // oftast eftermiddagsmåltiden
@@ -126,22 +127,23 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
 }
 
 /**
- * Dagens energibalans: ätit minus underhållsbehovet och det klockan säger att man har bränt.
- * Underhållsbehovet räknar inte med träning och steg, så de brända kalorierna läggs till.
+ * Dagens netto: allt som är ätet minus det klockan säger att man har bränt, jämfört med kalorimålet och det lägsta
+ * man bör äta. Underhållsbehovet räknar inte med träning och steg, därför dras det brända av.
+ * Bränt skrivs in direkt i rutan (controllers/log-form.js, #td-burn) eller i loggen.
  */
-function balanceTile(intake, burned, targets, typed) {
-  const link = `<a href="#logf" data-edit-log>${burned != null ? "Ändra" : "Fyll i bränt från klockan"}</a>`;
-  const balance = energyBalance({ intake, burned }, targets.tdee);
-  if (balance == null) return "";
-  if (burned == null && !typed) return tile({ label: "Energibalans i dag", value: "–", wide: true,
-    sub: `Skriv in vad du har ätit och bränt enligt klockan i loggen, så räknas dagens över- eller underskott ut. ${link}` });
-  const out = targets.tdee + (burned || 0);
-  const verdict = balance < -1000 ? " Stort underskott; ät gärna lite mer en så aktiv dag."
-    : balance <= 0 ? "" : intake > targets.target ? " Över behovet i dag; det jämnar ut sig över veckan." : "";
-  return tile({ label: balance <= 0 ? "Underskott i dag" : "Överskott i dag", value: signed(balance, 0), unit: "kcal", wide: true,
-    subClass: balance <= 0 ? "down" : "up",
-    sub: `Ätit ${fmt(intake)} − förbrukat ca ${fmt(out)} (underhåll ${fmt(targets.tdee)}${burned != null ? ` + bränt ${fmt(burned)} enligt klockan` : ", utan träning"}).` +
-      `${verdict} ${burned != null ? "Klockor visar ofta lite för mycket." : ""} ${link}` });
+function netTile(intake, burned, targets) {
+  const net = Math.round(intake - (burned || 0));
+  const floor = targets.floor ?? 1500;
+  const verdict = !intake ? "" : net < floor ? ` Under det lägsta (${fmt(floor)} kcal); ät gärna lite till.`
+    : net <= targets.target ? " Inom kalorimålet." : ` ${fmt(net - targets.target)} kcal över kalorimålet.`;
+  const deficit = Math.round(targets.tdee - net);
+  return `<div class="tile wide net${net < floor && intake ? " low" : ""}"><span class="eyebrow">Netto i dag</span>` +
+    `<span class="v num">${fmt(net)} <small>kcal</small></span>` +
+    `<span class="sub">Ätit ${fmt(intake)}${burned ? ` − bränt ${fmt(burned)}` : ""} = ${fmt(net)} kcal. Kalorimål ${fmt(targets.target)} · lägst ${fmt(floor)}.${verdict}` +
+    `${intake ? ` ${deficit >= 0 ? "Underskott" : "Överskott"} mot underhållet (${fmt(targets.tdee)}) ca ${fmt(Math.abs(deficit))} kcal.` : ""}</span>` +
+    `<form class="td-burn" id="td-burn" autocomplete="off"><label for="td-burned">Bränt i dag enligt klockan</label>` +
+    `<input type="text" inputmode="numeric" data-decimal id="td-burned" min="0" max="10000" placeholder="t.ex. 308" value="${burned ?? ""}">` +
+    `<span>kcal</span><button type="submit" class="btn small">Spara</button></form></div>`;
 }
 
 let shown = null; // veckan och dagen som Idag visar, för valen i fillMoveOptions

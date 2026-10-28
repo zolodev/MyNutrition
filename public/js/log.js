@@ -278,19 +278,40 @@ export function addWorkout(date, { text, vigorous = 0, strength = false }) {
 
 
 
-// ---------- Energibalans ----------
+// ---------- Energi ----------
+// Allt som äts en dag summeras: avbockade och ersatta måltider, mellanmål och det som skrivs in i loggen under Energi
+// (`intakeK`/`intakeP`, som läggs till det andra). Det klockan säger att man har bränt (`burned`) dras av, så att
+// nettot går att jämföra med kalorimålet. (I 0.22.0 ersatte det inskrivna intaget avbockningarna i stället för att
+// läggas till; från 0.22.1 summeras allt. Sparad data är densamma.)
 
 /**
- * Dagens energibalans: det som åts minus underhållsbehovet (`tdee`, utan träning och steg) och det klockan säger att
- * man har bränt. Negativt = underskott. `intake` är det inskrivna intaget, annars det som är ätet enligt Idag.
+ * Allt som åts en dag: { k, p }. `planned(i)` ger { k, p } för planens måltid i (0 frukost …) den dagen, eller null
+ * om dagen inte har den måltiden.
  */
-export function energyBalance({ intake, burned }, tdee) {
-  if (intake == null || !(tdee > 0)) return null;
-  return Math.round(intake - tdee - (burned || 0));
+export function dayIntake(e, planned) {
+  if (!e) return { k: 0, p: 0 };
+  const swaps = e.swaps || [];
+  let k = (e.intakeK || 0) + (e.snacks || []).reduce((a, x) => a + x.k, 0);
+  let p = (e.intakeP || 0) + (e.snacks || []).reduce((a, x) => a + x.p, 0);
+  for (const i of new Set([...(e.eaten || []), ...swaps.map((x) => x.meal)])) {
+    const meal = planned(i) && (swaps.find((x) => x.meal === i) || planned(i));
+    if (meal) { k += meal.k; p += meal.p; }
+  }
+  return { k: Math.round(k), p: Math.round(p) };
 }
 
-/** "Ätit 2 345 kcal · 162 g protein · bränt 967 kcal", eller "" om inget är inskrivet. */
-export const energyText = (e) => [e.intakeK != null ? `Ätit ${fmt(e.intakeK)} kcal` : "", e.intakeP != null ? `${fmt(e.intakeP)} g protein` : "",
+/** Har dagen något ätet loggat (avbockat, ersatt, mellanmål eller inskrivet)? */
+export const hasIntake = (e) => !!e && (e.intakeK != null || e.eaten?.length > 0 || e.swaps?.length > 0 || e.snacks?.length > 0);
+
+/** Spara dagens energi ({ intakeK, intakeP, burned }; null tar bort ett värde) utan att röra resten av posten. */
+export function setEnergy(date, values) {
+  const next = cleanEntry({ ...(entryFor(date) || { date }), date, ...values });
+  if (isEmptyEntry(next)) removeEntry(date);
+  else upsertEntry(next);
+}
+
+/** "Övrigt ätit 1 100 kcal · 75 g protein · bränt 308 kcal", eller "" om inget är inskrivet. */
+export const energyText = (e) => [e.intakeK != null ? `Övrigt ätit ${fmt(e.intakeK)} kcal` : "", e.intakeP != null ? `${fmt(e.intakeP)} g protein` : "",
   e.burned != null ? `bränt ${fmt(e.burned)} kcal` : ""].filter(Boolean).join(" · ");
 
 // ---------- Statistik ----------

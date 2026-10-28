@@ -1,6 +1,6 @@
 {
   "name": "fettforbranningsveckan",
-  "version": "0.22.0",
+  "version": "0.22.1",
   "private": true,
   "type": "module",
   "description": "Personlig veckoplan för viktnedgång som installerbar webbapp (PWA).",

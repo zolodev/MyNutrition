@@ -44,7 +44,7 @@ bakgrunden (localStorage som reserv). **Inget skrivs innan villkoren är godkän
 | --- | --- | --- |
 | `ffv` | Profilen ({ fältets id: värde }, bl.a. eget kalorimål `kcal`) | app.js |
 | `ffv-terms` | Godkända villkor (gäller bara enheten) | app.js |
-| `ffv-log` | Loggposter (vikt, pass, anteckning, ersatta måltider `swaps`, avbockade måltider `eaten`, mellanmål `snacks` från 0.21.0, ätit `intakeK`/`intakeP` och bränt `burned` (kcal) från 0.22.0 …; okända fält behålls) | log.js |
+| `ffv-log` | Loggposter (vikt, pass, anteckning, ersatta måltider `swaps`, avbockade måltider `eaten`, mellanmål `snacks` från 0.21.0, övrigt ätit `intakeK`/`intakeP` (läggs till måltider och mellanmål) och bränt `burned` (kcal) från 0.22.0 …; okända fält behålls) | log.js |
 | `ffv-excl` | Allergier, bortvalda livsmedel och ord | preferences.js |
 | `ffv-myfoods`, `ffv-myrecipes`, `ffv-mysupps` | Egna livsmedel, recept och tillskott | preferences.js, myrecipes.js, supplements.js |
 | `ffv-supps` | Valda tillskott | supplements.js |

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- Appens version (samma som js/version.js; uppdateras av npm run bump). main.js använder den för att se till att
        alla filer kommer från samma version. -->
-  <meta name="app-version" content="0.22.0">
+  <meta name="app-version" content="0.22.1">
   <meta name="description"
     content="Personlig veckoplan för viktnedgång: kalorimål, styrkeprogram med ExRx-övningar, säsongsrecept, fasta 16:8 och logg.">
   <meta name="theme-color" content="#1d5c4c" media="(prefers-color-scheme: light)">
@@ -250,7 +250,7 @@
     href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="css/app.css">
   <!-- ?v= gör att startfilen alltid hämtas på nytt efter en uppdatering, även ur en gammal webbläsarcache -->
-  <script type="module" src="js/main.js?v=0.22.0" onerror="ffvBootFailed()"></script>
+  <script type="module" src="js/main.js?v=0.22.1" onerror="ffvBootFailed()"></script>
 </head>
 
 <body>
@@ -743,11 +743,11 @@
               <div class="field">
                 <span class="label">Energi <small>valfritt</small></span>
                 <div class="row3">
-                  <div class="field"><label for="l-in-k">Ätit (kcal)</label><input type="text" inputmode="numeric" data-decimal id="l-in-k" min="0" max="15000" placeholder="t.ex. 2345"></div>
-                  <div class="field"><label for="l-in-p">Protein (g)</label><input type="text" inputmode="numeric" data-decimal id="l-in-p" min="0" max="1000" placeholder="t.ex. 162"></div>
+                  <div class="field"><label for="l-in-k">Övrigt ätit (kcal)</label><input type="text" inputmode="numeric" data-decimal id="l-in-k" min="0" max="15000" placeholder="t.ex. 2345"></div>
+                  <div class="field"><label for="l-in-p">Övrigt protein (g)</label><input type="text" inputmode="numeric" data-decimal id="l-in-p" min="0" max="1000" placeholder="t.ex. 162"></div>
                   <div class="field"><label for="l-burned">Bränt (kcal)</label><input type="text" inputmode="numeric" data-decimal id="l-burned" min="0" max="10000" placeholder="t.ex. 967"></div>
                 </div>
-                <small>Ätit: allt du åt under dagen. Lämnar du det tomt räknas det du har bockat av på Idag. Bränt: aktiva kalorier enligt klockan, så räknas dagens energibalans ut mot ditt underhållsbehov.</small>
+                <small>Övrigt ätit läggs till måltiderna du har bockat av och mellanmålen på Idag; allt summeras. Bränt: aktiva kalorier enligt klockan, som dras av så att du ser dagens netto på Idag.</small>
               </div>
               <div class="field">
                 <span class="label">Hur mår du?</span>
