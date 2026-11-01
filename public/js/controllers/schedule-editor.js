@@ -7,7 +7,7 @@
 
 import { $, esc, DAYS } from "../util.js";
 import { formatClock, parseClock } from "../fasting.js";
-import { STRENGTH, INTERVALS, WINDOW } from "../day.js";
+import { STRENGTH, INTERVALS, WINDOW, WALK_AT, FASTING } from "../day.js";
 import { KINDS, dayOverrides, hasOverrides, setActivity, setExtras, resetDay, setSession, suggestion, daySchedule, scheduleAdvice, getWork, setWork, workOn, addExtraOnDays, removeExtraEverywhere, ownSessions } from "../schedule.js";
 
 let deps = { update: () => {}, setGymDay: () => {} };
@@ -17,7 +17,7 @@ let last = null; // { program, breakfast } från senaste ritningen
 const fallback = (kind, breakfast) => ({
   str: { from: breakfast + STRENGTH[0], to: breakfast + STRENGTH[1] },
   int: { from: breakfast + INTERVALS[0], to: breakfast + INTERVALS[1] },
-  walk: { from: breakfast + WINDOW, to: breakfast + WINDOW + 0.5 },
+  walk: { from: breakfast + WALK_AT, to: breakfast + WALK_AT + 0.5 },
 })[kind];
 
 function timeInputs(day, kind, own, plan, index = "") {
@@ -50,7 +50,7 @@ function dayCard(day) {
     `<label class="sched-hard"><input type="checkbox" data-sched-hard${x.hard === true ? " checked" : ""}><span>Hårt pass</span></label></div>`).join("");
   const items = daySchedule(day, type.kind, breakfast);
   const next = program.schedule[(day + 1) % 7];
-  const advice = scheduleAdvice(items, { work: workOn(day), eat: { from: breakfast, to: breakfast + WINDOW }, nextIsLegs: next.kind === "str" && program.legSessions.includes(next.session) });
+  const advice = scheduleAdvice(items, { work: workOn(day), eat: { from: breakfast, to: FASTING ? breakfast + WINDOW : 99 }, nextIsLegs: next.kind === "str" && program.legSessions.includes(next.session) });
   // Samma muskler två dagar i rad (t.ex. helkropp på lördag och ben på söndag): ett råd, men inget blockeras
   const both = gym && next.kind === "str" && [program.legSessions, program.upperSessions].find((g) => g.includes(type.session) && g.includes(next.session));
   if (both) advice.push({ level: "warn", text: `${type.label} och ${next.label.toLowerCase()} dagen efter tränar ${both === program.legSessions ? "benen" : "överkroppen"} två dagar i rad. Kör det andra passet lite lättare, eller välj ett annat pass för en av dagarna.` });

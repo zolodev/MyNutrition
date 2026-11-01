@@ -6,6 +6,34 @@ MINOR höjs för nya funktioner, PATCH för rättningar. Höj versionen med `npm
 
 ## [Ej släppt]
 
+## [0.23.0] - 2026-11-01
+
+### Tillagt
+- Val av fasta under Profil → Fasta: 16:8 (som förut), 14:10, 12:12 eller ingen fasta. Med ett längre ätfönster
+  räknas fastan, timern och råden om när du bryter fastan om; utan fasta döljs fastan på Idag, ätfönstret i
+  tidslinjen och råden om att bryta fastan, och recepten och träningen är som förut. Sparas i profilen (`ffv`,
+  `fast`); profiler utan valet är 16:8.
+- Kvar att äta: Netto i dag säger hur mycket du minst behöver äta till, det lägsta (1 500 kcal för män, 1 200 för
+  kvinnor) plus det klockan har bränt. Utan fasta visas det också i en egen ruta, med det som är kvar till
+  kalorimålet.
+- Sista måltiden i går under Fastan i dag: åt du sent, t.ex. 20:00, fyller du i det och fastan och frukosten räknas
+  från då (i dag 12:00 för 16 h).
+- Mina mellanmål under Inställningar: egna mellanmål med kalorier och protein per portion, som går att lägga till,
+  ändra och ta bort. De visas som snabbval när du lägger till ett mellanmål på Idag. Från början finns Kesella 250 g
+  (355 kcal, 17 g protein) och Chokladpudding 230 g (161 kcal, 20 g protein). Sparas i en ny nyckel (`ffv-snacks`)
+  som följer med i exporten.
+- Mina livsmedel har en egen sida under Inställningar. Kalorier och protein per 100 g krävs, och fler näringsvärden
+  läggs till som rader: kolhydrater, fett, mättat fett, socker, fiber, salt eller ett eget fält med eget namn och
+  egen enhet (t.ex. järn i mg). Ett livsmedel kan ändras i efterhand. De nya näringsvärdena sparas i `more` i
+  `ffv-myfoods`; kolhydrater och fett sparas som förut.
+
+### Rättat
+- Ett livsmedel som läggs till medan ett recept skrivs går nu att välja direkt i receptets ingredienser. Tidigare
+  syntes det bara i nya rader.
+- Ett mellanmål som äts efter att ätfönstret stängt flyttar nu dagens sista måltid till den tiden, så att fastan
+  räknas från då. Tidigare låg sista måltiden kvar, och appen föreslog frukost för tidigt nästa dag. Mellanmålet får
+  ett klockslag (`at` i `snacks`, tomt = nu).
+
 ## [0.22.1] - 2026-10-28
 
 ### Ändrat

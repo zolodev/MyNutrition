@@ -12,7 +12,7 @@
 
 import { load, save } from "./util.js";
 import { parseClock } from "./fasting.js";
-import { STRENGTH, INTERVALS, WINDOW, MEAL_AT } from "./day.js";
+import { STRENGTH, INTERVALS, WALK_AT, MEAL_AT } from "./day.js";
 import { customTime } from "./trainingtimes.js"; // egna träningstider från 0.8.0, läses fortfarande
 
 const KEY = "ffv-schedule";
@@ -171,7 +171,7 @@ export function suggestion(day, kind, breakfast) {
     str: kind === "str" ? own || outsideWork({ from: breakfast + STRENGTH[0], to: breakfast + STRENGTH[1] }, work) : null,
     int: kind === "int" ? outsideWork({ from: breakfast + INTERVALS[0], to: breakfast + INTERVALS[1] }, work) : null,
     // Promenad 20–30 min efter eftermiddagsmåltiden sänker blodsockret; på vilodagar föreslås den alltid
-    walk: kind === "rest" ? outsideWork({ from: breakfast + WINDOW, to: breakfast + WINDOW + 0.5 }, work) : null,
+    walk: kind === "rest" ? outsideWork({ from: breakfast + WALK_AT, to: breakfast + WALK_AT + 0.5 }, work) : null,
   };
 }
 

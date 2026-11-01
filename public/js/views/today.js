@@ -6,7 +6,7 @@ import { MEAL_NAMES, entryFor, dayIntake } from "../log.js";
 import { treatName } from "../preferences.js";
 import { NONE } from "../data/recipes.js";
 import { totals } from "../menu.js";
-import { MEAL_AT, WINDOW, STRENGTH, INTERVALS } from "../day.js";
+import { MEAL_AT, WINDOW, WALK_AT, FASTING, STRENGTH, INTERVALS } from "../day.js";
 import { tile } from "./components.js";
 import { supplementTips, generalNotes, usesSupplements } from "../supplements.js";
 import { formatClock } from "../fasting.js";
@@ -30,7 +30,8 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   $("td-date").textContent = new Date().toLocaleDateString("sv-SE", { weekday: "long", day: "numeric", month: "long" });
   $("td-title").textContent =
     training.kind === "str" ? `Gymdag: ${training.label[0].toLowerCase() + training.label.slice(1)}` : training.kind === "int" ? "Intervalldag" : "Vilodag";
-  $("td-sub").textContent = `Frukost ${t(0)}, eftermiddagsmåltid ${t(MEAL_AT)}, sedan fasta till i morgon ${t(0)}.`;
+  $("td-sub").textContent = FASTING ? `Frukost ${t(0)}, eftermiddagsmåltid ${t(MEAL_AT)}, sedan fasta till i morgon ${t(0)}.`
+    : `Frukost ${t(0)} och eftermiddagsmåltid ${t(MEAL_AT)}. Ät mellanmål när du behöver, gärna efter träningen.`;
 
   // Dagens summa: planens recept, utom de måltider som ersattes med något annat
   const swapOf = (i) => swaps.find((x) => x.meal === i);
@@ -49,17 +50,17 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
   $("td-targets").innerHTML =
     tile({ label: "Ätit i dag", value: fmt(ate.k), unit: "kcal", sub: `av ${fmt(sum.k + typed.k)} ${planWord} · mål ${fmt(targets.target)}`, main: true }) +
     tile({ label: "Protein", value: fmt(ate.p), unit: "g", sub: `av ${fmt(sum.p + typed.p)} g ${planWord} · mål ${fmt(targets.protein)}` }) +
-    tile({ label: "Fasta", value: 16, unit: "h", sub: `${t(WINDOW)}–${t(0)}` }) +
+    (FASTING ? tile({ label: "Fasta", value: 24 - WINDOW, unit: "h", sub: `${t(WINDOW)}–${t(0)}` }) : leftTile(ate.k, entry.burned, targets)) +
     netTile(ate.k, entry.burned, targets);
 
   // Dagens tidslinje: ätfönstret och dagens aktiviteter enligt veckoschemat (egna tider, annars planens förslag)
   const items = daySchedule(index, training.kind, breakfast);
   const span = (x) => `${formatClock(x.from)}–${formatClock(x.to)}`;
-  renderTimeline($("td-timeline"), [{ from: at(0), to: at(WINDOW), cls: "eat", label: `Ätfönster ${t(0)}–${t(WINDOW)}` },
+  renderTimeline($("td-timeline"), [...(FASTING ? [{ from: at(0), to: at(WINDOW), cls: "eat", label: `Ätfönster ${t(0)}–${t(WINDOW)}` }] : []),
     ...items.map((x) => ({ from: x.from, to: x.to, cls: x.kind === "other" ? (x.hard ? "int" : "walk") : x.kind, label: `${x.label} ${span(x)}` }))],
   [{ at: at(0), label: `Frukost ${t(0)}` }, { at: at(MEAL_AT), label: `Måltid ${t(MEAL_AT)}` }]);
   const next = program.schedule[(index + 1) % 7];
-  const advice = scheduleAdvice(items, { work: workOn(index), eat: { from: at(0), to: at(WINDOW) }, nextIsLegs: next.kind === "str" && program.legSessions.includes(next.session) });
+  const advice = scheduleAdvice(items, { work: workOn(index), eat: { from: at(0), to: FASTING ? at(WINDOW) : 99 }, nextIsLegs: next.kind === "str" && program.legSessions.includes(next.session) });
   $("td-advice").innerHTML = advice.map((a) => `<li class="${a.level}">${esc(a.text)}</li>`).join("");
 
   // Dagens recept, fullständiga
@@ -131,16 +132,29 @@ export function renderToday({ week, targets, program, breakfast, weight, swaps =
  * man bör äta. Underhållsbehovet räknar inte med träning och steg, därför dras det brända av.
  * Bränt skrivs in direkt i rutan (controllers/log-form.js, #td-burn) eller i loggen.
  */
+/** Minst kvar att äta i dag: det lägsta (1 500 kcal för män) plus det klockan har bränt, minus det som är ätet. */
+const minimumLeft = (intake, burned, targets) => Math.max(0, Math.round((targets.floor ?? 1500) + (burned || 0) - intake));
+
+/** Utan fasta: hur mycket som är kvar att äta i dag, minst och till kalorimålet (båda plus det brända). */
+function leftTile(intake, burned, targets) {
+  const min = minimumLeft(intake, burned, targets);
+  const toTarget = Math.max(0, Math.round(targets.target + (burned || 0) - intake));
+  return tile({ label: "Kvar att äta", value: min ? `minst ${fmt(min)}` : "✓", unit: min ? "kcal" : "",
+    sub: min ? `${fmt(toTarget)} till kalorimålet${burned ? " med det brända" : ""}` : toTarget ? `Lägsta nivån är nådd · ${fmt(toTarget)} kvar till målet` : "Kalorimålet är nått" });
+}
+
 function netTile(intake, burned, targets) {
   const net = Math.round(intake - (burned || 0));
   const floor = targets.floor ?? 1500;
-  const verdict = !intake ? "" : net < floor ? ` Under det lägsta (${fmt(floor)} kcal); ät gärna lite till.`
+  const min = minimumLeft(intake, burned, targets);
+  const verdict = !intake ? "" : net < floor ? ` Under det lägsta (${fmt(floor)} kcal).`
     : net <= targets.target ? " Inom kalorimålet." : ` ${fmt(net - targets.target)} kcal över kalorimålet.`;
   const deficit = Math.round(targets.tdee - net);
   return `<div class="tile wide net${net < floor && intake ? " low" : ""}"><span class="eyebrow">Netto i dag</span>` +
     `<span class="v num">${fmt(net)} <small>kcal</small></span>` +
     `<span class="sub">Ätit ${fmt(intake)}${burned ? ` − bränt ${fmt(burned)}` : ""} = ${fmt(net)} kcal. Kalorimål ${fmt(targets.target)} · lägst ${fmt(floor)}.${verdict}` +
-    `${intake ? ` ${deficit >= 0 ? "Underskott" : "Överskott"} mot underhållet (${fmt(targets.tdee)}) ca ${fmt(Math.abs(deficit))} kcal.` : ""}</span>` +
+    `${intake ? ` ${deficit >= 0 ? "Underskott" : "Överskott"} mot underhållet (${fmt(targets.tdee)}) ca ${fmt(Math.abs(deficit))} kcal.` : ""}` +
+    `${min ? ` <b class="min-left">Ät minst ${fmt(min)} kcal till i dag</b> (${fmt(floor)}${burned ? ` + bränt ${fmt(burned)}` : ""} − ätit ${fmt(intake)}).` : ""}</span>` +
     `<form class="td-burn" id="td-burn" autocomplete="off"><label for="td-burned">Bränt i dag enligt klockan</label>` +
     `<input type="text" inputmode="numeric" data-decimal id="td-burned" min="0" max="10000" placeholder="t.ex. 308" value="${burned ?? ""}">` +
     `<span>kcal</span><button type="submit" class="btn small">Spara</button></form></div>`;
@@ -169,13 +183,15 @@ export function renderFasting(targets, breakfast) {
   const at = (offset) => breakfast + offset;
   const meals = [{ at: at(0), label: `Frukost ${t(0)}` }, { at: at(MEAL_AT), label: `Måltid ${t(MEAL_AT)}` }];
 
-  $("fast-sum").innerHTML = `Ätfönster <b class="num">${t(0)}–${t(WINDOW)}</b> (8 h) · fasta <b class="num">${t(WINDOW)}–${t(0)}</b> (16 h)`;
+  $("fast-title").textContent = FASTING ? `${24 - WINDOW}:${WINDOW} med tidigt ätfönster` : "Ingen fasta just nu";
+  $("fast-sum").innerHTML = FASTING ? `Ätfönster <b class="num">${t(0)}–${t(WINDOW)}</b> (${WINDOW} h) · fasta <b class="num">${t(WINDOW)}–${t(0)}</b> (${24 - WINDOW} h)`
+    : `Du har valt att inte fasta (Profil → Fasta). Ät dina måltider och mellanmål när det passar, och minst ${fmt(targets.floor ?? 1500)} kcal plus det du har bränt. Här är hur fastan fungerar om du vill börja igen.`;
   $("fast-protein").textContent = `${fmt(targets.protein / 2)} g`;
   renderTimeline($("tl-eat"), [{ from: at(0), to: at(WINDOW), cls: "eat", label: `Ätfönster ${t(0)}–${t(WINDOW)}` }], meals);
   renderTimeline($("tl-train"), [
     { from: at(INTERVALS[0]), to: at(INTERVALS[1]), cls: "int", label: `Intervaller ${t(INTERVALS[0])}–${t(INTERVALS[1])}` },
     { from: at(STRENGTH[0]), to: at(STRENGTH[1]), cls: "str", label: `Styrkepass ${t(STRENGTH[0])}–${t(STRENGTH[1])}` },
-    { from: at(WINDOW), to: at(WINDOW + 0.5), cls: "walk", label: `Promenad ${t(WINDOW)}` },
+    { from: at(WALK_AT), to: at(WALK_AT + 0.5), cls: "walk", label: `Promenad ${t(WALK_AT)}` },
   ], meals);
   $("tl-train-note").innerHTML =
     `<b>Styrkepass ${t(STRENGTH[0])}–${t(STRENGTH[1])} på gymdagar:</b> frukosten har lagt sig och ger energi, och eftermiddagsmåltiden ${t(MEAL_AT)} blir återhämtningsmåltiden med ca ${fmt(targets.protein / 2)} g protein. ` +

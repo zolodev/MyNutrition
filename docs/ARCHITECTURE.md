@@ -42,11 +42,11 @@ bakgrunden (localStorage som reserv). **Inget skrivs innan villkoren är godkän
 
 | Nyckel | Innehåll | Modul |
 | --- | --- | --- |
-| `ffv` | Profilen ({ fältets id: värde }, bl.a. eget kalorimål `kcal`) | app.js |
+| `ffv` | Profilen ({ fältets id: värde }, bl.a. eget kalorimål `kcal` och fasta `fast` från 0.23.0: "16", "14", "12" eller "0" = ingen; saknas = 16:8) | app.js |
 | `ffv-terms` | Godkända villkor (gäller bara enheten) | app.js |
 | `ffv-log` | Loggposter (vikt, pass, anteckning, ersatta måltider `swaps`, avbockade måltider `eaten`, mellanmål `snacks` från 0.21.0, övrigt ätit `intakeK`/`intakeP` (läggs till måltider och mellanmål) och bränt `burned` (kcal) från 0.22.0 …; okända fält behålls) | log.js |
 | `ffv-excl` | Allergier, bortvalda livsmedel och ord | preferences.js |
-| `ffv-myfoods`, `ffv-myrecipes`, `ffv-mysupps` | Egna livsmedel, recept och tillskott | preferences.js, myrecipes.js, supplements.js |
+| `ffv-myfoods`, `ffv-myrecipes`, `ffv-mysupps` | Egna livsmedel (per 100 g; fler näringsvärden i `more: [{ n, v, u }]` från 0.23.0, okända fält behålls), recept och tillskott | preferences.js, myrecipes.js, supplements.js |
 | `ffv-supps` | Valda tillskott | supplements.js |
 | `ffv-seed`, `ffv-salt`, `ffv-tseed` | Slumpfrön för meny och träning (plankoden) | menu.js |
 | `ffv-shop` | Avbockat i inköpslistan, gäller alla veckor | app.js |
@@ -58,6 +58,7 @@ bakgrunden (localStorage som reserv). **Inget skrivs innan villkoren är godkän
 | `ffv-goals` | Mål för konditionen per aktivitet, först löpning: `{ lopning: { weekKm, weekRuns, distKm, timeS } }` (alla valfria), från 0.19.0 | goals.js |
 | `ffv-meals` | Efterrätt vilka veckodagar, tillbehör vilka veckodagar (`sideDays`), fuskdag (`cheatDay`) med godis, billiga råvaror (`cheap`) och valda billigare råvaror (`swaps`) | preferences.js |
 | `ffv-mealswaps` | Senast använda ersättningar för måltider (snabbval) | log.js |
+| `ffv-snacks` | Mina mellanmål, snabbval när ett mellanmål läggs till på Idag: `[{ id, n, k, p }]` (kcal och protein per portion; okända fält behålls), från 0.23.0. Saknas nyckeln visas förslagen i `SNACKS` (data/meal-replacements.js) | snacks.js |
 | `ffv-workout` | Pågående gympass (bara för enheten, överlever en omladdning) | controllers/workout.js |
 | `ffv-install-declined`, `ffv-swipe-hint` | Bara för enheten | pwa.js, navigation.js |
 | `ffv-lastexport`, `ffv-backup-snooze` | Senaste export och påminnelsen om säkerhetskopia (bara för enheten) | controllers/backup-form.js |

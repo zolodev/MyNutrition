@@ -570,9 +570,43 @@ check("Fiskallergi tar bort fisk ur inköpslistan", !$("shop").querySelector('[d
 fish.checked = false; fire(fish, "change");
 
 // Eget livsmedel
-$("mf-name").value = "Kycklinglårfilé"; $("mf-k").value = "140"; $("mf-p").value = "19"; $("mf-f").value = "7"; $("mf-cat").value = "kott"; $("mf-rep").value = "kyckling"; $("mf-mode").value = "always";
+$("mf-name").value = "Kycklinglårfilé"; $("mf-k").value = "140"; $("mf-p").value = "19"; $("mf-cat").value = "kott"; $("mf-rep").value = "kyckling"; $("mf-mode").value = "always";
+fire($("mf-more-add"), "click");
+const mfRows = () => [...$("mf-more").querySelectorAll(".mf-row")];
+check("Första nya näringsvärdet är kolhydrater, nästa fett", mfRows()[0].querySelector("[data-mf-nutr]").value === "c");
+fire($("mf-more-add"), "click");
+check("Nästa näringsvärde föreslår ett som inte är valt", mfRows()[1].querySelector("[data-mf-nutr]").value === "f" && mfRows()[1].querySelector("[data-mf-unit]").value === "g" && mfRows()[1].querySelector("[data-mf-unit]").readOnly);
+mfRows()[1].querySelector("[data-mf-val]").value = "7";
+fire($("mf-more-add"), "click");
+const ownRow = mfRows()[2];
+ownRow.querySelector("[data-mf-nutr]").value = "__own"; fire(ownRow.querySelector("[data-mf-nutr]"), "change");
+check("Eget fält visar namn och en enhet som går att ändra", !ownRow.querySelector("[data-mf-name]").hidden && !ownRow.querySelector("[data-mf-unit]").readOnly);
+ownRow.querySelector("[data-mf-val]").value = "1,2"; ownRow.querySelector("[data-mf-unit]").value = "mg";
 fire($("mf"), "submit");
+check("Ett eget fält utan namn sparas inte", text("mf-msg").includes("namn på det egna fältet") && !$("mf-list").textContent.includes("Kycklinglårfilé"));
+ownRow.querySelector("[data-mf-name]").value = "Järn";
+fire($("mf"), "submit");
+const savedFood = () => JSON.parse(localStorage.getItem("ffv-myfoods")).find((m) => m.n === "Kycklinglårfilé");
 check("Eget livsmedel läggs till och ersätter", $("mf-list").textContent.includes("Kycklinglårfilé") && (!$("shop").querySelector('[data-shop="kyckling"]')));
+check("Fett sparas som förut och egna fält i more", savedFood().f === 7 && savedFood().c === 0 && savedFood().more.length === 1 && savedFood().more[0].n === "Järn" && savedFood().more[0].v === 1.2 && savedFood().more[0].u === "mg");
+check("Listan visar de nya näringsvärdena", text("mf-list").includes("F 7") && text("mf-list").includes("Järn 1,2 mg") && $("mf-more").children.length === 0);
+// Ändra: lägg till fiber
+fire([...$("mf-list").querySelectorAll(".my-food")].find((r) => r.textContent.includes("Kycklinglårfilé")).querySelector("[data-mfedit]"), "click");
+check("Ändra fyller i formuläret med näringsvärdena", $("mf-name").value === "Kycklinglårfilé" && $("mf-k").value === "140" && mfRows().length === 2 && mfRows()[0].querySelector("[data-mf-nutr]").value === "f" && mfRows()[1].querySelector("[data-mf-name]").value === "Järn" && !$("mf-cancel").hidden);
+fire($("mf-more-add"), "click");
+const fiberRow = mfRows()[2]; fiberRow.querySelector("[data-mf-nutr]").value = "fiber"; fire(fiberRow.querySelector("[data-mf-nutr]"), "change"); fiberRow.querySelector("[data-mf-val]").value = "0,5";
+const foodsBefore = JSON.parse(localStorage.getItem("ffv-myfoods")).length;
+fire($("mf"), "submit");
+check("Ändringen sparas på samma livsmedel", JSON.parse(localStorage.getItem("ffv-myfoods")).length === foodsBefore && savedFood().more.some((x) => x.n === "Fiber" && x.v === 0.5 && x.u === "g") && savedFood().f === 7 && $("mf-cancel").hidden);
+check("Ändrat livsmedel ersätter fortfarande", savedFood().replaces === "kyckling" && savedFood().always && !$("shop").querySelector('[data-shop="kyckling"]'));
+// Ett nytt livsmedel syns direkt i receptformulärets rader
+fire($("mr-add"), "click");
+$("mf-name").value = "Mitt proteinpulver"; $("mf-k").value = "380"; $("mf-p").value = "80"; fire($("mf"), "submit");
+check("Nytt livsmedel kan väljas i ett recept som redan skrivs", [...$("mr-items").querySelector("[data-mr-food]").options].some((o) => o.textContent === "Mitt proteinpulver"));
+$("mf-name").value = "Utan protein"; $("mf-k").value = "100"; fire($("mf"), "submit");
+check("Protein krävs", text("mf-msg").includes("kalorier och protein") && !text("mf-list").includes("Utan protein"));
+$("mf").reset();
+$("mr-items").replaceChildren();
 
 // Logg: datum skrivs med siffror och får bindestreck
 $("l-date").value = "20261001"; fire($("l-date"), "input");
@@ -970,7 +1004,7 @@ go("anpassa");
 $("ex-word").value = " Lax "; fire($("ex-word-form"), "submit");
 check("Ett eget ord sparas bland bortvalen", JSON.parse(win.localStorage.getItem("ffv-excl")).words.includes("lax"));
 check("Ordet visar vilka livsmedel det träffar", text("ex-words").includes("lax") && text("ex-words").includes("Laxfilé"));
-$("mf-name").value = "Varmrökt lax"; $("mf-k").value = "190"; fire($("mf"), "submit");
+$("mf-name").value = "Varmrökt lax"; $("mf-k").value = "190"; $("mf-p").value = "22"; fire($("mf"), "submit");
 check("Ordet stoppar också egna livsmedel med samma ord", text("mf-list").includes("Varmrökt lax") && text("mf-list").includes("Bortvald av dina allergival"));
 $("ex-word").value = "koriander"; fire($("ex-word-form"), "submit");
 check("Ett ord som inte träffar något säger det", text("ex-words").includes("koriander träffar inget livsmedel än"));
@@ -1195,6 +1229,26 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   fire(blackRtd, "click");
   check("En Huel-produkt fyller i namn, kalorier och protein", $("sw-name").value === "Huel Black Edition Ready-to-drink 500 ml" && $("sw-k").value === "400" && $("sw-p").value === "35");
   $("sw-form").reset();
+  const pudding = [...$("sn-snacks").querySelectorAll("[data-snack-product]")].find((b) => b.textContent.startsWith("Chokladpudding"));
+  check("Kesella och chokladpudding finns som snabbval för mellanmål", text("sn-snacks").includes("Kesella 250 g · 355 kcal · 17 g P") && !!pudding);
+  fire(pudding, "click");
+  check("Mellanmålets snabbval fyller i namn, kalorier och protein", $("sn-name").value === "Chokladpudding 230 g" && $("sn-k").value === "161" && $("sn-p").value === "20");
+  $("sn-form").reset();
+  // Mina mellanmål under Inställningar: lägga till, ändra och ta bort
+  const savedSnacks = () => JSON.parse(win.localStorage.getItem("ffv-snacks") || "null");
+  check("Förslagen sparas inte förrän listan ändras", savedSnacks() === null && $("mm-list").querySelectorAll("[data-mmedit]").length === 2);
+  $("mm-name").value = "Proteinbar"; $("mm-k").value = "210"; $("mm-p").value = "20,5"; fire($("mm-form"), "submit");
+  check("Ett nytt mellanmål sparas med förslagen", savedSnacks()?.length === 3 && savedSnacks()[2].n === "Proteinbar" && savedSnacks()[2].p === 20.5 && text("mm-list").includes("Proteinbar"));
+  check("Det nya mellanmålet blir ett snabbval på Idag", text("sn-snacks").includes("Proteinbar · 210 kcal"));
+  fire([...$("mm-list").querySelectorAll("[data-mmedit]")].find((b) => b.dataset.mmedit === savedSnacks()[0].id), "click");
+  check("Ändra fyller i formuläret", $("mm-name").value === "Kesella 250 g" && $("mm-k").value === "355" && !$("mm-cancel").hidden);
+  $("mm-k").value = "360"; fire($("mm-form"), "submit");
+  check("Ändringen sparas på samma plats", savedSnacks().length === 3 && savedSnacks()[0].k === 360 && savedSnacks()[0].n === "Kesella 250 g" && $("mm-cancel").hidden && text("sn-snacks").includes("Kesella 250 g · 360 kcal"));
+  fire($("mm-list").querySelector(`[data-mmdel="${savedSnacks()[1].id}"]`), "click"); await tick(); await answer(true);
+  check("Ta bort tar bort mellanmålet efter bekräftelse", savedSnacks().length === 2 && !text("mm-list").includes("Chokladpudding") && !text("sn-snacks").includes("Chokladpudding"));
+  $("mm-name").value = ""; $("mm-k").value = "100"; fire($("mm-form"), "submit");
+  check("Ett mellanmål utan namn sparas inte", savedSnacks().length === 2 && text("mm-msg").includes("Fyll i namn"));
+  $("mm-form").reset();
   // Loggen sparad för hand behåller ersättningen
   go("logg");
   fire($("logf").querySelector('[data-date-offset="0"]') || $("l-date"), "click");
@@ -1253,6 +1307,43 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   go("idag");
   fire($("sn-list").querySelector('[data-snack-remove="0"]'), "click");
   check("Utan inskrivet intag och mellanmål är dagens summa som förut", kcalToday() === before && netValue() === before && !$("sn-empty").hidden);
+
+  // Kvar att äta: minst det lägsta (1 500 kcal för män) plus det klockan har bränt
+  $("td-burned").value = "300"; fire($("td-burn"), "submit");
+  const minLeft = Math.max(0, 1500 + 300 - before);
+  check("Netto i dag säger hur mycket som minst är kvar att äta", minLeft ? netTile().textContent.includes(`Ät minst ${minLeft.toLocaleString("sv-SE")} kcal till i dag`) : !netTile().textContent.includes("Ät minst"));
+
+  // Fasta: 16:8 som förut, 12:12 eller ingen fasta (Profil → Fasta)
+  const pickFast = (v) => { $("fast").value = v; fire($("fast"), "change"); go("idag"); };
+  const tileLabels = () => [...$("td-targets").querySelectorAll(".tile .eyebrow")].map((x) => x.textContent);
+  check("Utan val är det 16:8 som förut", $("fast").value === "16" && tileLabels()[2] === "Fasta" && text("td-targets").includes("16 h") && !$("fastan").hidden && text("td-timeline").includes("Ätfönster"));
+  pickFast("12");
+  check("12:12 ger 12 h fasta och ett ätfönster på 12 timmar", text("td-targets").includes("12 h") && text("fast-title") === "12:12 med tidigt ätfönster" && text("bfast-hint").includes("fastar du 12 timmar"));
+  pickFast("0");
+  check("Utan fasta visas kvar att äta i stället för fastan", tileLabels()[2] === "Kvar att äta" && $("fastan").hidden && !text("td-timeline").includes("Ätfönster") && !text("td-sub").includes("fasta"));
+  check("Utan fasta finns inga råd om att bryta fastan", !text("td-advice").includes("bryter") && !text("td-supps").includes("bryter") && text("fast-title") === "Ingen fasta just nu");
+  check("Valet sparas i profilen", JSON.parse(win.localStorage.getItem("ffv")).fast === "0");
+  pickFast("16");
+  check("Tillbaka till 16:8", tileLabels()[2] === "Fasta" && !$("fastan").hidden && JSON.parse(win.localStorage.getItem("ffv")).fast === "16");
+
+  // Sent mellanmål flyttar sista måltiden; sista måltiden i går flyttar dagens fasta
+  const loggedOn = (date) => JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === date) || {};
+  const yesterday = new Date(Date.now() - 864e5).toLocaleDateString("sv-SE");
+  const yesterdayBefore = loggedOn(yesterday).lastMeal ?? "";
+  fire($("fs-reset"), "click"); // tidigare tester kan ha satt sista måltiden till klockan just nu
+  $("fs-first").value = "07:00"; fire($("fs-first"), "change");
+  check("Första måltiden 07:00 ger sista måltiden 15:00", loggedOn(todayStr()).lastMeal === "15:00");
+  $("sn-name").value = "Frukt"; $("sn-k").value = "80"; $("sn-at").value = "10:00"; fire($("sn-form"), "submit");
+  check("Ett mellanmål inne i ätfönstret flyttar inte sista måltiden", loggedOn(todayStr()).lastMeal === "15:00" && loggedOn(todayStr()).snacks.at(-1).at === "10:00");
+  $("sn-name").value = "Kycklingvingar"; $("sn-k").value = "1100"; $("sn-p").value = "75"; $("sn-at").value = "20:00"; fire($("sn-form"), "submit");
+  check("Ett sent mellanmål flyttar sista måltiden och fastan", loggedOn(todayStr()).lastMeal === "20:00" && text("sn-msg").includes("Sista måltiden är flyttad till 20:00") && text("fs-plan").includes("klar i morgon 12:00"));
+  while ($("sn-list").querySelector("[data-snack-remove]")) fire($("sn-list").querySelector("[data-snack-remove]"), "click");
+  fire($("fs-reset"), "click");
+  $("fs-ylast").value = "20:00"; fire($("fs-ylast"), "change");
+  check("Sista måltiden i går 20:00 ger ätfönster från 12:00 i dag", loggedOn(yesterday).lastMeal === "20:00" && text("fs-plan").includes("Ätfönster 12:00") && text("td-sub").startsWith("Frukost 12:00"));
+  $("fs-ylast").value = yesterdayBefore; fire($("fs-ylast"), "change");
+  check("Sista måltiden i går går att ändra tillbaka", (loggedOn(yesterday).lastMeal ?? "") === yesterdayBefore);
+  $("td-burned").value = ""; fire($("td-burn"), "submit");
 }
 {
   const { cleanEntry } = await import("../public/js/log.js");

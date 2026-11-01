@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- Appens version (samma som js/version.js; uppdateras av npm run bump). main.js använder den för att se till att
        alla filer kommer från samma version. -->
-  <meta name="app-version" content="0.22.1">
+  <meta name="app-version" content="0.23.0">
   <meta name="description"
     content="Personlig veckoplan för viktnedgång: kalorimål, styrkeprogram med ExRx-övningar, säsongsrecept, fasta 16:8 och logg.">
   <meta name="theme-color" content="#1d5c4c" media="(prefers-color-scheme: light)">
@@ -250,7 +250,7 @@
     href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="css/app.css">
   <!-- ?v= gör att startfilen alltid hämtas på nytt efter en uppdatering, även ur en gammal webbläsarcache -->
-  <script type="module" src="js/main.js?v=0.22.1" onerror="ffvBootFailed()"></script>
+  <script type="module" src="js/main.js?v=0.23.0" onerror="ffvBootFailed()"></script>
 </head>
 
 <body>
@@ -348,6 +348,12 @@
                 <small id="fs-last-hint"></small>
               </div>
             </div>
+            <div class="field">
+              <label for="fs-ylast">Sista måltiden i går</label>
+              <input type="text" id="fs-ylast" inputmode="numeric" maxlength="5" placeholder="HH:MM"
+                pattern="([01]\d|2[0-3]):[0-5]\d" autocomplete="off" data-clock>
+              <small id="fs-ylast-hint">Åt du sent i går, t.ex. 20:00? Fyll i det, så räknas fastan från då och frukosten flyttas.</small>
+            </div>
             <ul class="fast-plan" id="fs-plan"></ul>
             <button type="button" class="linkbtn" id="fs-reset" hidden>Tillbaka till planens tider</button>
           </div>
@@ -369,6 +375,7 @@
               <summary>+ Lägg till mellanmål</summary>
               <form id="sn-form" autocomplete="off">
                 <div class="chips" id="sn-recent"></div>
+                <div class="chips" id="sn-snacks"></div>
                 <details class="sw-products-box">
                   <summary>Måltidsersättningar (Huel m.fl.)</summary>
                   <p class="hint">Värden per måltid enligt tillverkaren; kontrollera din förpackning.</p>
@@ -376,12 +383,16 @@
                 </details>
                 <div class="field"><label for="sn-name">Vad åt du?</label><input type="text" id="sn-name" maxlength="60"
                     placeholder="t.ex. Lättfil med kasein"></div>
-                <div class="row2">
+                <div class="row3">
                   <div class="field"><label for="sn-k">Kalorier (kcal)</label><input type="text" inputmode="decimal"
                       data-decimal min="0" max="5000" id="sn-k" placeholder="t.ex. 235"></div>
                   <div class="field"><label for="sn-p">Protein (g)</label><input type="text" inputmode="decimal" data-decimal
                       min="0" max="500" id="sn-p" placeholder="t.ex. 40"></div>
+                  <div class="field"><label for="sn-at">När</label><input type="text" id="sn-at" inputmode="numeric"
+                      maxlength="5" placeholder="nu" pattern="([01]\d|2[0-3]):[0-5]\d" autocomplete="off" data-clock></div>
                 </div>
+                <small>Äter du efter att ätfönstret har stängt flyttas sista måltiden till den tiden, så att fastan räknas
+                  rätt. Tomt = nu.</small>
                 <div class="actions"><button type="submit" class="btn primary">Lägg till</button></div>
                 <p class="hint" id="sn-msg" role="status"></p>
               </form>
@@ -1012,7 +1023,18 @@
                 <option value="8.5">08:30</option>
                 <option value="9">09:00</option>
               </select>
-              <small>Eftermiddagsmåltiden läggs 7 timmar senare. Sedan fastar du 16 timmar.</small>
+              <small id="bfast-hint">Eftermiddagsmåltiden läggs 7 timmar senare. Sedan fastar du 16 timmar.</small>
+            </div>
+            <div class="field">
+              <label for="fast">Fasta</label>
+              <select id="fast">
+                <option value="16" selected>16:8 (ätfönster 8 timmar)</option>
+                <option value="14">14:10 (ätfönster 10 timmar)</option>
+                <option value="12">12:12 (ätfönster 12 timmar)</option>
+                <option value="0">Ingen fasta</option>
+              </select>
+              <small>Har du svårt att hinna äta tillräckligt, till exempel när du tränar mycket, kan ett längre ätfönster
+                eller ingen fasta vara bättre. Det viktiga för viktnedgången är kalorierna, inte när du äter.</small>
             </div>
             <div class="saved" id="saved" hidden>
               <span id="saved-text">Sparat i den här webbläsaren</span>
@@ -1042,7 +1064,7 @@
         <section id="fasta">
           <div class="sec-head">
             <span class="eyebrow">Periodisk fasta</span>
-            <h2>16:8 med tidigt ätfönster</h2>
+            <h2 id="fast-title">16:8 med tidigt ätfönster</h2>
             <p id="fast-sum"></p>
           </div>
           <h3>Ätfönster och fasta</h3>
@@ -1138,7 +1160,9 @@
           <nav class="settings-menu" aria-label="Inställningar">
             <a href="#veckoschema"><span><b>Veckoschema</b><small>Tider för gympass, intervaller, promenad och egna aktiviteter, dag för dag</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#maltider"><span><b>Måltider</b><small>Efterrätt och tillbehör vilka veckodagar, och fuskdag med godis</small></span><span class="chev" aria-hidden="true">›</span></a>
-            <a href="#anpassa"><span><b>Allergier och livsmedel</b><small>Allergener, ingredienser du inte äter och egna livsmedel</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#mina-mellanmal"><span><b>Mina mellanmål</b><small>Mellanmål du ofta äter, som snabbval på Idag</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#anpassa"><span><b>Allergier och livsmedel</b><small>Allergener och ingredienser du inte äter</small></span><span class="chev" aria-hidden="true">›</span></a>
+            <a href="#mina-livsmedel"><span><b>Mina livsmedel</b><small>Egna livsmedel med kalorier, protein och fler näringsvärden</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#mina-recept"><span><b>Mina recept</b><small>Egna recept, i valfria mått, som kan komma med i menyn</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#tillskott"><span><b>Tillskott</b><small>Vilka tillskott du tar, och egna tillskott som BCAA</small></span><span class="chev" aria-hidden="true">›</span></a>
             <a href="#inkopslista"><span><b>Inköpslista</b><small>Vilken vecka inköpslistan visar och billiga råvaror</small></span><span class="chev" aria-hidden="true">›</span></a>
@@ -1242,6 +1266,32 @@
         </section>
         </div>
 
+        <div class="settings-page" data-page="mina-mellanmal" hidden>
+          <a class="back-link" href="#installningar">‹ Inställningar</a>
+        <section id="mina-mellanmal">
+          <div class="sec-head">
+            <span class="eyebrow">Mat</span>
+            <h2>Mina mellanmål</h2>
+            <p>Mellanmål du ofta äter, med kalorier och protein per portion. De visas som snabbval när du lägger till ett
+              mellanmål på <a href="#idag">Idag</a>.</p>
+          </div>
+          <form class="card form" id="mm-form" autocomplete="off">
+            <span class="label" id="mm-title">Nytt mellanmål</span>
+            <div class="field"><label for="mm-name">Namn</label><input type="text" id="mm-name" maxlength="60"
+                placeholder="t.ex. Kesella 250 g"></div>
+            <div class="row2">
+              <div class="field"><label for="mm-k">Kalorier (kcal)</label><input type="text" inputmode="decimal"
+                  data-decimal min="0" max="5000" id="mm-k" placeholder="t.ex. 355"></div>
+              <div class="field"><label for="mm-p">Protein (g)</label><input type="text" inputmode="decimal" data-decimal
+                  min="0" max="500" id="mm-p" placeholder="t.ex. 17"></div>
+            </div>
+            <div class="actions"><button type="submit" class="btn primary" id="mm-save">Lägg till mellanmål</button><button
+                type="button" class="linkbtn" id="mm-cancel" hidden>Avbryt</button><span class="status" id="mm-msg" role="status"></span></div>
+          </form>
+          <div id="mm-list"></div>
+        </section>
+        </div>
+
         <div class="settings-page" data-page="anpassa" hidden>
           <a class="back-link" href="#installningar">‹ Inställningar</a>
         <section id="anpassa">
@@ -1271,24 +1321,38 @@
           </form>
           <div class="chips" id="ex-words"></div>
 
-          <h3 id="mina-livsmedel">Mina livsmedel</h3>
-          <p class="note">Lägg till ett eget livsmedel med näringsvärden per 100 g (står på förpackningen). Välj om det
-            ska ersätta något i recepten, alltid eller bara när originalet är bortvalt.</p>
+        </section>
+        </div>
+
+        <div class="settings-page" data-page="mina-livsmedel" hidden>
+          <a class="back-link" href="#installningar">‹ Inställningar</a>
+        <section id="mina-livsmedel">
+          <div class="sec-head">
+            <span class="eyebrow">Mat</span>
+            <h2>Mina livsmedel</h2>
+            <p>Lägg till egna livsmedel med näringsvärden per 100 g (står på förpackningen). De kan användas i
+              <a href="#mina-recept">Mina recept</a> och hamnar i inköpslistan. Kalorier och protein behövs; fler
+              näringsvärden, t.ex. fett, fiber eller salt, lägger du till om du vill.</p>
+          </div>
           <form class="card form" id="mf" autocomplete="off">
+            <span class="label" id="mf-title">Nytt livsmedel</span>
             <div class="row2">
               <div class="field"><label for="mf-name">Namn</label><input type="text" id="mf-name" maxlength="60"
                   placeholder="t.ex. Kycklinglårfilé" required></div>
               <div class="field"><label for="mf-cat">Kategori</label><select id="mf-cat"></select></div>
             </div>
-            <div class="row4">
-              <div class="field"><label for="mf-k">kcal</label><input type="text" inputmode="numeric" data-decimal
-                  id="mf-k" min="0" max="900" required></div>
-              <div class="field"><label for="mf-p">Protein g</label><input type="text" inputmode="decimal" data-decimal
-                  id="mf-p" min="0" max="100"></div>
-              <div class="field"><label for="mf-c">Kolhydr. g</label><input type="text" inputmode="decimal" data-decimal
-                  id="mf-c" min="0" max="100"></div>
-              <div class="field"><label for="mf-f">Fett g</label><input type="text" inputmode="decimal" data-decimal
-                  id="mf-f" min="0" max="100"></div>
+            <div class="row2">
+              <div class="field"><label for="mf-k">Kalorier (kcal)</label><input type="text" inputmode="decimal" data-decimal
+                  id="mf-k" min="0" max="900" required placeholder="per 100 g"></div>
+              <div class="field"><label for="mf-p">Protein (g)</label><input type="text" inputmode="decimal" data-decimal
+                  id="mf-p" min="0" max="100" required placeholder="per 100 g"></div>
+            </div>
+            <div class="field">
+              <span class="label">Fler näringsvärden per 100 g <small>valfritt</small></span>
+              <div class="mf-more" id="mf-more"></div>
+              <button type="button" class="btn small" id="mf-more-add">+ Lägg till näringsvärde</button>
+              <small>Välj t.ex. kolhydrater, fett, fiber eller salt, eller Eget fält för något annat, med egen enhet.
+                Kolhydrater och fett räknas med i recepten.</small>
             </div>
             <div class="row2">
               <div class="field"><label for="mf-rep">Ersätter i recepten</label><select id="mf-rep"></select></div>
@@ -1300,8 +1364,8 @@
             <div class="field"><span class="label">Innehåller allergener</span>
               <div class="chips small" id="mf-allergens"></div>
             </div>
-            <div class="actions"><button type="submit" class="btn primary">Lägg till livsmedel</button><span
-                class="status" id="mf-msg" role="status"></span></div>
+            <div class="actions"><button type="submit" class="btn primary" id="mf-save">Lägg till livsmedel</button><button
+                type="button" class="btn" id="mf-cancel" hidden>Avbryt</button><span class="status" id="mf-msg" role="status"></span></div>
           </form>
           <div class="list" id="mf-list"></div>
         </section>

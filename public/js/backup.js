@@ -86,6 +86,7 @@ export function describe(data) {
   if (data["ffv-myfoods"]?.length) parts.push("egna livsmedel");
   if (data["ffv-myrecipes"]?.length) parts.push("egna recept");
   if (data["ffv-supps"]) parts.push("tillskott");
+  if (data["ffv-snacks"]?.length) parts.push("egna mellanmål");
   return parts.join(", ") || "inställningar";
 }
 

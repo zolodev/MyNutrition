@@ -41,7 +41,11 @@ export function setMealPrefs(changes) {
   save(MEALS_KEY, mealPrefs);
 }
 
-/** Egna livsmedel: { id, n, k, p, c, f, cat, allergens, replaces, always } */
+/**
+ * Egna livsmedel: { id, n, k, p, c, f, cat, allergens, replaces, always, more }, näringsvärden per 100 g. `more` (från
+ * 0.23.0) är fler näringsvärden som användaren har lagt till, [{ n, v, u }], t.ex. { n: "Fiber", v: 3, u: "g" }.
+ * Okända fält behålls.
+ */
 export let myFoods = [];
 let unreadableFoods = [];
 
@@ -82,6 +86,12 @@ export function addMyFood(food) {
   saveMyFoods();
 }
 
+/** Ändra ett eget livsmedel; id och plats i listan behålls. */
+export function updateMyFood(id, food) {
+  myFoods = myFoods.map((m) => (m.id === id ? { ...food, id } : m));
+  saveMyFoods();
+}
+
 export function removeMyFood(id) {
   myFoods = myFoods.filter((m) => m.id !== id);
   saveMyFoods();
@@ -102,11 +112,29 @@ function registerMyFoods() {
   }
 }
 
+/**
+ * Näringsvärden som kan läggas till ett eget livsmedel utöver kalorier och protein: [nyckel, namn, enhet]. Kolhydrater
+ * och fett sparas som `c` och `f` och räknas i recepten; de andra sparas i `more` med namnet.
+ */
+export const MORE_NUTRIENTS = [["c", "Kolhydrater", "g"], ["f", "Fett", "g"], ["sat", "Mättat fett", "g"], ["sugar", "Socker", "g"],
+  ["fiber", "Fiber", "g"], ["salt", "Salt", "g"]];
+
+/** Fler näringsvärden [{ n, v, u }]: namn och värde krävs, okända fält behålls. */
+function cleanMore(list) {
+  if (!Array.isArray(list)) return [];
+  return list.map((x) => {
+    const n = typeof x?.n === "string" ? x.n.trim().slice(0, 30) : "";
+    const v = typeof x?.v === "number" && x.v >= 0 && x.v <= 100000 ? x.v : null;
+    return n && v != null ? { ...x, n, v, u: typeof x.u === "string" ? x.u.trim().slice(0, 10) : "" } : null;
+  }).filter(Boolean).slice(0, 20);
+}
+
 /** Kontrollera och städa ett eget livsmedel (från formuläret eller en import). Ger null om det är ogiltigt. */
 export function cleanMyFood(m) {
   if (!m || typeof m.n !== "string" || !m.n.trim()) return null;
   const nutrient = (x) => (typeof x === "number" && x >= 0 && x <= 900 ? x : 0);
   return {
+    ...m,
     id: /^my_[\w-]+$/.test(m.id) ? m.id : "my_" + Math.random().toString(36).slice(2, 9),
     n: m.n.trim().slice(0, 60),
     k: nutrient(m.k), p: nutrient(m.p), c: nutrient(m.c), f: nutrient(m.f),
@@ -114,6 +142,7 @@ export function cleanMyFood(m) {
     allergens: Array.isArray(m.allergens) ? m.allergens.filter((a) => allergenById(a)) : [],
     replaces: typeof m.replaces === "string" ? m.replaces : "",
     always: !!m.always,
+    more: cleanMore(m.more),
   };
 }
 

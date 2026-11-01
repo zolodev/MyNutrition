@@ -103,7 +103,7 @@ export const cardioText = (c) =>
 
 export const MEAL_NAMES = ["Frukost", "Eftermiddagsmåltid", "Efterrätt", "Godis", "Tillbehör"]; // godiset ligger på fuskdagen
 const SWAPS_KEY = "ffv-mealswaps"; // senast använda ersättningar, för snabbval
-const cleanSwap = (x) =>
+export const cleanSwap = (x) =>
   x && typeof x.n === "string" && x.n.trim() ? { n: x.n.trim().slice(0, 60), k: inRange(x.k, 0, 5000) ?? 0, p: inRange(x.p, 0, 500) ?? 0 } : null;
 // I dagens post sparas också vilken rätt som ersattes (`was`) och om den flyttades till en annan dag (`moved`, 0 = måndag)
 const swapExtras = (x) => ({
@@ -148,12 +148,13 @@ function cleanSnacks(list) {
   return Array.isArray(list) ? list.map((x) => { const s = cleanSwap(x); return s && { ...x, ...s }; }).filter(Boolean).slice(0, 30) : [];
 }
 
-/** Lägg till ett mellanmål ({ n, k, p }) en dag. Det blir också ett snabbval bland de senast använda. */
+/** Lägg till ett mellanmål ({ n, k, p, at? }) en dag. Det blir också ett snabbval bland de senast använda. */
 export function addSnack(date, snack) {
   const clean = cleanSwap(snack);
   if (!clean) return;
   const e = entryFor(date) || { date };
-  upsertEntry(cleanEntry({ ...e, date, snacks: [...(e.snacks || []), clean] }));
+  // `at` = när det åts ("HH:MM", från 0.23.0), så att ett sent mellanmål kan flytta dagens sista måltid
+  upsertEntry(cleanEntry({ ...e, date, snacks: [...(e.snacks || []), { ...clean, ...(isClock(snack.at) ? { at: snack.at } : {}) }] }));
   save(SWAPS_KEY, [clean, ...recentSwaps().filter((x) => x.n.toLowerCase() !== clean.n.toLowerCase())].slice(0, 8));
 }
 

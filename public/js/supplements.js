@@ -2,7 +2,7 @@
 // Bygger på ExRx: kreatin 3–5 g/dag (eller 0,1 g/kg), helst efter passet med kolhydrater; koffein 200–400 mg
 // cirka 30 min före passet; proteintajming spelar liten roll när dagsbehovet av protein redan täcks.
 
-import { MEAL_AT, STRENGTH, INTERVALS, WINDOW } from "./day.js";
+import { MEAL_AT, STRENGTH, INTERVALS, WINDOW, FASTING } from "./day.js";
 import { load, save, readList, stableId } from "./util.js";
 import { formatClock, parseClock } from "./fasting.js";
 import { exclusions } from "./preferences.js";
@@ -68,7 +68,7 @@ export function supplementTips({ start, kind, weight, workout: own = null }) {
       at: time, name: "PWO",
       text: `30 minuter före passet. Räkna på koffeinet: 200–400 mg räcker, mindre om du är känslig.` +
         (time > CAFFEINE_LATEST ? " Passet ligger sent: välj koffeinfri PWO eller hoppa över den, så att du sover bra." : "") +
-        " PWO utan kalorier bryter inte fastan i praktiken, men en med socker, kolhydrater eller BCAA gör det.",
+        (FASTING ? " PWO utan kalorier bryter inte fastan i praktiken, men en med socker, kolhydrater eller BCAA gör det." : ""),
     });
   }
   if (using.has("whey")) {
@@ -77,7 +77,8 @@ export function supplementTips({ start, kind, weight, workout: own = null }) {
       tips.push({
         at: workoutEnd, name: "Vassle",
         text: workoutEnd > meal
-          ? (workoutEnd <= at(WINDOW)
+          ? (!FASTING ? "25–30 g direkt efter passet, eftersom passet slutar efter eftermiddagsmåltiden. Räkna in den: 30 g ger ca 115 kcal och 23 g protein."
+            : workoutEnd <= at(WINDOW)
             ? `25–30 g direkt efter passet, eftersom passet slutar efter eftermiddagsmåltiden men före att ätfönstret stänger kl. ${formatClock(at(WINDOW))}. Räkna in den: 30 g ger ca 115 kcal och 23 g protein, så ta en mindre efterrätt.`
             : `Passet slutar efter att ätfönstret har stängt kl. ${formatClock(at(WINDOW))}, och vassle bryter fastan. Ät eftermiddagsmåltiden före passet, eller flytta frukosten senare så att ätfönstret täcker passet.`)
           : meal - workoutEnd <= 1.5
@@ -85,14 +86,14 @@ export function supplementTips({ start, kind, weight, workout: own = null }) {
           : `25–30 g direkt efter passet, eftersom det dröjer till eftermiddagsmåltiden. Räkna in den: 30 g ger ca 115 kcal och 23 g protein, så ta en mindre efterrätt.`,
       });
     } else {
-      tips.push({ at: meal, name: "Vassle", text: "Behövs inte i dag; recepten täcker proteinmålet. Ta den bara inne i ätfönstret, den bryter fastan." });
+      tips.push({ at: meal, name: "Vassle", text: FASTING ? "Behövs inte i dag; recepten täcker proteinmålet. Ta den bara inne i ätfönstret, den bryter fastan." : "Behövs inte i dag; recepten täcker proteinmålet. Ett bra mellanmål om du behöver äta mer." });
     }
   }
   if (using.has("casein")) {
     tips.push({
       at: at(MEAL_AT), name: "Kasein",
-      text: "Långsamt protein som håller dig mätt under fastan: 25–30 g med eftermiddagsmåltiden, som sista mål innan ätfönstret stänger. " +
-        "Ta det inte före sängen, då bryter det fastan. Räkna in det: 30 g ger ca 110 kcal och 24 g protein. Kvarg är till största delen kasein, så äter du kvarg till efterrätt behövs det sällan.",
+      text: (FASTING ? "Långsamt protein som håller dig mätt under fastan: 25–30 g med eftermiddagsmåltiden, som sista mål innan ätfönstret stänger. " +
+        "Ta det inte före sängen, då bryter det fastan. " : "Långsamt protein som håller dig mätt: 25–30 g med eftermiddagsmåltiden eller som kvällsmål, t.ex. i lättfil. ") + "Räkna in det: 30 g ger ca 110 kcal och 24 g protein. Kvarg är till största delen kasein, så äter du kvarg till efterrätt behövs det sällan.",
     });
   }
   for (const m of mySupps) {
@@ -102,7 +103,7 @@ export function supplementTips({ start, kind, weight, workout: own = null }) {
     tips.push({
       at: time, name: m.n,
       text: [m.dose && `${m.dose}.`, `${SUPP_WHEN[m.when]}.`,
-        m.kcal && (inWindow ? "Innehåller kalorier eller aminosyror: räkna in det, inom ätfönstret." : "Innehåller kalorier eller aminosyror och ligger utanför ätfönstret, så det bryter fastan. Flytta det till ätfönstret.")]
+        m.kcal && (!FASTING ? "Innehåller kalorier eller aminosyror: räkna in det." : inWindow ? "Innehåller kalorier eller aminosyror: räkna in det, inom ätfönstret." : "Innehåller kalorier eller aminosyror och ligger utanför ätfönstret, så det bryter fastan. Flytta det till ätfönstret.")]
         .filter(Boolean).join(" "),
     });
   }

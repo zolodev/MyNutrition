@@ -11,3 +11,10 @@ export const MEAL_REPLACEMENTS = [
   { brand: "Huel", n: "Huel Complete Nutrition Bar", k: 210, p: 14 },
   { brand: "Huel", n: "Huel Complete Protein", k: 110, p: 20 },
 ];
+
+// Förslag på mellanmål innan användaren har gjort en egen lista (Inställningar → Mina mellanmål, snacks.js). Värden
+// per förpackning (2026-10); siffrorna kan ändras innan mellanmålet sparas.
+export const SNACKS = [
+  { n: "Kesella 250 g", k: 355, p: 17 },
+  { n: "Chokladpudding 230 g", k: 161, p: 20 },
+];

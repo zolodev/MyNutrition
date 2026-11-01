@@ -436,6 +436,11 @@ textarea { width: 100%; font: inherit; font-size: 1rem; padding: 9px 10px; borde
 .mr-item { display: grid; grid-template-columns: minmax(0, 1fr) 76px auto; gap: 6px; align-items: center; padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
 .mr-item [data-mr-food], .mr-item [data-mr-name] { grid-column: 1 / -1; }
 .mr-item [data-mr-unit] { width: auto; }
+.mf-more { display: grid; gap: 6px; }
+.mf-more:not(:empty) { margin-bottom: 6px; }
+.mf-row { display: grid; grid-template-columns: minmax(0, 1fr) 76px auto; gap: 6px; align-items: center; padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
+.mf-row [data-mf-nutr], .mf-row [data-mf-name] { grid-column: 1 / -1; }
+.mf-row [data-mf-unit][readonly] { border-color: transparent; background: transparent; padding-inline: 0; }
 .supplements-info { display: grid; gap: 12px; }
 .chip-check.positive:has(input:checked) { background: var(--accent-soft); border-color: var(--accent); }
 .chip-check.positive input { accent-color: var(--accent); }

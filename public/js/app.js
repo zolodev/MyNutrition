@@ -12,7 +12,7 @@ import { renderTargets, renderGoalAdvice } from "./views/profile.js";
 import { renderToday, renderFasting } from "./views/today.js";
 import { renderFastingToday, renderFastingNow, todaysFasting } from "./views/fasting-view.js";
 import { formatClock, parseClock } from "./fasting.js";
-import { WINDOW } from "./day.js";
+import { WINDOW, setFasting, FASTING } from "./day.js";
 import { sessionChoices, setSession, dayOverrides, setActivity, trainMovesFor, addTrainMove, resetTrainMoves, getSplit, setSplit } from "./schedule.js";
 import { weekLabel, renderWeekGrid, renderCheatTable, renderRecipes, renderShopping, updateShoppingProgress } from "./views/food.js";
 import { renderProgram } from "./views/training-view.js";
@@ -48,10 +48,11 @@ const state = {
 // Sparas som { fältets id: värde } under "ffv", så att äldre sparade uppgifter och exporter fortsätter fungera.
 
 const PROFILE_KEY = "ffv";
-const PROFILE_FIELDS = ["age", "weight", "height", "bf", "act", "bfast", "bmeal", "goal", "tdays-val", "exswap", "kcal"];
+const PROFILE_FIELDS = ["age", "weight", "height", "bf", "act", "bfast", "bmeal", "goal", "tdays-val", "exswap", "kcal", "fast"]; // fast från 0.23.0
 const PROFILE_RADIOS = ["sex", "rate", "eq"];
 
 function readProfile() {
+  setFasting($("fast").value || "16"); // ätfönstret i day.js, innan något räknas ut
   const days = parseTrainingDays($("tdays-val").value, state.trainingDays);
   state.trainingDays = days.days;
   return {
@@ -68,6 +69,7 @@ function readProfile() {
     swapPeriod: Number($("exswap").value) || 1,
     goal: num($("goal").value),
     kcal: num($("kcal").value), // eget kalorimål, annars beräknat
+    fasting: Number($("fast").value) || 0, // 16, 14, 12 eller 0 = ingen fasta (saknas i äldre profiler: 16:8)
     days,
   };
 }
@@ -177,6 +179,7 @@ function update() {
   const label = weekLabel(state.week);
 
   renderTargets(targets, profile.goal);
+  $("bfast-hint").textContent = `Eftermiddagsmåltiden läggs 7 timmar senare.${FASTING ? ` Sedan fastar du ${24 - WINDOW} timmar.` : ""}`;
   renderProgram(program);
   $("prog-week").textContent = `Övningarna för ${label.title.toLowerCase()}${state.week === TODAY_WEEK ? " (denna vecka)" : ""}. De byts ${SWAP_TEXT[profile.swapPeriod]}; passindelningen är alltid densamma. Byt vecka under Mat → Veckan.`;
 
@@ -310,7 +313,14 @@ $("fs-action").addEventListener("click", () => {
   const field = $("fs-action").dataset.action === "break" ? "fs-first" : "fs-last";
   $(field).value = clockNow();
   saveMealTimes(field);
-  toast(field === "fs-first" ? `Fastan är bruten ${clockNow()}. Ätfönstret är öppet i 8 h.` : `Fastan startade ${clockNow()}. Ändra tiden under Sista måltiden klar om det behövs.`);
+  toast(field === "fs-first" ? `Fastan är bruten ${clockNow()}. Ätfönstret är öppet i ${WINDOW} h.` : `Fastan startade ${clockNow()}. Ändra tiden under Sista måltiden klar om det behövs.`);
+});
+// Sista måltiden i går: åt man sent räknas dagens fasta (och när frukosten kan ätas) från den tiden
+$("fs-ylast").addEventListener("change", () => {
+  const value = $("fs-ylast").value.trim();
+  if (value && !isClockText(value)) return $("fs-ylast").reportValidity();
+  setMealTimes(dayToDate(dateToDay(todayStr()) - 1), { lastMeal: value });
+  update();
 });
 $("fs-reset").addEventListener("click", () => {
   setMealTimes(todayStr(), { firstMeal: "", lastMeal: "" });
@@ -562,7 +572,7 @@ initLogForm({ update });
 initGoalForm({ update });
 initBackupForms({ acceptTerms });
 initWorkout({ update });
-initMealSwap({ update });
+initMealSwap({ update, windowEnd: () => todaysFasting(readProfile().breakfastHour).day.windowEnd });
 initScheduleEditor({
   update,
   // Gympass på/av i Veckoschema ändrar Gymdagar i profilen

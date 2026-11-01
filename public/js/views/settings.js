@@ -3,10 +3,11 @@
 import { $, esc, fmt, num } from "../util.js";
 import { FOOD, CATEGORIES, SUBSTITUTES, ALLERGENS, EXTRA_PRODUCTS, categoryOf } from "../data/foods.js";
 import { RECIPES, SEASONAL, SEASONS } from "../data/recipes.js";
-import { exclusions, myFoods, isExcluded } from "../preferences.js";
+import { exclusions, myFoods, isExcluded, MORE_NUTRIENTS } from "../preferences.js";
 import { adaptRecipe, allDinnersIn, seasonOf, inSeason, fillSeasonalNames } from "../menu.js";
 import { myRecipes, RECIPE_TYPES, unreadableRecipes } from "../myrecipes.js";
 import { SUPPLEMENTS, using, mySupps, SUPP_WHEN } from "../supplements.js";
+import { mySnacks } from "../snacks.js";
 import { macros, UNITS, unitsFor, gramsOf, formatQuantity } from "../nutrition.js";
 
 const checkbox = (attr, id, label, checked) =>
@@ -36,6 +37,17 @@ export function renderSettings(week) {
   $("ms-list").innerHTML = mySupps.map((m) =>
     `<div class="row my-food"><span class="main"><b>${esc(m.n)}</b><small>${[m.dose && esc(m.dose), m.when === "clock" ? `kl. ${m.at}` : SUPP_WHEN[m.when].toLowerCase(), m.kcal && "innehåller kalorier"].filter(Boolean).join(" · ")}</small></span>` +
     `<button type="button" class="linkbtn" data-msdel="${m.id}">Ta bort</button></div>`).join("");
+  renderMySnackList();
+}
+
+/** Mina mellanmål med Ändra och Ta bort. */
+export function renderMySnackList() {
+  const list = mySnacks();
+  $("mm-list").innerHTML = list.length ? list.map((x) =>
+    `<div class="row my-food"><span class="main"><b>${esc(x.n)}</b><small>${fmt(x.k)} kcal · ${fmt(x.p)} g protein</small></span>` +
+    `<span class="end"><button type="button" class="linkbtn" data-mmedit="${esc(x.id)}">Ändra</button> ` +
+    `<button type="button" class="linkbtn" data-mmdel="${esc(x.id)}">Ta bort</button></span></div>`).join("")
+    : `<p class="hint">Inga egna mellanmål ännu.</p>`;
 }
 
 // ---------- Mina recept ----------
@@ -43,10 +55,13 @@ export function renderSettings(week) {
 /** En rad i receptformuläret: livsmedel och gram. */
 const OWN = "__own"; // egen ingrediens som inte finns i listan
 
+/** Alla livsmedel, även egna, i bokstavsordning som val i en lista. */
+const foodOptions = () => Object.keys(FOOD).sort((a, b) => FOOD[a].n.localeCompare(FOOD[b].n, "sv"))
+  .map((id) => `<option value="${id}">${esc(FOOD[id].n)}</option>`).join("");
+
 /** En ingrediensrad i Mina recept: livsmedel (eller en egen ingrediens), mängd och mått. */
 export function recipeItemRow() {
-  const options = Object.keys(FOOD).sort((a, b) => FOOD[a].n.localeCompare(FOOD[b].n, "sv"))
-    .map((id) => `<option value="${id}">${esc(FOOD[id].n)}</option>`).join("");
+  const options = foodOptions();
   // Som lista: bun 1.1 tappade en av strängarna när de slogs ihop med +
   return [
     `<div class="mr-item"><select data-mr-food aria-label="Livsmedel"><option value="">Välj livsmedel</option>${options}`,
@@ -189,12 +204,103 @@ function renderMyFoodForm() {
   $("mf-rep").value = keep;
 }
 
+// ---------- Mina livsmedel: fler näringsvärden ----------
+
+const OWN_FIELD = "__own"; // eget fält med eget namn och egen enhet
+
+/** En rad med ett näringsvärde till: välj näringsämne (eller Eget fält), värde och enhet. */
+export function moreNutrientRow({ key = "", n = "", v = null, u = "g" } = {}) {
+  const options = MORE_NUTRIENTS.map(([id, name, unit]) => `<option value="${id}">${esc(name)} (${unit})</option>`).join("");
+  const row = [
+    `<div class="mf-row"><select data-mf-nutr aria-label="Näringsvärde">${options}<option value="${OWN_FIELD}">Eget fält (skriv själv)</option></select>`,
+    `<input type="text" data-mf-name maxlength="30" placeholder="Namn, t.ex. Järn" aria-label="Namn på näringsvärdet" hidden>`,
+    `<input type="text" inputmode="decimal" data-decimal data-mf-val min="0" max="100000" placeholder="per 100 g" aria-label="Värde per 100 g">`,
+    `<input type="text" data-mf-unit maxlength="10" placeholder="enhet" aria-label="Enhet">`,
+    `<button type="button" class="linkbtn" data-mf-remove>Ta bort</button></div>`,
+  ].join("");
+  const holder = document.createElement("div");
+  holder.innerHTML = row;
+  const el = holder.firstChild;
+  el.querySelector("[data-mf-nutr]").value = key || MORE_NUTRIENTS[0][0];
+  el.querySelector("[data-mf-name]").value = n;
+  el.querySelector("[data-mf-val]").value = v == null ? "" : String(v).replace(".", ",");
+  el.querySelector("[data-mf-unit]").value = u;
+  syncMoreRow(el);
+  return el;
+}
+
+/** Eget fält: visa namn och låt enheten ändras. Annars är enheten näringsämnets. */
+export function syncMoreRow(row) {
+  const key = row.querySelector("[data-mf-nutr]").value;
+  const own = key === OWN_FIELD;
+  row.querySelector("[data-mf-name]").hidden = !own;
+  const unit = row.querySelector("[data-mf-unit]");
+  unit.readOnly = !own;
+  if (!own) unit.value = MORE_NUTRIENTS.find(([id]) => id === key)[2];
+}
+
+/**
+ * Läs näringsvärdena: { c, f, more }, eller { error } om ett eget fält saknar namn. Rader utan värde hoppas över.
+ */
+export function readMoreNutrients() {
+  const out = { c: 0, f: 0, more: [] };
+  for (const row of document.querySelectorAll("#mf-more .mf-row")) {
+    const key = row.querySelector("[data-mf-nutr]").value;
+    const v = num(row.querySelector("[data-mf-val]").value);
+    if (v == null) continue;
+    if (key === "c" || key === "f") out[key] = v;
+    else if (key === OWN_FIELD) {
+      const n = row.querySelector("[data-mf-name]").value.trim();
+      if (!n) return { error: "Skriv ett namn på det egna fältet, t.ex. Järn." };
+      out.more.push({ n, v, u: row.querySelector("[data-mf-unit]").value.trim() });
+    } else {
+      const [, n, u] = MORE_NUTRIENTS.find(([id]) => id === key);
+      out.more.push({ n, v, u });
+    }
+  }
+  return out;
+}
+
+/** Fyll formuläret med ett eget livsmedel för att ändra det. */
+export function fillMyFoodForm(m) {
+  $("mf-name").value = m.n;
+  $("mf-cat").value = m.cat;
+  $("mf-k").value = String(m.k).replace(".", ",");
+  $("mf-p").value = String(m.p).replace(".", ",");
+  $("mf-rep").value = m.replaces;
+  $("mf-mode").value = m.always ? "always" : "excl";
+  for (const x of document.querySelectorAll("[data-mfallergen]")) x.checked = m.allergens.includes(x.dataset.mfallergen);
+  const rows = [
+    ...["c", "f"].filter((key) => m[key] > 0).map((key) => ({ key, v: m[key] })),
+    ...m.more.map((x) => {
+      const known = MORE_NUTRIENTS.find(([id, name, unit]) => !["c", "f"].includes(id) && name.toLowerCase() === x.n.toLowerCase() && unit === x.u);
+      return known ? { key: known[0], v: x.v } : { key: OWN_FIELD, n: x.n, v: x.v, u: x.u };
+    }),
+  ];
+  $("mf-more").replaceChildren(...rows.map(moreNutrientRow));
+}
+
+/** Livsmedlens val i receptformulärets rader, så att nya och ändrade egna livsmedel syns direkt. */
+function refreshRecipeFoodOptions() {
+  for (const select of document.querySelectorAll("#mr-items [data-mr-food]")) {
+    const chosen = select.value;
+    select.innerHTML = `<option value="">Välj livsmedel</option>${foodOptions()}<option value="${OWN}">Egen ingrediens (skriv själv)</option>`;
+    select.value = chosen === OWN || FOOD[chosen] ? chosen : "";
+  }
+}
+
+const moreText = (m) => [
+  m.c > 0 && `K ${fmt(m.c, 1)}`, m.f > 0 && `F ${fmt(m.f, 1)}`, ...m.more.map((x) => `${esc(x.n)} ${fmt(x.v, 1)}${x.u ? " " + esc(x.u) : ""}`),
+].filter(Boolean).join(" · ");
+
 function renderMyFoods() {
+  refreshRecipeFoodOptions();
   $("mf-list").innerHTML = myFoods.map((m) => {
     const replaces = m.replaces && FOOD[m.replaces] ? ` · ersätter ${esc(FOOD[m.replaces].n.toLowerCase())} ${m.always ? "alltid" : "när den är bortvald"}` : "";
     const allergens = m.allergens.length ? ` · innehåller ${m.allergens.map((id) => esc(shortName(ALLERGENS.find((a) => a.id === id)).toLowerCase())).join(", ")}` : "";
     return `<div class="row my-food"><span class="main"><b>${esc(m.n)}</b>${isExcluded(m.id) ? '<small>Bortvald av dina allergival</small>' : ""}` +
-      `<small>${fmt(m.k)} kcal · P ${fmt(m.p, 1)} · K ${fmt(m.c, 1)} · F ${fmt(m.f, 1)} per 100 g${replaces}${allergens}</small></span>` +
-      `<button type="button" class="linkbtn" data-mfdel="${m.id}">Ta bort</button></div>`;
+      `<small>${fmt(m.k)} kcal · P ${fmt(m.p, 1)}${moreText(m) ? " · " + moreText(m) : ""} per 100 g${replaces}${allergens}</small></span>` +
+      `<span class="end"><button type="button" class="linkbtn" data-mfedit="${m.id}">Ändra</button> ` +
+      `<button type="button" class="linkbtn" data-mfdel="${m.id}">Ta bort</button></span></div>`;
   }).join("");
 }

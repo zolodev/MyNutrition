@@ -1,13 +1,15 @@
 // Inställningarnas formulär: allergier och livsmedel (anpassa), Mina recept och Tillskott.
 // Undersidorna i sig styrs av navigation.js; listorna ritas i views/settings.js.
 
-import { $, $$, esc, num, confirmDialog, scrollToElement, DAYS } from "../util.js";
-import { exclusions, saveExclusions, myFoods, addMyFood, removeMyFood, cleanMyFood, cleanWord, mealPrefs, setMealPrefs, treatName } from "../preferences.js";
+import { $, $$, esc, num, confirmDialog, scrollToElement, checkDecimal, DAYS } from "../util.js";
+import { exclusions, saveExclusions, myFoods, addMyFood, updateMyFood, removeMyFood, cleanMyFood, cleanWord, mealPrefs, setMealPrefs, treatName } from "../preferences.js";
 import { invalidateMenu } from "../menu.js";
 import { FOOD, ALTERNATIVES } from "../data/foods.js";
-import { renderIngredientPicker, recipeItemRow, readRecipeItems, updateRecipeSum, syncItemUnits, fillRecipeForm } from "../views/settings.js";
+import { renderMySnackList, moreNutrientRow, syncMoreRow, readMoreNutrients, fillMyFoodForm, renderIngredientPicker, recipeItemRow, readRecipeItems, updateRecipeSum, syncItemUnits, fillRecipeForm } from "../views/settings.js";
 import { myRecipes, addMyRecipe, updateMyRecipe, removeMyRecipe, cleanRecipe } from "../myrecipes.js";
 import { setUsing, cleanMySupp, addMySupp, removeMySupp, mySupps } from "../supplements.js";
+import { mySnacks, saveMySnack, removeMySnack } from "../snacks.js";
+import { renderMySnacks } from "./meal-swap.js";
 
 let update = () => {}; // ritar om appen; sätts av initSettingsForms()
 let saveProfile = () => {}; // sparar profilen, t.ex. när valt frukostrecept ändras
@@ -46,27 +48,78 @@ $("ex-words").addEventListener("click", (ev) => {
   exclusions.words.delete(word);
   preferencesChanged();
 });
+// Mina livsmedel: kalorier och protein, och fler näringsvärden som rader (Kolhydrater, Fett, Fiber … eller Eget fält)
+let editingFood = null; // id för livsmedlet som ändras, annars null (nytt)
+function resetFoodForm() {
+  editingFood = null;
+  $("mf").reset();
+  for (const x of $$("[data-mfallergen]")) x.checked = false;
+  $("mf-more").replaceChildren();
+  $("mf-title").textContent = "Nytt livsmedel";
+  $("mf-save").textContent = "Lägg till livsmedel";
+  $("mf-cancel").hidden = true;
+}
+$("mf-more-add").addEventListener("click", () => {
+  const row = moreNutrientRow();
+  // Nästa rad föreslår det första näringsämnet som inte redan är valt
+  const used = new Set($$("#mf-more [data-mf-nutr]").map((x) => x.value));
+  const free = [...row.querySelector("[data-mf-nutr]").options].find((o) => !used.has(o.value));
+  if (free) row.querySelector("[data-mf-nutr]").value = free.value;
+  syncMoreRow(row);
+  $("mf-more").append(row);
+  row.querySelector("[data-mf-val]").focus();
+});
+$("mf-more").addEventListener("change", (ev) => {
+  const row = ev.target.closest(".mf-row");
+  if (row && ev.target.matches("[data-mf-nutr]")) syncMoreRow(row);
+});
+$("mf-more").addEventListener("click", (ev) => ev.target.closest("[data-mf-remove]")?.closest(".mf-row").remove());
 $("mf").addEventListener("submit", (ev) => {
   ev.preventDefault();
-  const kcal = num($("mf-k").value);
+  if (![$("mf-name"), $("mf-k"), $("mf-p")].every((el) => el.value.trim())) return ($("mf-msg").textContent = "Fyll i namn, kalorier och protein per 100 g.");
+  const invalid = [$("mf-k"), $("mf-p"), ...$$("#mf-more [data-mf-val]")].find((el) => !checkDecimal(el));
+  if (invalid) return invalid.reportValidity();
+  const kcal = num($("mf-k").value), protein = num($("mf-p").value);
+  const more = readMoreNutrients();
+  if (more.error) return ($("mf-msg").textContent = more.error);
+  const old = editingFood && myFoods.find((m) => m.id === editingFood);
   const food = cleanMyFood({
-    n: $("mf-name").value, k: kcal, p: num($("mf-p").value) || 0, c: num($("mf-c").value) || 0, f: num($("mf-f").value) || 0,
+    ...old, n: $("mf-name").value, k: kcal, p: protein, c: more.c, f: more.f, more: more.more,
     cat: $("mf-cat").value, replaces: $("mf-rep").value, always: $("mf-mode").value === "always",
     allergens: $$("[data-mfallergen]:checked").map((x) => x.dataset.mfallergen),
   });
-  if (!food || kcal == null) return ($("mf-msg").textContent = "Fyll i namn och kalorier per 100 g.");
+  if (!food || kcal == null || protein == null) return ($("mf-msg").textContent = "Fyll i namn, kalorier och protein per 100 g.");
   if (food.p + food.c + food.f > 100.5) return ($("mf-msg").textContent = "Protein, kolhydrater och fett kan inte bli mer än 100 g per 100 g.");
-  addMyFood(food);
-  $("mf").reset();
-  for (const x of $$("[data-mfallergen]")) x.checked = false;
-  $("mf-msg").textContent = `${food.n} är tillagt.`;
+  if (old) updateMyFood(old.id, food);
+  else addMyFood(food);
+  $("mf-msg").textContent = `${food.n} är ${old ? "ändrat" : "tillagt"} och kan väljas i Mina recept.`;
+  resetFoodForm();
   invalidateMenu();
   update();
 });
+$("mf-cancel").addEventListener("click", () => {
+  resetFoodForm();
+  $("mf-msg").textContent = "";
+});
 $("mf-list").addEventListener("click", async (ev) => {
+  const edit = ev.target.closest("[data-mfedit]")?.dataset.mfedit;
+  if (edit) {
+    const food = myFoods.find((m) => m.id === edit);
+    if (!food) return;
+    resetFoodForm();
+    editingFood = edit;
+    fillMyFoodForm(food);
+    $("mf-title").textContent = `Ändra ${food.n}`;
+    $("mf-save").textContent = "Spara ändringen";
+    $("mf-cancel").hidden = false;
+    $("mf-msg").textContent = "";
+    scrollToElement($("mf"));
+    return $("mf-name").focus();
+  }
   const id = ev.target.closest("[data-mfdel]")?.dataset.mfdel;
   if (!id || !(await confirmDialog(`Är du säker på att du vill ta bort ${myFoods.find((m) => m.id === id)?.n || "livsmedlet"}?`))) return;
   removeMyFood(id);
+  if (editingFood === id) resetFoodForm();
   invalidateMenu();
   update();
 });
@@ -171,6 +224,56 @@ $("ms-list").addEventListener("click", async (ev) => {
   if (!id || !(await confirmDialog(`Är du säker på att du vill ta bort ${mySupps.find((m) => m.id === id)?.n || "tillskottet"}?`))) return;
   removeMySupp(id);
   update();
+});
+// Mina mellanmål (snacks.js): snabbval när ett mellanmål läggs till på Idag
+let editingSnack = null; // id för mellanmålet som ändras, annars null (nytt)
+function resetSnackForm() {
+  editingSnack = null;
+  $("mm-form").reset();
+  $("mm-title").textContent = "Nytt mellanmål";
+  $("mm-save").textContent = "Lägg till mellanmål";
+  $("mm-cancel").hidden = true;
+}
+const snacksChanged = () => {
+  renderMySnackList();
+  renderMySnacks();
+};
+$("mm-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const invalid = [$("mm-k"), $("mm-p")].find((el) => !checkDecimal(el));
+  if (invalid) return invalid.reportValidity();
+  const k = num($("mm-k").value);
+  if (!$("mm-name").value.trim() || k == null) return ($("mm-msg").textContent = "Fyll i namn och kalorier.");
+  const saved = saveMySnack({ n: $("mm-name").value, k, p: num($("mm-p").value) ?? 0 }, editingSnack);
+  $("mm-msg").textContent = `${saved.n} är ${editingSnack ? "ändrat" : "tillagt"} och finns som snabbval på Idag.`;
+  resetSnackForm();
+  snacksChanged();
+});
+$("mm-cancel").addEventListener("click", () => {
+  resetSnackForm();
+  $("mm-msg").textContent = "";
+});
+$("mm-list").addEventListener("click", async (ev) => {
+  const edit = ev.target.closest("[data-mmedit]")?.dataset.mmedit;
+  const del = ev.target.closest("[data-mmdel]")?.dataset.mmdel;
+  const snack = mySnacks().find((x) => x.id === (edit || del));
+  if (!snack) return;
+  if (edit) {
+    editingSnack = snack.id;
+    $("mm-name").value = snack.n;
+    $("mm-k").value = String(snack.k).replace(".", ",");
+    $("mm-p").value = String(snack.p).replace(".", ",");
+    $("mm-title").textContent = `Ändra ${snack.n}`;
+    $("mm-save").textContent = "Spara ändringen";
+    $("mm-cancel").hidden = false;
+    $("mm-msg").textContent = "";
+    return $("mm-name").focus();
+  }
+  if (!(await confirmDialog(`Är du säker på att du vill ta bort ${snack.n}?`))) return;
+  removeMySnack(snack.id);
+  if (editingSnack === snack.id) resetSnackForm();
+  $("mm-msg").textContent = `${snack.n} är borttaget.`;
+  snacksChanged();
 });
 $("supps").addEventListener("change", () => {
   setUsing($$("[data-supp]:checked").map((el) => el.dataset.supp));

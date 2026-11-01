@@ -1,9 +1,10 @@
-// Periodisk fasta 16:8: räkna ut dagens ätfönster och nästa måltid från när man faktiskt åt.
+// Periodisk fasta (16:8, 14:10 eller 12:12 enligt Profil): räkna ut dagens ätfönster och nästa måltid från när man faktiskt åt.
 // Alla tider är timmar sedan midnatt (12.5 = 12:30). Värden över 24 betyder nästa dag.
 
 import { MEAL_AT, WINDOW } from "./day.js";
 
-export const FAST_HOURS = 24 - WINDOW; // 16
+/** Fastans längd i timmar med det valda ätfönstret (16 för 16:8). */
+export const fastHours = () => 24 - WINDOW;
 
 /** "12:30" → 12.5, eller null. */
 export function parseClock(text) {
@@ -37,17 +38,17 @@ export function formatDuration(hours) {
  * så att timern fortsätter räkna fastan i stället för att börja om vid den planerade frukosten.
  */
 export function fastingDay({ planned, first, last, yesterdayLast }) {
-  const fastDone = yesterdayLast != null ? yesterdayLast + FAST_HOURS - 24 : null;
+  const fastDone = yesterdayLast != null ? yesterdayLast + fastHours() - 24 : null;
   const start = first ?? Math.max(planned, fastDone ?? planned);
   const windowEnd = last ?? start + WINDOW;
-  const fastEnd = windowEnd + FAST_HOURS; // timmar från i dag 00:00, alltså i morgon
+  const fastEnd = windowEnd + fastHours(); // timmar från i dag 00:00, alltså i morgon
   return {
     start,
     nextMeal: Math.min(start + MEAL_AT, windowEnd), // eftermiddagsmåltiden, aldrig efter att fönstret stängt
     windowEnd,
     fastEnd,
     /** Tidigaste första måltid i dag för att gårdagens fasta ska bli 16 h. */
-    earliestToday: yesterdayLast != null ? yesterdayLast + FAST_HOURS - 24 : null,
+    earliestToday: yesterdayLast != null ? yesterdayLast + fastHours() - 24 : null,
     /** Fasta i natt om man äter frukost som planerat i morgon. */
     tonightIfPlanned: planned + 24 - windowEnd,
   };
@@ -64,5 +65,5 @@ export const fastingHours = (lastMeal, nextFirstMeal) => nextFirstMeal + 24 - la
 export function fastingNow(day, now, yesterdayLast) {
   if (now >= day.start && now < day.windowEnd) return { state: "eating", left: day.windowEnd - now };
   const elapsed = now >= day.windowEnd ? now - day.windowEnd : now + 24 - (yesterdayLast ?? day.start + WINDOW);
-  return { state: "fasting", elapsed, left: Math.max(0, FAST_HOURS - elapsed) };
+  return { state: "fasting", elapsed, left: Math.max(0, fastHours() - elapsed) };
 }
