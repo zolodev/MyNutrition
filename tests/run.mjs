@@ -1249,6 +1249,18 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   $("mm-name").value = ""; $("mm-k").value = "100"; fire($("mm-form"), "submit");
   check("Ett mellanmål utan namn sparas inte", savedSnacks().length === 2 && text("mm-msg").includes("Fyll i namn"));
   $("mm-form").reset();
+  // Ett mellanmål som läggs till på Idag sparas bland Mina mellanmål tills det tas bort där
+  $("sn-name").value = "Grekisk yoghurt 0 %"; $("sn-k").value = "140"; $("sn-p").value = "25"; fire($("sn-form"), "submit");
+  check("Ett nytt mellanmål på Idag sparas bland Mina mellanmål", savedSnacks().some((x) => x.n === "Grekisk yoghurt 0 %" && x.k === 140 && x.p === 25) && text("sn-msg").includes("sparat bland Mina mellanmål"));
+  check("Det syns som snabbval och i Inställningar, inte dubbelt bland de senaste", text("sn-snacks").includes("Grekisk yoghurt 0 %") && text("mm-list").includes("Grekisk yoghurt 0 %") && !text("sn-recent").includes("Grekisk yoghurt 0 %"));
+  const snackCount = savedSnacks().length;
+  $("sn-name").value = "grekisk yoghurt 0 %"; $("sn-k").value = "150"; fire($("sn-form"), "submit");
+  check("Samma namn igen sparas inte en gång till och ändrar inte det sparade", savedSnacks().length === snackCount && savedSnacks().find((x) => x.n === "Grekisk yoghurt 0 %").k === 140);
+  const todaySnacks = () => JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === todayStr())?.snacks || [];
+  while (todaySnacks().some((x) => /grekisk yoghurt/i.test(x.n))) { fire($("sn-list").querySelector(`[data-snack-remove="${todaySnacks().findIndex((x) => /grekisk yoghurt/i.test(x.n))}"]`), "click"); }
+  check("Att ta bort det från dagen låter det ligga kvar bland Mina mellanmål", savedSnacks().some((x) => x.n === "Grekisk yoghurt 0 %"));
+  fire($("mm-list").querySelector(`[data-mmdel="${savedSnacks().find((x) => x.n === "Grekisk yoghurt 0 %").id}"]`), "click"); await tick(); await answer(true);
+  check("Det tas bort först när man tar bort det under Mina mellanmål", !savedSnacks().some((x) => x.n === "Grekisk yoghurt 0 %") && !text("sn-snacks").includes("Grekisk yoghurt"));
   // Loggen sparad för hand behåller ersättningen
   go("logg");
   fire($("logf").querySelector('[data-date-offset="0"]') || $("l-date"), "click");
@@ -1269,7 +1281,7 @@ check("Trasig importtext avvisas utan att något ändras", text("backup-msg").st
   const snacksSaved = () => JSON.parse(win.localStorage.getItem("ffv-log")).entries.find((e) => e.date === todayStr())?.snacks || [];
   check("Mellanmål sparas i dagens logg", snacksSaved().length === 2 && snacksSaved()[0].n === "Lättfil med kasein" && snacksSaved()[0].k === 235 && snacksSaved()[0].p === 40 && snacksSaved()[1].p === 0);
   check("Mellanmålen räknas som ätna och läggs till dagens summa", kcalToday() === before + 340 && planned() === plannedBefore + 340 && text("td-targets").includes("med mellanmål") && text("td-eaten").includes("2 mellanmål"));
-  check("Mellanmålen listas på Idag och blir snabbval", $("sn-list").querySelectorAll("li").length === 2 && text("sn-recent").includes("Lättfil med kasein") && text("sw-recent").includes("Banan"));
+  check("Mellanmålen listas på Idag och blir snabbval", $("sn-list").querySelectorAll("li").length === 2 && text("sn-snacks").includes("Lättfil med kasein") && !text("sn-recent").includes("Lättfil med kasein") && text("sw-recent").includes("Banan"));
   fire($("sn-form"), "submit");
   check("Ett tomt mellanmål sparas inte", snacksSaved().length === 2 && text("sn-msg").startsWith("Fyll i"));
   check("Mellanmålen syns i loggens tabell", text("l-table").includes("Mellanmål: Lättfil med kasein (235 kcal)"));

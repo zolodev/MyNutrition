@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- Appens version (samma som js/version.js; uppdateras av npm run bump). main.js använder den för att se till att
        alla filer kommer från samma version. -->
-  <meta name="app-version" content="0.23.0">
+  <meta name="app-version" content="0.23.1">
   <meta name="description"
     content="Personlig veckoplan för viktnedgång: kalorimål, styrkeprogram med ExRx-övningar, säsongsrecept, fasta 16:8 och logg.">
   <meta name="theme-color" content="#1d5c4c" media="(prefers-color-scheme: light)">
@@ -250,7 +250,7 @@
     href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="css/app.css">
   <!-- ?v= gör att startfilen alltid hämtas på nytt efter en uppdatering, även ur en gammal webbläsarcache -->
-  <script type="module" src="js/main.js?v=0.23.0" onerror="ffvBootFailed()"></script>
+  <script type="module" src="js/main.js?v=0.23.1" onerror="ffvBootFailed()"></script>
 </head>
 
 <body>
@@ -376,6 +376,8 @@
               <form id="sn-form" autocomplete="off">
                 <div class="chips" id="sn-recent"></div>
                 <div class="chips" id="sn-snacks"></div>
+                <p class="hint">Allt du lägger till sparas bland Mina mellanmål. Ändra eller ta bort dem under
+                  <a href="#mina-mellanmal">Inställningar → Mina mellanmål</a>.</p>
                 <details class="sw-products-box">
                   <summary>Måltidsersättningar (Huel m.fl.)</summary>
                   <p class="hint">Värden per måltid enligt tillverkaren; kontrollera din förpackning.</p>

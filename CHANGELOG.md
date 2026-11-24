@@ -6,6 +6,14 @@ MINOR höjs för nya funktioner, PATCH för rättningar. Höj versionen med `npm
 
 ## [Ej släppt]
 
+## [0.23.1] - 2026-11-11
+
+### Ändrat
+- Ett mellanmål som läggs till på Idag sparas nu också bland Mina mellanmål och finns kvar som snabbval tills du tar
+  bort det under Inställningar → Mina mellanmål. Tidigare blev det bara ett av de åtta senaste snabbvalen och
+  försvann efter hand. Finns ett mellanmål med samma namn redan ändras det inte. Att ta bort ett mellanmål från
+  dagens lista tar inte bort det bland Mina mellanmål. Ingen ändring av sparad data (`ffv-snacks` som förut).
+
 ## [0.23.0] - 2026-11-01
 
 ### Tillagt

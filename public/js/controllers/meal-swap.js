@@ -10,7 +10,7 @@ import { swapMeals } from "../menu.js";
 import { fillMoveOptions, plannedTitle } from "../views/today.js";
 import { setSwap, recentSwaps, addSnack, removeSnack, setMealTimes, MEAL_NAMES } from "../log.js";
 import { MEAL_REPLACEMENTS } from "../data/meal-replacements.js";
-import { mySnacks } from "../snacks.js";
+import { mySnacks, saveMySnack } from "../snacks.js";
 import { FASTING } from "../day.js";
 import { parseClock } from "../fasting.js";
 
@@ -19,9 +19,11 @@ let windowEnd = () => 24; // när dagens ätfönster stänger (timmar); sätts a
 const message = (text) => ($("sw-msg").textContent = text);
 
 function renderRecent() {
-  const recent = recentSwaps();
+  // Bland mellanmålen visas inte de senaste som redan finns bland Mina mellanmål
+  const mine = new Set(mySnacks().map((x) => x.n.toLowerCase()));
   for (const id of ["sw-recent", "sn-recent"]) {
-    $(id).innerHTML = recent.map((x, i) =>
+    const recent = recentSwaps().map((x, i) => [x, i]).filter(([x]) => id === "sw-recent" || !mine.has(x.n.toLowerCase()));
+    $(id).innerHTML = recent.map(([x, i]) =>
       `<button type="button" class="chip-btn" data-swap-pick="${i}">${esc(x.n)} · ${fmt(x.k)} kcal</button>`).join("");
     $(id).hidden = !recent.length;
   }
@@ -34,8 +36,9 @@ function renderProducts() {
   renderMySnacks();
 }
 
-/** Mina mellanmål (Inställningar → Mina mellanmål) som snabbval. */
+/** Mina mellanmål (Inställningar → Mina mellanmål) som snabbval, och de senaste som inte finns bland dem. */
 export function renderMySnacks() {
+  renderRecent();
   $("sn-snacks").innerHTML = mySnacks().map((x) =>
     `<button type="button" class="chip-btn" data-snack-product="${esc(x.id)}">${esc(x.n)} · ${fmt(x.k)} kcal · ${fmt(x.p)} g P</button>`).join("");
 }
@@ -61,12 +64,18 @@ $("sn-form").addEventListener("submit", (ev) => {
   if (invalid) return invalid.reportValidity();
   const at = $("sn-at").value || new Date().toTimeString().slice(0, 5);
   addSnack(todayStr(), { ...snack, at });
+  // Sparas också bland Mina mellanmål (finns kvar tills det tas bort där), om det inte redan finns med samma namn
+  const name = snack.n.trim();
+  const isNew = !mySnacks().some((x) => x.n.toLowerCase() === name.toLowerCase());
+  if (isNew) saveMySnack(snack);
   // Åts det efter att ätfönstret stängt flyttas dagens sista måltid dit, så att fastan räknas från då
   const late = FASTING && parseClock(at) > windowEnd();
   if (late) setMealTimes(todayStr(), { lastMeal: at });
   $("sn-form").reset();
-  $("sn-msg").textContent = `${snack.n.trim()} är tillagt. Dagens summa är uträknad på nytt.` + (late ? ` Sista måltiden är flyttad till ${at}, så fastan räknas från då.` : "");
-  renderRecent();
+  $("sn-msg").textContent = `${name} är tillagt. Dagens summa är uträknad på nytt.` +
+    (isNew ? " Det är också sparat bland Mina mellanmål, så du hittar det som snabbval." : "") +
+    (late ? ` Sista måltiden är flyttad till ${at}, så fastan räknas från då.` : "");
+  renderMySnacks();
   update();
 });
 $("sn-list").addEventListener("click", (ev) => {
